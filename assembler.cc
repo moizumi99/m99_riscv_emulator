@@ -1,5 +1,6 @@
 #include "assembler.h"
 #include "RISCV_Emulator.h"
+#include "RISCV_cpu.h"
 
 uint32_t asm_mov(uint32_t, uint32_t);
 uint32_t asm_add(uint32_t, uint32_t);
