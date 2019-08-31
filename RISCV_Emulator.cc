@@ -1,14 +1,19 @@
 #include "RISCV_Emulator.h"
-#include "assembler.h"
+#include "load_assembler.h"
 #include "RISCV_cpu.h"
 #include <iostream>
 
 using namespace std;
 
-uint32_t rom[256];
+// Code
+uint32_t mem[256];
 
 int main() {
-  assembler(rom);
-  int error_code = run_cpu(rom);
+  // Generate very primitive assembly code
+  load_assembler(mem);
+
+  // Run CPU emulator
+  int error_code = run_cpu(mem);
+
   return error_code;
 }

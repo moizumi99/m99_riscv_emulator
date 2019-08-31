@@ -1,5 +1,5 @@
-#ifndef RISCV_Emulator_H
-#define RISCV_Emulator_H
+#ifndef RISCV_EMULATOR_H
+#define RISCV_EMULATOR_H
 
 
-#endif // RISCV_Emulator_H
+#endif // RISCV_EMULATOR_H
