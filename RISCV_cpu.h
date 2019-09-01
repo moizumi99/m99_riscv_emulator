@@ -42,13 +42,12 @@ enum Registers {
 };
 
 enum op_label {
-  LABEL_R = 0b0110011,
-  LABEL_I = 0b0010011,
-  LABEL_B = 0b1100011,
-  LABEL_J = 0b1101111,
-  LABEL_S = 0b0100011,
   OPCODE_ADD = 0b0110011,
-  OPCODE_LD = 0b0000011
+  OPCODE_ADDI = 0b0010011,
+  OPCODE_B = 0b1100011,
+  OPCODE_LD = 0b0000011,
+  OPCODE_J = 0b1101111,
+  OPCODE_S = 0b0010011,
 };
 
 enum op_funct {
@@ -69,7 +68,7 @@ enum op_funct3 {
   FUNC3_ADD = 0b000,
   FUNC3_ADDI = 0b000,
   FUNC3_SUB = 0b000,
-  func3_OR = 0b110,
+  FUNC3_OR = 0b110,
   FUNC3_SLLI = 0b001,
   FUNC3_SRLI = 0b101,
   FUNC3_SRAI = 0b101,

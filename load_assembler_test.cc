@@ -6,14 +6,6 @@
 
 using namespace std;
 
-uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2);
-uint32_t asm_addi(uint32_t rd, uint32_t rs1, uint32_t imm12);
-uint32_t asm_sub(uint32_t rd, uint32_t rs1, uint32_t rs2);
-uint32_t asm_beq(uint32_t rs1, uint32_t rs2, uint32_t offset13);
-uint32_t asm_jal(uint32_t rd, uint32_t offset21);
-uint32_t asm_ld(uint32_t rd, uint32_t rs1, uint32_t offset12);
-uint32_t asm_sw(uint32_t rs1, uint32_t rs2, uint32_t offset12);
-
 template <class T>
 void print_binary(T value) {
   int bitwidth = sizeof(T) * 8;
