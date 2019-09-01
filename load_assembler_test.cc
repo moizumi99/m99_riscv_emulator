@@ -1,5 +1,6 @@
 #include "RISCV_cpu.h"
 #include "load_assembler.h"
+#include "instruction_encdec.h"
 #include <iostream>
 #include <string>
 

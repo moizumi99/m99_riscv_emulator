@@ -1,6 +1,7 @@
 #ifndef RISCV_CPU_H
 #define RISCV_CPU_H
 #include <stdint.h>
+#include "bit_tools.h"
 
 int run_cpu(uint32_t *rom);
 
@@ -46,6 +47,7 @@ enum op_label {
   LABEL_B = 0b1100011,
   LABEL_J = 0b1101111,
   LABEL_S = 0b0100011,
+  OPCODE_ADD = 0b0110011,
   OPCODE_LD = 0b0000011
 };
 

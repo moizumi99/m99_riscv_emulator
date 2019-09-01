@@ -1,6 +1,8 @@
 #include "load_assembler.h"
 #include "RISCV_Emulator.h"
 #include "RISCV_cpu.h"
+#include "bit_tools.h"
+#include "instruction_encdec.h"
 
 using namespace std;
 
@@ -30,24 +32,15 @@ void load_assembler(uint32_t *rom) {
   rom[9] = asm_jal(ZERO, 0);
 }
 
-uint32_t mask[] = {0x0,        0x01,       0x03,       0x07,      0x0F,
-                   0x01F,      0x03F,      0x07F,      0x0FF,     0x01FF,
-                   0x03FF,     0x07FF,     0x0FFF,     0x01FFF,   0x03FFF,
-                   0x07FFF,    0x0FFFF,    0x01FFFF,   0x03FFFF,  0x07FFFF,
-                   0x0FFFFF,   0x01FFFFF,  0x03FFFFF,  0x07FFFFF, 0x0FFFFFF,
-                   0x01FFFFFF, 0x03FFFFFF, 0x07FFFFFF, 0x0FFFFFFF};
-
-uint32_t bitshift(uint32_t val, int width, int offset, int distpos) {
-  val >>= offset;
-  val &= mask[width];
-  val <<= distpos;
-  return val;
-}
-
 uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
-  uint32_t cmd = LABEL_R | (FUNC_ADD << 25) | (FUNC3_ADD << 12);
-  return cmd | bitshift(rd, 5, 0, 7) | bitshift(rs1, 5, 0, 15) |
-         bitshift(rs2, 5, 0, 20);
+  r_type cmd;
+  cmd.funct7 = FUNC_ADD;
+  cmd.opcode = OPCODE_ADD;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_ADD;
+  return cmd.value();
 }
 
 uint32_t asm_addi(uint32_t rd, uint32_t rs1, uint32_t imm12) {
