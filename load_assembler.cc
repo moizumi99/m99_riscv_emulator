@@ -30,12 +30,12 @@ void load_assembler(uint32_t *rom) {
   rom[9] = asm_jal(ZERO, 0);
 }
 
-uint32_t mask[] = {0x01,       0x03,       0x07,      0x0F,      0x01F,
-                   0x03F,      0x07F,      0x0FF,     0x01FF,    0x03FF,
-                   0x07FF,     0x0FFF,     0x01FFF,   0x03FFF,   0x07FFF,
-                   0x0FFFF,    0x01FFFF,   0x03FFFF,  0x07FFFF,  0x0FFFFF,
-                   0x01FFFFF,  0x03FFFFF,  0x07FFFFF, 0x0FFFFFF, 0x01FFFFFF,
-                   0x03FFFFFF, 0x07FFFFFF, 0x0FFFFFFF};
+uint32_t mask[] = {0x0,        0x01,       0x03,       0x07,      0x0F,
+                   0x01F,      0x03F,      0x07F,      0x0FF,     0x01FF,
+                   0x03FF,     0x07FF,     0x0FFF,     0x01FFF,   0x03FFF,
+                   0x07FFF,    0x0FFFF,    0x01FFFF,   0x03FFFF,  0x07FFFF,
+                   0x0FFFFF,   0x01FFFFF,  0x03FFFFF,  0x07FFFFF, 0x0FFFFFF,
+                   0x01FFFFFF, 0x03FFFFFF, 0x07FFFFFF, 0x0FFFFFFF};
 
 uint32_t bitshift(uint32_t val, int width, int offset, int distpos) {
   val >>= offset;
@@ -46,45 +46,47 @@ uint32_t bitshift(uint32_t val, int width, int offset, int distpos) {
 
 uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   uint32_t cmd = LABEL_R | (FUNC_ADD << 25) | (FUNC3_ADD << 12);
-  return cmd | bitshift(rd, 5, 0, 7) | bitshift(rs1, 5, 0, 15) | bitshift(rs2, 5, 0, 20);
+  return cmd | bitshift(rd, 5, 0, 7) | bitshift(rs1, 5, 0, 15) |
+         bitshift(rs2, 5, 0, 20);
 }
 
-uint32_t asm_addi(uint32_t rd, uint32_t rs1, uint32_t imm) {
+uint32_t asm_addi(uint32_t rd, uint32_t rs1, uint32_t imm12) {
   uint32_t cmd = LABEL_I | (FUNC3_ADDI << 12);
-  return cmd | (rd & 0x1F << 7) | (rs1 & 0x1F << 15) | (imm & 0xFFF << 20);
+  return cmd | bitshift(rd, 5, 0, 7) | bitshift(rs1, 5, 0, 15) |
+         bitshift(imm12, 12, 0, 20);
 }
 
 uint32_t asm_sub(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   uint32_t cmd = LABEL_R | (FUNC_SUB << 25) | (FUNC3_SUB << 12);
-  return cmd | (rd & 0x1F << 7) | (rs1 & 0x1F << 15) | (rs2 & 0x1F << 20);
+  return cmd | bitshift(rd, 5, 0, 7) | bitshift(rs1, 5, 0, 15) |
+         bitshift(rs2, 5, 0, 20);
 }
 
-uint32_t asm_beq(uint32_t rs1, uint32_t rs2, uint32_t offset) {
+uint32_t asm_beq(uint32_t rs1, uint32_t rs2, uint32_t offset13) {
   uint32_t cmd = LABEL_B | (FUNC3_BEQ << 12);
-  cmd |= (rs2 & 0x1F << 20) | (rs1 & 0x1F << 15);
-  cmd |= (offset & 0x1000 << 19) | (offset & 0b011111100000 << 20) |
-         (offset & 0b011110 << 7) | (offset & 0b0100000000000 >> 4);
+  cmd |= bitshift(rs2, 5, 0, 20) | bitshift(rs1, 5, 0, 15);
+  cmd |= bitshift(offset13, 1, 12, 31) | bitshift(offset13, 6, 5, 25);
+  cmd |= bitshift(offset13, 4, 1, 8) | bitshift(offset13, 1, 11, 7);
   return cmd;
 }
 
-uint32_t asm_jal(uint32_t rd, uint32_t offset) {
+uint32_t asm_jal(uint32_t rd, uint32_t offset21) {
   uint32_t cmd = LABEL_J;
-  cmd |= (rd & 0x1F << 7);
-  cmd |= (offset & 0x100000 << 11) | (offset & 0b011111111110 << 20) |
-         (offset & 0x400 << 9) | (offset & 0b011111111000000000000);
+  cmd |= bitshift(rd, 5, 0, 7);
+  cmd |= bitshift(offset21, 1, 20, 31) | bitshift(offset21, 10, 1, 21);
+  cmd |= bitshift(offset21, 1, 11, 20) | bitshift(offset21, 8, 12, 12);
   return cmd;
 }
 
-uint32_t asm_ld(uint32_t rd, uint32_t rs1, uint32_t offset) {
-  uint32_t cmd = LABEL_I | (FUNC3_LD << 12);
-  cmd |=
-      (rd & 0x1F << 7) | (rs1 & 0x1F << 15) | (offset & 0b0111111111111 << 20);
+uint32_t asm_ld(uint32_t rd, uint32_t rs1, uint32_t offset12) {
+  uint32_t cmd = OPCODE_LD | (FUNC3_LD << 12);
+  cmd |= bitshift(rd, 5, 0, 7) | bitshift(rs1, 5, 0, 15) | bitshift(offset12, 12, 0, 20);
   return cmd;
 }
 
-uint32_t asm_sw(uint32_t rs1, uint32_t rs2, uint32_t offset) {
+uint32_t asm_sw(uint32_t rs1, uint32_t rs2, uint32_t offset12) {
   uint32_t cmd = LABEL_I | (FUNC3_SW << 12);
-  cmd |= (rs2 & 0x1F << 20) | (rs1 & 0x1F << 15);
-  cmd |= (offset & 0b0111111100000 << 20) | (offset & 0b011111 << 7);
+  cmd |= bitshift(rs2, 5, 0, 20) | bitshift(rs1, 5, 0, 15);
+  cmd |= bitshift(offset12, 7, 5, 25) | bitshift(offset12, 5, 0, 7);
   return cmd;
 }
