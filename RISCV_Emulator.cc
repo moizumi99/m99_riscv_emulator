@@ -14,6 +14,7 @@ int main() {
   printf("Assembler set.\n");
 
   // Run CPU emulator
+  printf("Execution start\n");
   int return_value = run_cpu(mem);
 
   printf("Return value: %d\n", return_value);
