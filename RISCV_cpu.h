@@ -48,6 +48,7 @@ enum op_label {
   OPCODE_LD = 0b0000011,
   OPCODE_J = 0b1101111,
   OPCODE_S = 0b0010011,
+  OPCODE_JALR = 0b1100111,
 };
 
 enum op_funct {
@@ -61,7 +62,8 @@ enum op_funct {
   FUNC_BEQ = 0b0000000,
   FUNC_JAL = 0b0000000,
   FUNC_LD = 0b0000000,
-  FUNC_SW = 0b0000000
+  FUNC_SW = 0b0000000,
+  FUNC_JALR = 0b0000000
 };
 
 enum op_funct3 {
@@ -73,9 +75,19 @@ enum op_funct3 {
   FUNC3_SRLI = 0b101,
   FUNC3_SRAI = 0b101,
   FUNC3_BEQ = 0b000,
-  FUNC3_JAL = 0b000,
   FUNC3_LD = 0b011,
-  FUNC3_SW = 0b010
+  FUNC3_SW = 0b010,
+  FUNC3_JALR = 0b000,
+};
+
+enum instruction {
+  INST_ERROR = 0,
+  INST_ADD = 1,
+  INST_SUB = 2,
+  INST_ADDI = 3,
+  INST_BEQ = 4,
+  INST_JAL = 5,
+  INST_JALR = 6,
 };
 
 

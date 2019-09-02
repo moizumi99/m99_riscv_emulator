@@ -1,101 +1,106 @@
 #include "RISCV_cpu.h"
-#include <stdint.h>
+#include "bit_tools.h"
+#include "instruction_encdec.h"
 #include <iostream>
+#include <stdint.h>
 
 using namespace std;
 
-uint32_t op_code(uint32_t);
-uint32_t op_regA(uint32_t);
-uint32_t op_regB(uint32_t);
-uint32_t op_data(uint32_t);
-uint32_t op_addr(uint32_t);
+uint32_t get_code(uint32_t ir);
 
-uint32_t reg[8];
-uint32_t ram[256];
+uint32_t reg[32];
 
 int run_cpu(uint32_t *rom) {
-  uint32_t pc;
+  uint32_t pc, next_pc;
   uint32_t ir;
-  uint32_t flag_eq;
+  bool error_flag = false;
+  bool end_flag = false;
 
- 
   pc = 0;
-  flag_eq = 0;
 
   do {
 
-    ir = rom[pc];
-    printf(" %05d  %05x  %05d  %05d  %05d  %05d\n", pc, ir, reg[0], reg[1], reg[2],
-           reg[3]);
+    // TODO: memory is byte aligned. Fix this.
+    ir = rom[pc / 4];
+    printf(" %4d  %08x  %5d  %5d  %5d  %5d %5d\n", pc, ir, reg[T0], reg[T1],
+           reg[T2], reg[T3], reg[A0]);
 
-    pc = pc + 1;
+    next_pc = pc + 4;
 
-    switch (op_code(ir)) {
-    case MOV:
-      reg[op_regA(ir)] = reg[op_regB(ir)];
+    uint32_t rd = get_rd(ir);
+    switch (get_code(ir)) {
+    case INST_ADD:
+      reg[rd] = reg[get_rs1(ir)] + reg[get_rs2(ir)];
+      // TODO: update flag
       break;
-    case ADD:
-      reg[op_regA(ir)] = reg[op_regA(ir)] + reg[op_regB(ir)];
+    case INST_ADDI:
+      reg[rd] = reg[get_rs1(ir)] + get_imm12(ir);
+      // TODO: update flag
       break;
-    case SUB:
-      reg[op_regA(ir)] = reg[op_regA(ir)] - reg[op_regB(ir)];
-      break;
-    case AND:
-      reg[op_regA(ir)] = reg[op_regA(ir)] & reg[op_regB(ir)];
-      break;
-    case OR:
-      reg[op_regA(ir)] = reg[op_regA(ir)] | reg[op_regB(ir)];
-      break;
-    case SL:
-      reg[op_regA(ir)] = reg[op_regA(ir)] << 1;
-      break;
-    case SR:
-      reg[op_regA(ir)] = reg[op_regA(ir)] >> 1;
-      break;
-    case SRA:
-      reg[op_regA(ir)] =
-          (reg[op_regA(ir)] & 0x8000) | (reg[op_regA(ir)] >> 1);
-      break;
-    case LDL:
-      reg[op_regA(ir)] =
-          (reg[op_regA(ir)] & 0xff00) | (op_data(ir) & 0x00ff);
-      break;
-    case LDH:
-      reg[op_regA(ir)] =
-          (op_data(ir) << 8) | (reg[op_regA(ir)] & 0x00ff);
-      break;
-    case CMP:
-      if (reg[op_regA(ir)] == reg[op_regB(ir)]) {
-        flag_eq = 1;
-      } else {
-        flag_eq = 0;
+    case INST_BEQ:
+      if (reg[get_rs1(ir)] == reg[get_rs2(ir)]) {
+        next_pc = pc + get_imm13(ir);
       }
       break;
-    case JE:
-      if (flag_eq == 1)
-        pc = op_addr(ir);
+    case INST_JAL:
+      reg[get_rd(ir)] = pc + 4;
+      next_pc = pc + get_imm21(ir);
       break;
-    case JMP:
-      pc = op_addr(ir);
-      break;
-    case LD:
-      reg[op_regA(ir)] = ram[op_addr(ir)];
-      break;
-    case ST:
-      ram[op_addr(ir)] = reg[op_regA(ir)];
+    case INST_JALR:
+      next_pc = pc + reg[get_rs1(ir)] + get_imm12(ir);
+      reg[get_rd(ir)] = pc + 4;
+      if (get_rd(ir) == ZERO && get_rs1(ir) == RA && get_imm12(ir) == 0) {
+        end_flag = true;
+      }
       break;
     default:
+      error_flag = true;
       break;
     }
-  } while (op_code(ir) != HLT);
+    reg[ZERO] = 0;
 
-  printf("ram[64] = %d \n", ram[64]);
+    pc = next_pc & 0xFFFF;
+  } while (!error_flag && !end_flag);
 
-  return 0;
+  return reg[A0];
 }
 
-uint32_t op_code(uint32_t ir) { return (ir >> 11); }
-uint32_t op_regA(uint32_t ir) { return ((ir >> 8) & 0x0007); }
-uint32_t op_regB(uint32_t ir) { return ((ir >> 5) & 0x0007); }
-uint32_t op_data(uint32_t ir) { return (ir & 0x00ff); }
-uint32_t op_addr(uint32_t ir) { return (ir & 0x00ff); }
+uint32_t get_code(uint32_t ir) {
+  uint16_t opcode = bitcrop(ir, 7, 0);
+  uint8_t funct3 = bitcrop(ir, 3, 12);
+  // uint8_t funct7 = bitcrop(ir, 7, 25);
+  uint32_t instruction = 0;
+  switch (opcode) {
+  case 0b0110011: // ADD, SUB
+    if (funct3 == FUNC3_ADD) {
+      instruction = INST_ADD;
+    } else if (funct3 == FUNC3_SUB) {
+      instruction = INST_SUB;
+    }
+    break;
+  case 0b0010011: // ADDI, SUBI
+    if (funct3 == FUNC3_ADDI) {
+      instruction = INST_ADDI;
+    }
+    break;
+  case 0b1100011: // beq
+    if (funct3 == FUNC3_BEQ) {
+      instruction = INST_BEQ;
+    }
+    break;
+  case 0b1101111: // jal
+    instruction = INST_JAL;
+    break;
+  case 0b1100111: // jalr
+    if (funct3 == FUNC3_JALR) {
+      instruction = INST_JALR;
+    }
+    break;
+  default:
+    break;
+  }
+  if (instruction == 0) {
+    printf("Error decoding 0x%08x\n", ir);
+  }
+  return instruction;
+}

@@ -13,10 +13,10 @@ void load_assembler(uint32_t *rom) {
   rom[3] = asm_addi(T3, ZERO, 64);
   rom[4] = asm_addi(T0, T0, 1);
   rom[5] = asm_add(T1, T1, T0);
-  rom[6] = asm_sw(T0, T3, 0);
-  rom[7] = asm_beq(T0, T2, 8);
-  rom[8] = asm_jal(ZERO, -16);
-  rom[9] = asm_jal(ZERO, 0);
+  rom[6] = asm_beq(T0, T2, 8);
+  rom[7] = asm_jal(ZERO, -16);
+  rom[8] = asm_add(A0, T1, ZERO);
+  rom[9] = asm_jalr(ZERO, RA, 0);
 }
 
 uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
@@ -66,6 +66,16 @@ uint32_t asm_jal(uint32_t rd, uint32_t offset21) {
   cmd.opcode = OPCODE_J;
   cmd.rd = rd;
   cmd.imm21 = offset21;
+  return cmd.value();
+}
+
+uint32_t asm_jalr(uint32_t rd, uint32_t rs1, uint32_t offset12) {
+  i_type cmd;
+  cmd.opcode = OPCODE_JALR;
+  cmd.funct3 = FUNC3_JALR;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.imm12 = offset12;
   return cmd.value();
 }
 
