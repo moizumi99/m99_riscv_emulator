@@ -6,17 +6,16 @@
 
 using namespace std;
 
-void load_assembler(uint32_t *rom) {
-  rom[0] = asm_addi(T0, ZERO, 0);
-  rom[1] = asm_addi(T1, ZERO, 0);
-  rom[2] = asm_addi(T2, ZERO, 10);
-  rom[3] = asm_addi(T3, ZERO, 64);
-  rom[4] = asm_addi(T0, T0, 1);
-  rom[5] = asm_add(T1, T1, T0);
-  rom[6] = asm_beq(T0, T2, 8);
-  rom[7] = asm_jal(ZERO, -16);
-  rom[8] = asm_add(A0, T1, ZERO);
-  rom[9] = asm_jalr(ZERO, RA, 0);
+void load_assembler(uint32_t *mem) {
+  mem[0] = asm_addi(T0, ZERO, 0);
+  mem[1] = asm_addi(T1, ZERO, 0);
+  mem[2] = asm_addi(T2, ZERO, 10);
+  mem[3] = asm_addi(T0, T0, 1);
+  mem[4] = asm_add(T1, T1, T0);
+  mem[5] = asm_beq(T0, T2, 8);
+  mem[6] = asm_jal(ZERO, -16);
+  mem[7] = asm_add(A0, T1, ZERO);
+  mem[8] = asm_jalr(ZERO, RA, 0);
 }
 
 uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {

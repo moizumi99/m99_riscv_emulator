@@ -16,13 +16,14 @@ int run_cpu(uint32_t *rom) {
   bool error_flag = false;
   bool end_flag = false;
 
-  pc = 0;
+  printf("   PC    Binary     T0     T1     T2     T3     A0\n");
 
+  pc = 0;
   do {
 
     // TODO: memory is byte aligned. Fix this.
     ir = rom[pc / 4];
-    printf(" %4d  %08x  %5d  %5d  %5d  %5d %5d\n", pc, ir, reg[T0], reg[T1],
+    printf(" %4d  %08x  %5d  %5d  %5d  %5d  %5d\n", pc, ir, reg[T0], reg[T1],
            reg[T2], reg[T3], reg[A0]);
 
     next_pc = pc + 4;
