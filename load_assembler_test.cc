@@ -133,7 +133,21 @@ bool test_b_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
   error |= check_equal("funct3", cmd.funct3, funct3);
   error |= check_equal("rs1", cmd.rs1, rs1, verbose);
   error |= check_equal("rs2", cmd.rs2, rs2, verbose);
-  error |= check_equal("imm13", cmd.imm13, imm13, verbose);
+  error |= check_equal("imm13", cmd.imm13, imm13 & (~0b01), verbose);
+  return error;
+}
+
+// Only shows message when there's an error.
+bool test_b_type_decode_quiet(uint32_t instruction, uint8_t opcode, uint8_t funct3,
+                        uint8_t rs1, uint8_t rs2, int16_t imm13,
+                        bool verbose = false) {
+  bool error =
+      test_b_type_decode(instruction, opcode, funct3, rs1, rs2, imm13, false);
+  if (error) {
+    // Show error message.
+    error =
+        test_b_type_decode(instruction, opcode, funct3, rs1, rs2, imm13, true);
+  }
   return error;
 }
 
@@ -301,35 +315,58 @@ uint32_t gen_b_type(uint32_t base, uint8_t rs1, uint8_t rs2, int16_t imm13) {
   return instruction;
 }
 
+bool test_b_type(bool verbose = false) {
+  enum TEST_LIST { TEST_BEQ };
+  bool total_error = false;
 
-bool test_asm_beq(bool verbose = false) {
-  bool subtest_verbose = false;
-  bool error = false;
-  uint32_t cmd, exp;
-  cmd = asm_beq(T0, T0, 0);
-  // exp = 0b00000000010100101000000001100011;
-  uint32_t base = 0b00000000000000000000000001100011;
-  exp = gen_b_type(base, T0, T0, 0);
-  error |= check_code("beq T0, T0, 0", cmd, exp, verbose);
-  error |=
-      test_b_type_decode(exp, OPCODE_B, FUNC3_BEQ, T0, T0, 0, subtest_verbose);
+  for (int testcase : {TEST_BEQ}) {
+    bool error = false;
+    uint32_t base;
+    string cmdname;
+    uint8_t opcode, funct3;
+    switch (testcase) {
+    case TEST_BEQ:
+      base = 0b00000000000000000000000001100011;
+      cmdname = "BEQ";
+      opcode = OPCODE_B;
+      funct3 = FUNC3_BEQ;
+      break;
+    default:
+      printf("Test case is node defined yet\n");
+      return true;
+      break;
+    }
 
-  cmd = asm_beq(T0, T0, 0b1010101010101);
-  exp = 0b11010100010100101000101001100011;
-  error |= check_code("beq T0, T0, -2732", cmd, exp, verbose);
-  error |= test_b_type_decode(exp, OPCODE_B, FUNC3_BEQ, T0, T0, -2732,
-                              subtest_verbose);
-
-  cmd = asm_beq(T3, T4, 0b1010101010101);
-  exp = 0b11010101110111100000101001100011;
-  error |= check_code("beq T3, T4, -2732", cmd, exp, verbose);
-  error |= test_b_type_decode(exp, OPCODE_B, FUNC3_BEQ, T3, T4, -2732,
-                              subtest_verbose);
-
-  if (verbose && error) {
-    printf("BEQ test failed\n");
+    for (int i = 0; i < TEST_NUM; i++) {
+      uint32_t cmd;
+      uint8_t rs1 = rand() % 32;
+      uint8_t rs2 = rand() % 32;
+      int16_t imm13 = (rand() % (1 << 13)) - (1 << 12);
+      switch (testcase) {
+      case TEST_BEQ:
+        cmd = asm_beq(rs1, rs2, imm13);
+        break;
+      default:
+        break;
+      }
+      uint32_t exp = gen_b_type(base, rs1, rs2, imm13);
+      string test_string = cmdname + " " + to_string(rs1) + ", " +
+                           to_string(rs2) + ", " + to_string(imm13);
+      error |= check_code_quiet(test_string, cmd, exp, verbose);
+      error |= test_b_type_decode_quiet(exp, opcode, funct3, rs1, rs2, imm13,
+                                        verbose);
+    }
+    if (verbose) {
+      printf("Total %d %s random test finished. ", TEST_NUM, cmdname.c_str());
+      if (error) {
+        printf("%s test failed\n", cmdname.c_str());
+      } else {
+        printf("%s test passed\n", cmdname.c_str());
+      }
+    }
+    total_error |= error;
   }
-  return error;
+  return total_error;
 }
 
 bool test_asm_jal(bool verbose = false) {
@@ -388,7 +425,7 @@ int main() {
   bool error = false;
   error |= test_r_type(verbose);
   error |= test_i_type(verbose);
-  error |= test_asm_beq(verbose);
+  error |= test_b_type(verbose);
   error |= test_asm_jal(verbose);
 
   if (error) {
