@@ -6,7 +6,7 @@
 
 using namespace std;
 
-constexpr int TEST_NUM = 100;
+constexpr int TEST_NUM = 4;
 
 template <class T> void print_binary(T value) {
   int bitwidth = sizeof(T) * 8;
@@ -81,16 +81,18 @@ bool test_r_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
   return error;
 }
 
+// Only shows message when there's an error.
 bool test_r_type_decode_quiet(uint32_t instruction, uint8_t opcode,
                               uint8_t funct3, uint8_t funct7, uint8_t rd,
                               uint8_t rs1, uint8_t rs2, bool verbose = false) {
   bool error = test_r_type_decode(instruction, opcode, funct3, funct7, rd, rs1,
                                   rs2, false);
   if (error) {
+    // Show error message.
     error = test_r_type_decode(instruction, opcode, funct3, funct7, rd, rs1,
                                rs2, true);
   }
-  return false;
+  return error;
 }
 
 bool test_i_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
@@ -100,10 +102,24 @@ bool test_i_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
   i_type cmd;
   cmd.set_value(instruction);
   error |= check_equal("cmd", cmd.opcode, opcode, verbose);
-  error |= check_equal("funct3", cmd.funct3, funct3);
+  error |= check_equal("funct3", cmd.funct3, funct3, verbose);
   error |= check_equal("rd", cmd.rd, rd, verbose);
   error |= check_equal("rs1", cmd.rs1, rs1, verbose);
   error |= check_equal("imm12", cmd.imm12, imm12, verbose);
+  return error;
+}
+
+// Only shows message when there's an error.
+bool test_i_type_decode_quiet(uint32_t instruction, uint8_t opcode,
+                              uint8_t funct3, uint8_t rd, uint8_t rs1,
+                              int16_t imm12, bool verbose = false) {
+  bool error =
+      test_i_type_decode(instruction, opcode, funct3, rd, rs1, imm12, false);
+  if (error) {
+    // Show error message.
+    error =
+        test_i_type_decode(instruction, opcode, funct3, rd, rs1, imm12, true);
+  }
   return error;
 }
 
@@ -146,7 +162,6 @@ bool test_r_type(bool verbose = false) {
     uint32_t base;
     string cmdname;
     uint8_t opcode, funct3, funct7;
-    uint32_t *funct(uint8_t, uint8_t, uint8_t);
     switch (testcase) {
     case TEST_ADD:
       base = 0b00000000000000000000000000110011;
@@ -187,8 +202,8 @@ bool test_r_type(bool verbose = false) {
       string test_string = cmdname + " " + to_string(rd) + ", " +
                            to_string(rs1) + ", " + to_string(rs2);
       error |= check_code_quiet(test_string, cmd, exp, verbose);
-      error |= test_r_type_decode_quiet(exp, opcode, funct3, funct7,
-                                        rd, rs1, rs2, verbose);
+      error |= test_r_type_decode_quiet(exp, opcode, funct3, funct7, rd, rs1,
+                                        rs2, verbose);
     }
     if (verbose) {
       printf("Total %d %s random test finished. ", TEST_NUM, cmdname.c_str());
@@ -203,28 +218,79 @@ bool test_r_type(bool verbose = false) {
   return total_error;
 }
 
-bool test_asm_addi(bool verbose = false) {
-  bool error = false;
-  bool subtest_verbose = false;
-  uint32_t cmd, exp;
-  cmd = asm_addi(T0, T0, 0);
-  exp = 0b00000000000000101000001010010011;
-  error |= check_code("addi T0, T0, 0", cmd, exp, verbose);
-  error |= test_i_type_decode(exp, OPCODE_ADDI, FUNC3_ADDI, T0, T0, 0,
-                              subtest_verbose);
-
-  cmd = asm_addi(T3, T4, 0b101010101010);
-  exp = 0b10101010101011101000111000010011;
-  error |= check_code("addi T3, T4, -1366", cmd, exp, verbose);
-  error |= test_i_type_decode(exp, OPCODE_ADDI, FUNC3_ADDI, T3, T4, -1366,
-                              subtest_verbose);
-
-  if (verbose && error) {
-    printf("Addi test failed\n");
-  }
-  return error;
+uint32_t gen_i_type(uint32_t base, uint8_t rd, uint8_t rs1, int16_t imm12) {
+  return base | ((imm12 & 0xFFF) << 20) | ((rs1 & 0x1F) << 15) |
+         ((rd & 0x1F) << 7);
 }
 
+bool test_i_type(bool verbose = false) {
+  enum TEST_LIST { TEST_ADDI, TEST_LD, TEST_JALR };
+  bool total_error = false;
+
+  for (int testcase : {TEST_ADDI, TEST_LD, TEST_JALR}) {
+    bool error = false;
+    uint32_t base;
+    string cmdname;
+    uint8_t opcode, funct3;
+    switch (testcase) {
+    case TEST_ADDI:
+      base = 0b00000000000000000000000000010011;
+      cmdname = "ADDI";
+      opcode = OPCODE_ADDI;
+      funct3 = FUNC3_ADDI;
+      break;
+    case TEST_LD:
+      base = 0b00000000000000000011000000000011;
+      cmdname = "LD";
+      opcode = OPCODE_LD;
+      funct3 = FUNC3_LD;
+      break;
+    case TEST_JALR:
+      base = 0b00000000000000000000000001100111;
+      cmdname = "JALR";
+      opcode = OPCODE_JALR;
+      funct3 = FUNC3_JALR;
+      break;
+    default:
+      printf("Test case is node defined yet\n");
+      return true;
+      break;
+    }
+
+    for (int i = 0; i < TEST_NUM; i++) {
+      uint32_t cmd;
+      uint8_t rd = rand() % 32;
+      uint8_t rs1 = rand() % 32;
+      int16_t imm12 = (rand() % (1 << 12)) - (1 << 11);
+      switch (testcase) {
+      case TEST_ADDI:
+        cmd = asm_addi(rd, rs1, imm12);
+        break;
+      case TEST_LD:
+        cmd = asm_ld(rd, rs1, imm12);
+        break;
+      default:
+        break;
+      }
+      uint32_t exp = gen_i_type(base, rd, rs1, imm12);
+      string test_string = cmdname + " " + to_string(rd) + ", " +
+                           to_string(rs1) + ", " + to_string(imm12);
+      error |= check_code_quiet(test_string, cmd, exp, verbose);
+      error |= test_i_type_decode_quiet(exp, opcode, funct3, rd, rs1, imm12,
+                                        verbose);
+    }
+    if (verbose) {
+      printf("Total %d %s random test finished. ", TEST_NUM, cmdname.c_str());
+      if (error) {
+        printf("%s test failed\n", cmdname.c_str());
+      } else {
+        printf("%s test passed\n", cmdname.c_str());
+      }
+    }
+    total_error |= error;
+  }
+  return total_error;
+}
 
 bool test_asm_beq(bool verbose = false) {
   bool subtest_verbose = false;
@@ -284,34 +350,6 @@ bool test_asm_jal(bool verbose = false) {
   return error;
 }
 
-bool test_asm_ld(bool verbose = false) {
-  bool subtest_verbose = false;
-  bool error = false;
-  uint32_t cmd, exp;
-  cmd = asm_ld(T0, T0, 0);
-  exp = 0b00000000000000101011001010000011;
-  error |= check_code("ld T0, T0, 0", cmd, exp, verbose);
-  error |=
-      test_i_type_decode(exp, OPCODE_LD, FUNC3_LD, T0, T0, 0, subtest_verbose);
-
-  cmd = asm_ld(T3, T4, 0);
-  exp = 0b00000000000011101011111000000011;
-  error |= check_code("ld T3, T4, 0", cmd, exp, verbose);
-  error |=
-      test_i_type_decode(exp, OPCODE_LD, FUNC3_LD, T3, T4, 0, subtest_verbose);
-
-  cmd = asm_ld(T3, T4, 2730);
-  exp = 0b10101010101011101011111000000011;
-  error |= check_code("ld T3, T4, -1366", cmd, exp, verbose);
-  error |= test_i_type_decode(exp, OPCODE_LD, FUNC3_LD, T3, T4, -1366,
-                              subtest_verbose);
-
-  if (verbose && error) {
-    printf("LD test failed\n");
-  }
-  return error;
-}
-
 bool test_asm_sw(bool verbose = false) {
   bool subtest_verbose = false;
   bool error = false;
@@ -331,42 +369,15 @@ bool test_asm_sw(bool verbose = false) {
   return error;
 }
 
-bool test_asm_jalr(bool verbose = false) {
-  bool subtest_verbose = false;
-  bool error = false;
-  uint32_t cmd, exp;
-  cmd = asm_jalr(T0, T0, 0);
-  exp = 0b00000000000000101000001011100111;
-  error |= check_code("jalr T0, T0, 0", cmd, exp, verbose);
-  error |= test_i_type_decode(exp, OPCODE_JALR, FUNC3_JALR, T0, T0, 0,
-                              subtest_verbose);
-
-  cmd = asm_jalr(T3, T4, 0);
-  exp = 0b00000000000011101000111001100111;
-  error |= check_code("jalr T3, T4, 0", cmd, exp, verbose);
-  error |= test_i_type_decode(exp, OPCODE_JALR, FUNC3_JALR, T3, T4, 0,
-                              subtest_verbose);
-
-  cmd = asm_jalr(T3, T4, 2730);
-  exp = 0b10101010101011101000111001100111;
-  error |= check_code("jalr T3, T4, -1366", cmd, exp, verbose);
-  error |= test_i_type_decode(exp, OPCODE_JALR, FUNC3_JALR, T3, T4, -1366,
-                              subtest_verbose);
-
-  return error;
-}
-
 int main() {
   constexpr int SEED = 0;
   srand(SEED);
   bool verbose = true;
   bool error = false;
   error |= test_r_type(verbose);
-  error |= test_asm_addi(verbose);
+  error |= test_i_type(verbose);
   error |= test_asm_beq(verbose);
   error |= test_asm_jal(verbose);
-  error |= test_asm_ld(verbose);
-  error |= test_asm_jalr(verbose);
 
   if (error) {
     printf("Test failed\n");
