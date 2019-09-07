@@ -47,7 +47,7 @@ void s_type::set_value(uint32_t value) {
   rs1 = bitcrop(value, 5, 15);
   funct3 = bitcrop(value, 3, 12);
   opcode = bitcrop(value, 7, 0);
-  imm12 = get_imm12(value);
+  imm12 = get_stype_imm12(value);
 };
 
 uint32_t b_type::value() {
@@ -135,4 +135,12 @@ uint32_t get_imm21(uint32_t ir) {
   // Sign extend
   imm21 |= (imm21 & (1 << 20)) ? 0xFFE00000 : 0;
   return imm21;
+}
+
+uint32_t get_stype_imm12(uint32_t ir) {
+  uint32_t imm12 = (bitcrop(ir, 7, 25) << 5) | bitcrop(ir, 5, 7);
+  
+  // Sign extend
+  imm12 |= (imm12 & (1 << 11)) ? 0xFFFFF000 : 0;
+  return imm12;
 }

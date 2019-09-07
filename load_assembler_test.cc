@@ -6,8 +6,9 @@
 
 using namespace std;
 
-constexpr int TEST_NUM = 4;
+constexpr int TEST_NUM = 1000;
 
+// Print binary bit by bit.
 template <class T> void print_binary(T value) {
   int bitwidth = sizeof(T) * 8;
   for (int i = 0; i < bitwidth; i++) {
@@ -18,21 +19,21 @@ template <class T> void print_binary(T value) {
   }
 }
 
+// Compare the 
 template <class T>
 bool check_code(string text, T cmd, T exp, bool verbose = false) {
-  bool error = false;
+  bool error = cmd != exp;
   if (verbose) {
     cout << text;
     printf(": %04X (", cmd);
     print_binary(cmd);
     printf(")");
-    if (cmd == exp) {
-      printf(" - Pass\n");
-    } else {
+    if (error) {
       printf(" - Error (");
       print_binary(exp);
       printf(")\n");
-      error = true;
+    } else {
+      printf(" - Pass\n");
     }
   }
   return error;
@@ -158,8 +159,60 @@ bool test_j_type_decode(uint32_t instruction, uint8_t opcode, uint8_t rd,
   cmd.set_value(instruction);
   error |= check_equal("cmd", cmd.opcode, opcode, verbose);
   error |= check_equal("rd", cmd.rd, rd, verbose);
-  error |= check_equal("imm21", cmd.imm21, imm21, verbose);
+  error |= check_equal("imm21", cmd.imm21, imm21 & (~1), verbose);
   return error;
+}
+
+// Only shows message when there's an error.
+bool test_j_type_decode_quiet(uint32_t instruction, uint8_t opcode, uint8_t rd,
+                        int32_t imm21, bool verbose = false) {
+  bool error =
+      test_j_type_decode(instruction, opcode, rd, imm21, false);
+  if (error) {
+    // Show error message.
+    error =
+        test_j_type_decode(instruction, opcode, rd, imm21, true);
+  }
+  return error;
+}
+
+bool test_s_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
+                        uint8_t rs1, uint8_t rs2, int16_t imm12,
+                        bool verbose = false) {
+  bool error = false;
+  s_type cmd;
+  cmd.set_value(instruction);
+  error |= check_equal("cmd", cmd.opcode, opcode, verbose);
+  error |= check_equal("funct3", cmd.funct3, funct3);
+  error |= check_equal("rs1", cmd.rs1, rs1, verbose);
+  error |= check_equal("rs2", cmd.rs2, rs2, verbose);
+  error |= check_equal("imm12", cmd.imm12, imm12, verbose);
+  return error;
+}
+
+// Only shows message when there's an error.
+bool test_s_type_decode_quiet(uint32_t instruction, uint8_t opcode, uint8_t funct3,
+                        uint8_t rs1, uint8_t rs2, int16_t imm12,
+                        bool verbose = false) {
+  bool error =
+      test_s_type_decode(instruction, opcode, funct3, rs1, rs2, imm12, false);
+  if (error) {
+    // Show error message.
+    error =
+        test_s_type_decode(instruction, opcode, funct3, rs1, rs2, imm12, true);
+  }
+  return error;
+}
+
+void print_error_result(string &cmdname, int num_test, bool error, bool verbose) {
+    if (verbose) {
+      printf("Total %d %s random encode & decode test finished. ", num_test, cmdname.c_str());
+      if (error) {
+        printf("%s test failed\n", cmdname.c_str());
+      } else {
+        printf("%s test passed\n", cmdname.c_str());
+      }
+    }
 }
 
 uint32_t gen_r_type(uint32_t base, uint8_t rd, uint8_t rs1, uint8_t rs2) {
@@ -219,14 +272,7 @@ bool test_r_type(bool verbose = false) {
       error |= test_r_type_decode_quiet(exp, opcode, funct3, funct7, rd, rs1,
                                         rs2, verbose);
     }
-    if (verbose) {
-      printf("Total %d %s random test finished. ", TEST_NUM, cmdname.c_str());
-      if (error) {
-        printf("%s test failed\n", cmdname.c_str());
-      } else {
-        printf("%s test passed\n", cmdname.c_str());
-      }
-    }
+    print_error_result(cmdname, TEST_NUM, error, verbose);
     total_error |= error;
   }
   return total_error;
@@ -283,6 +329,9 @@ bool test_i_type(bool verbose = false) {
       case TEST_LD:
         cmd = asm_ld(rd, rs1, imm12);
         break;
+      case TEST_JALR:
+        cmd = asm_jalr(rd, rs1, imm12);
+        break;
       default:
         break;
       }
@@ -293,14 +342,7 @@ bool test_i_type(bool verbose = false) {
       error |= test_i_type_decode_quiet(exp, opcode, funct3, rd, rs1, imm12,
                                         verbose);
     }
-    if (verbose) {
-      printf("Total %d %s random test finished. ", TEST_NUM, cmdname.c_str());
-      if (error) {
-        printf("%s test failed\n", cmdname.c_str());
-      } else {
-        printf("%s test passed\n", cmdname.c_str());
-      }
-    }
+    print_error_result(cmdname, TEST_NUM, error, verbose);
     total_error |= error;
   }
   return total_error;
@@ -356,67 +398,120 @@ bool test_b_type(bool verbose = false) {
       error |= test_b_type_decode_quiet(exp, opcode, funct3, rs1, rs2, imm13,
                                         verbose);
     }
-    if (verbose) {
-      printf("Total %d %s random test finished. ", TEST_NUM, cmdname.c_str());
-      if (error) {
-        printf("%s test failed\n", cmdname.c_str());
-      } else {
-        printf("%s test passed\n", cmdname.c_str());
-      }
-    }
+    print_error_result(cmdname, TEST_NUM, error, verbose);
     total_error |= error;
   }
   return total_error;
 }
 
-bool test_asm_jal(bool verbose = false) {
-  bool subtest_verbose = false;
-  bool error = false;
-  uint32_t cmd, exp;
-  cmd = asm_jal(T0, 0);
-  exp = 0b00000000000000000000001011101111;
-  error |= check_code("jal T0, 0", cmd, exp, verbose);
-  error |= test_j_type_decode(exp, OPCODE_J, T0, 0, subtest_verbose);
+uint32_t gen_j_type(uint32_t base, uint8_t rd, int32_t imm21) {
+  uint32_t instruction = base | ((rd & 0x1F) << 7);
+  instruction |= ((imm21 >> 20) & 0b01) << 31;
+  instruction |= ((imm21 >> 1) & 0b01111111111) << 21;
+  instruction |= ((imm21 >> 11) & 0b01) << 20;
+  instruction |= ((imm21 >> 12) & 0b011111111) << 12;
+  return instruction;
+}
 
-  cmd = asm_jal(T4, 0b101010101010101010101);
-  exp = 0b11010101010001010101111011101111;
-  error |= check_code("jal T4, -699052", cmd, exp, verbose);
-  error |= test_j_type_decode(exp, OPCODE_J, T4, -699052, subtest_verbose);
+bool test_j_type(bool verbose = false) {
+  enum TEST_LIST { TEST_JAL };
+  bool total_error = false;
 
-  cmd = asm_jal(ZERO, 0);
-  exp = 0b00000000000000000000000001101111;
-  error |= check_code("jal ZERO, 0", cmd, exp, verbose);
-  error |= test_j_type_decode(exp, OPCODE_J, ZERO, 0, subtest_verbose);
+  for (int testcase : {TEST_JAL}) {
+    bool error = false;
+    uint32_t base;
+    string cmdname;
+    uint8_t opcode;
+    switch (testcase) {
+    case TEST_JAL:
+      base = 0b00000000000000000000000001101111;
+      cmdname = "JAL";
+      opcode = OPCODE_J;
+      break;
+    default:
+      printf("Test case is node defined yet\n");
+      return true;
+      break;
+    }
 
-  cmd = asm_jal(ZERO, -16);
-  exp = 0b11111111000111111111000001101111;
-  error |= check_code("jal ZERO, -16", cmd, exp, verbose);
-  error |= test_j_type_decode(exp, OPCODE_J, ZERO, -16, subtest_verbose);
-
-  if (verbose && error) {
-    printf("JAL test failed\n");
+    for (int i = 0; i < TEST_NUM; i++) {
+      uint32_t cmd;
+      uint8_t rd = rand() % 32;
+      int32_t imm21 = (rand() % (1 << 21)) - (1 << 20);
+      switch (testcase) {
+      case TEST_JAL:
+        cmd = asm_jal(rd, imm21);
+        break;
+      default:
+        break;
+      }
+      uint32_t exp = gen_j_type(base, rd, imm21);
+      string test_string = cmdname + " " + to_string(rd) + ", " +
+                           ", " + to_string(imm21);
+      error |= check_code_quiet(test_string, cmd, exp, verbose);
+      error |= test_j_type_decode_quiet(exp, opcode, rd, imm21,
+                                        verbose);
+    }
+    print_error_result(cmdname, TEST_NUM, error, verbose);
+    total_error |= error;
   }
-  return error;
+  return total_error;
 }
 
-bool test_asm_sw(bool verbose = false) {
-  bool subtest_verbose = false;
-  bool error = false;
-  uint32_t cmd, exp;
-  cmd = asm_sw(T0, T0, 0);
-  exp = 0b00000000010100101010000000100011;
-  error |= check_code("sw T0, T0, 0", cmd, exp, verbose);
-
-  s_type inst;
-  inst.set_value(exp);
-  error |= check_equal("sw", inst.opcode, OPCODE_S, subtest_verbose);
-  error |= check_equal("sw3", inst.funct3, FUNC3_SW);
-  error |= check_equal("rs1", inst.rd, T0, subtest_verbose);
-  error |= check_equal("rs2", inst.rs1, T0, subtest_verbose);
-  error |= check_equal("imm12(0)", inst.imm12, 0, subtest_verbose);
-
-  return error;
+uint32_t gen_s_type(uint32_t base, uint8_t rs1, uint8_t rs2, int16_t imm12) {
+  uint32_t instruction = base | ((rs1 & 0x01F) << 15) | ((rs2 & 0x01F) << 20);
+  instruction |= (((imm12 >> 5) & 0b01111111) << 25) | ((imm12 & 0b011111) << 7);
+  return instruction;
 }
+
+bool test_s_type(bool verbose = false) {
+  enum TEST_LIST { TEST_SW };
+  bool total_error = false;
+
+  for (int testcase : {TEST_SW}) {
+    bool error = false;
+    uint32_t base;
+    string cmdname;
+    uint8_t opcode;
+    uint8_t funct3;
+    switch (testcase) {
+    case TEST_SW:
+      base = 0b00000000000000000010000000100011;
+      cmdname = "SW";
+      opcode = OPCODE_S;
+      funct3 = FUNC3_SW;
+      break;
+    default:
+      printf("Test case is node defined yet\n");
+      return true;
+      break;
+    }
+
+    for (int i = 0; i < TEST_NUM; i++) {
+      uint32_t cmd;
+      uint8_t rs1 = rand() % 32;
+      uint8_t rs2 = rand() % 32;
+      int32_t imm12 = (rand() % (1 << 12)) - (1 << 11);
+      switch (testcase) {
+      case TEST_SW:
+        cmd = asm_sw(rs1, rs2, imm12);
+        break;
+      default:
+        break;
+      }
+      uint32_t exp = gen_s_type(base, rs1, rs2, imm12);
+      string test_string = cmdname + " " + to_string(rs1) + ", " + to_string(rs2) + ", " +
+                           ", " + to_string(imm12);
+      error |= check_code_quiet(test_string, cmd, exp, verbose);
+      error |= test_s_type_decode_quiet(exp, opcode, funct3, rs1, rs2, imm12,
+                                        verbose);
+    }
+    print_error_result(cmdname, TEST_NUM, error, verbose);
+    total_error |= error;
+  }
+  return total_error;
+}
+
 
 int main() {
   constexpr int SEED = 0;
@@ -426,7 +521,8 @@ int main() {
   error |= test_r_type(verbose);
   error |= test_i_type(verbose);
   error |= test_b_type(verbose);
-  error |= test_asm_jal(verbose);
+  error |= test_j_type(verbose);
+  error |= test_s_type(verbose);
 
   if (error) {
     printf("Test failed\n");

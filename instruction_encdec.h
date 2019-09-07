@@ -64,5 +64,6 @@ uint32_t get_rs2(uint32_t ir);
 uint32_t get_imm12(uint32_t ir);
 uint32_t get_imm13(uint32_t ir);
 uint32_t get_imm21(uint32_t ir);
+uint32_t get_stype_imm12(uint32_t ir);
 
 #endif // INSTRUCTION_ENCDEC_H
