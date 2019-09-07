@@ -514,7 +514,7 @@ bool test_s_type(bool verbose = false) {
   return total_error;
 }
 
-int main() {
+bool run_all_test() {
   constexpr int SEED = 0;
   srand(SEED);
   bool verbose = true;
@@ -534,3 +534,8 @@ int main() {
 }
 
 } // namespace load_assembler_test
+
+int main() {
+  load_assembler_test::run_all_test();
+}
+
