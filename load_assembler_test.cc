@@ -292,12 +292,24 @@ bool test_i_type(bool verbose = false) {
   return total_error;
 }
 
+uint32_t gen_b_type(uint32_t base, uint8_t rs1, uint8_t rs2, int16_t imm13) {
+  uint32_t instruction = base | ((rs2 & 0x1F) << 20) | ((rs1 & 0x1F) << 15);
+  instruction |= ((imm13 >> 12) & 0b01) << 31;
+  instruction |= ((imm13 >> 5) & 0b0111111) << 25;
+  instruction |= ((imm13 >> 1) & 0b01111) << 8;
+  instruction |= ((imm13 >> 11) & 0b01) << 7;
+  return instruction;
+}
+
+
 bool test_asm_beq(bool verbose = false) {
   bool subtest_verbose = false;
   bool error = false;
   uint32_t cmd, exp;
   cmd = asm_beq(T0, T0, 0);
-  exp = 0b00000000010100101000000001100011;
+  // exp = 0b00000000010100101000000001100011;
+  uint32_t base = 0b00000000000000000000000001100011;
+  exp = gen_b_type(base, T0, T0, 0);
   error |= check_code("beq T0, T0, 0", cmd, exp, verbose);
   error |=
       test_b_type_decode(exp, OPCODE_B, FUNC3_BEQ, T0, T0, 0, subtest_verbose);
