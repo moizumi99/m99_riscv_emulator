@@ -6,6 +6,8 @@
 
 using namespace std;
 
+namespace load_assembler_test {
+
 constexpr int TEST_NUM = 1000;
 
 // Print binary bit by bit.
@@ -19,7 +21,7 @@ template <class T> void print_binary(T value) {
   }
 }
 
-// Compare the 
+// Compare the
 template <class T>
 bool check_code(string text, T cmd, T exp, bool verbose = false) {
   bool error = cmd != exp;
@@ -139,9 +141,9 @@ bool test_b_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
 }
 
 // Only shows message when there's an error.
-bool test_b_type_decode_quiet(uint32_t instruction, uint8_t opcode, uint8_t funct3,
-                        uint8_t rs1, uint8_t rs2, int16_t imm13,
-                        bool verbose = false) {
+bool test_b_type_decode_quiet(uint32_t instruction, uint8_t opcode,
+                              uint8_t funct3, uint8_t rs1, uint8_t rs2,
+                              int16_t imm13, bool verbose = false) {
   bool error =
       test_b_type_decode(instruction, opcode, funct3, rs1, rs2, imm13, false);
   if (error) {
@@ -165,13 +167,11 @@ bool test_j_type_decode(uint32_t instruction, uint8_t opcode, uint8_t rd,
 
 // Only shows message when there's an error.
 bool test_j_type_decode_quiet(uint32_t instruction, uint8_t opcode, uint8_t rd,
-                        int32_t imm21, bool verbose = false) {
-  bool error =
-      test_j_type_decode(instruction, opcode, rd, imm21, false);
+                              int32_t imm21, bool verbose = false) {
+  bool error = test_j_type_decode(instruction, opcode, rd, imm21, false);
   if (error) {
     // Show error message.
-    error =
-        test_j_type_decode(instruction, opcode, rd, imm21, true);
+    error = test_j_type_decode(instruction, opcode, rd, imm21, true);
   }
   return error;
 }
@@ -191,9 +191,9 @@ bool test_s_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
 }
 
 // Only shows message when there's an error.
-bool test_s_type_decode_quiet(uint32_t instruction, uint8_t opcode, uint8_t funct3,
-                        uint8_t rs1, uint8_t rs2, int16_t imm12,
-                        bool verbose = false) {
+bool test_s_type_decode_quiet(uint32_t instruction, uint8_t opcode,
+                              uint8_t funct3, uint8_t rs1, uint8_t rs2,
+                              int16_t imm12, bool verbose = false) {
   bool error =
       test_s_type_decode(instruction, opcode, funct3, rs1, rs2, imm12, false);
   if (error) {
@@ -204,15 +204,17 @@ bool test_s_type_decode_quiet(uint32_t instruction, uint8_t opcode, uint8_t func
   return error;
 }
 
-void print_error_result(string &cmdname, int num_test, bool error, bool verbose) {
-    if (verbose) {
-      printf("Total %d %s random encode & decode test finished. ", num_test, cmdname.c_str());
-      if (error) {
-        printf("%s test failed\n", cmdname.c_str());
-      } else {
-        printf("%s test passed\n", cmdname.c_str());
-      }
+void print_error_result(string &cmdname, int num_test, bool error,
+                        bool verbose) {
+  if (verbose) {
+    printf("Total %d %s random encode & decode test finished. ", num_test,
+           cmdname.c_str());
+    if (error) {
+      printf("%s test failed\n", cmdname.c_str());
+    } else {
+      printf("%s test passed\n", cmdname.c_str());
     }
+  }
 }
 
 uint32_t gen_r_type(uint32_t base, uint8_t rd, uint8_t rs1, uint8_t rs2) {
@@ -446,11 +448,10 @@ bool test_j_type(bool verbose = false) {
         break;
       }
       uint32_t exp = gen_j_type(base, rd, imm21);
-      string test_string = cmdname + " " + to_string(rd) + ", " +
-                           ", " + to_string(imm21);
+      string test_string =
+          cmdname + " " + to_string(rd) + ", " + ", " + to_string(imm21);
       error |= check_code_quiet(test_string, cmd, exp, verbose);
-      error |= test_j_type_decode_quiet(exp, opcode, rd, imm21,
-                                        verbose);
+      error |= test_j_type_decode_quiet(exp, opcode, rd, imm21, verbose);
     }
     print_error_result(cmdname, TEST_NUM, error, verbose);
     total_error |= error;
@@ -460,7 +461,8 @@ bool test_j_type(bool verbose = false) {
 
 uint32_t gen_s_type(uint32_t base, uint8_t rs1, uint8_t rs2, int16_t imm12) {
   uint32_t instruction = base | ((rs1 & 0x01F) << 15) | ((rs2 & 0x01F) << 20);
-  instruction |= (((imm12 >> 5) & 0b01111111) << 25) | ((imm12 & 0b011111) << 7);
+  instruction |=
+      (((imm12 >> 5) & 0b01111111) << 25) | ((imm12 & 0b011111) << 7);
   return instruction;
 }
 
@@ -500,8 +502,8 @@ bool test_s_type(bool verbose = false) {
         break;
       }
       uint32_t exp = gen_s_type(base, rs1, rs2, imm12);
-      string test_string = cmdname + " " + to_string(rs1) + ", " + to_string(rs2) + ", " +
-                           ", " + to_string(imm12);
+      string test_string = cmdname + " " + to_string(rs1) + ", " +
+                           to_string(rs2) + ", " + ", " + to_string(imm12);
       error |= check_code_quiet(test_string, cmd, exp, verbose);
       error |= test_s_type_decode_quiet(exp, opcode, funct3, rs1, rs2, imm12,
                                         verbose);
@@ -511,7 +513,6 @@ bool test_s_type(bool verbose = false) {
   }
   return total_error;
 }
-
 
 int main() {
   constexpr int SEED = 0;
@@ -531,3 +532,5 @@ int main() {
   }
   return error;
 }
+
+} // namespace load_assembler_test
