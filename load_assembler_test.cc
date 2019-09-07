@@ -6,6 +6,8 @@
 
 using namespace std;
 
+constexpr int TEST_NUM = 100;
+
 template <class T> void print_binary(T value) {
   int bitwidth = sizeof(T) * 8;
   for (int i = 0; i < bitwidth; i++) {
@@ -24,14 +26,23 @@ bool check_code(string text, T cmd, T exp, bool verbose = false) {
     printf(": %04X (", cmd);
     print_binary(cmd);
     printf(")");
+    if (cmd == exp) {
+      printf(" - Pass\n");
+    } else {
+      printf(" - Error (");
+      print_binary(exp);
+      printf(")\n");
+      error = true;
+    }
   }
-  if (cmd == exp) {
-    printf(" - Pass\n");
-  } else {
-    printf(" - Error (");
-    print_binary(exp);
-    printf(")\n");
-    error = true;
+  return error;
+}
+
+template <class T>
+bool check_code_quiet(string text, T cmd, T exp, bool verbose = false) {
+  bool error = check_code(text, cmd, exp, false);
+  if (error & verbose) {
+    error = check_code(text, cmd, exp, true);
   }
   return error;
 }
@@ -55,49 +66,141 @@ bool check_equal(string text, uint32_t value, uint32_t exp,
   return error;
 }
 
-bool test_asm_add(bool verbose = false) {
-  bool subtest_verbose = false;
-
+bool test_r_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
+                        uint8_t funct7, uint8_t rd, uint8_t rs1, uint8_t rs2,
+                        bool verbose = false) {
   bool error = false;
-  uint32_t cmd, exp;
-  cmd = asm_add(T0, T1, T2);
-  exp = 0b00000000011100110000001010110011;
-  error |= check_code("add T0, T1, T2", cmd, exp, verbose);
-  r_type add;
-  add.set_value(exp);
-  error |= check_equal("add", add.opcode, OPCODE_ADD, subtest_verbose);
-  error |= check_equal("add7", add.funct7, FUNC_ADD);
-  error |= check_equal("add3", add.funct3, FUNC3_ADD);
-  error |= check_equal("rd", add.rd, T0, subtest_verbose);
-  error |= check_equal("rs1", add.rs1, T1, subtest_verbose);
-  error |= check_equal("rs2", add.rs2, T2, subtest_verbose);
-
-  cmd = asm_add(T1, T1, T0);
-  exp = 0b00000000010100110000001100110011;
-  error |= check_code("add T1, T1, T0", cmd, exp, verbose);
-  add.set_value(exp);
-  error |= check_equal("add", add.opcode, OPCODE_ADD, subtest_verbose);
-  error |= check_equal("add7", add.funct7, FUNC_ADD);
-  error |= check_equal("add3", add.funct3, FUNC3_ADD);
-  error |= check_equal("rd", add.rd, T1, subtest_verbose);
-  error |= check_equal("rs1", add.rs1, T1, subtest_verbose);
-  error |= check_equal("rs2", add.rs2, T0, subtest_verbose);
-
-  cmd = asm_add(T3, T2, T1);
-  exp = 0b00000000011000111000111000110011;
-  error |= check_code("add T3, T1, T2", cmd, exp, verbose);
-  add.set_value(exp);
-  error |= check_equal("add", add.opcode, OPCODE_ADD, subtest_verbose);
-  error |= check_equal("add7", add.funct7, FUNC_ADD);
-  error |= check_equal("add3", add.funct3, FUNC3_ADD);
-  error |= check_equal("rd", add.rd, T3, subtest_verbose);
-  error |= check_equal("rs1", add.rs1, T2, subtest_verbose);
-  error |= check_equal("rs2", add.rs2, T1, subtest_verbose);
-
-  if (verbose && error) {
-    printf("Add test failed\n");
-  }
+  r_type cmd;
+  cmd.set_value(instruction);
+  error |= check_equal("opcode", cmd.opcode, opcode, verbose);
+  error |= check_equal("funct7", cmd.funct7, funct7, verbose);
+  error |= check_equal("funct3", cmd.funct3, funct3, verbose);
+  error |= check_equal("rd", cmd.rd, rd, verbose);
+  error |= check_equal("rs1", cmd.rs1, rs1, verbose);
+  error |= check_equal("rs2", cmd.rs2, rs2, verbose);
   return error;
+}
+
+bool test_r_type_decode_quiet(uint32_t instruction, uint8_t opcode,
+                              uint8_t funct3, uint8_t funct7, uint8_t rd,
+                              uint8_t rs1, uint8_t rs2, bool verbose = false) {
+  bool error = test_r_type_decode(instruction, opcode, funct3, funct7, rd, rs1,
+                                  rs2, false);
+  if (error) {
+    error = test_r_type_decode(instruction, opcode, funct3, funct7, rd, rs1,
+                               rs2, true);
+  }
+  return false;
+}
+
+bool test_i_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
+                        uint8_t rd, uint8_t rs1, int16_t imm12,
+                        bool verbose = false) {
+  bool error = false;
+  i_type cmd;
+  cmd.set_value(instruction);
+  error |= check_equal("cmd", cmd.opcode, opcode, verbose);
+  error |= check_equal("funct3", cmd.funct3, funct3);
+  error |= check_equal("rd", cmd.rd, rd, verbose);
+  error |= check_equal("rs1", cmd.rs1, rs1, verbose);
+  error |= check_equal("imm12", cmd.imm12, imm12, verbose);
+  return error;
+}
+
+bool test_b_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
+                        uint8_t rs1, uint8_t rs2, int16_t imm13,
+                        bool verbose = false) {
+  bool error = false;
+  b_type cmd;
+  cmd.set_value(instruction);
+  error |= check_equal("cmd", cmd.opcode, opcode, verbose);
+  error |= check_equal("funct3", cmd.funct3, funct3);
+  error |= check_equal("rs1", cmd.rs1, rs1, verbose);
+  error |= check_equal("rs2", cmd.rs2, rs2, verbose);
+  error |= check_equal("imm13", cmd.imm13, imm13, verbose);
+  return error;
+}
+
+bool test_j_type_decode(uint32_t instruction, uint8_t opcode, uint8_t rd,
+                        int32_t imm21, bool verbose = false) {
+  bool error = false;
+  j_type cmd;
+  cmd.set_value(instruction);
+  error |= check_equal("cmd", cmd.opcode, opcode, verbose);
+  error |= check_equal("rd", cmd.rd, rd, verbose);
+  error |= check_equal("imm21", cmd.imm21, imm21, verbose);
+  return error;
+}
+
+uint32_t gen_r_type(uint32_t base, uint8_t rd, uint8_t rs1, uint8_t rs2) {
+  return base | ((rd & 0x01F) << 7) | ((rs1 & 0x01F) << 15) |
+         ((rs2 & 0x01F) << 20);
+}
+
+bool test_r_type(bool verbose = false) {
+  enum TEST_LIST { TEST_ADD, TEST_SUB };
+  bool total_error = false;
+
+  for (int testcase : {TEST_ADD, TEST_SUB}) {
+    bool error = false;
+    uint32_t base;
+    string cmdname;
+    uint8_t opcode, funct3, funct7;
+    uint32_t *funct(uint8_t, uint8_t, uint8_t);
+    switch (testcase) {
+    case TEST_ADD:
+      base = 0b00000000000000000000000000110011;
+      cmdname = "ADD";
+      opcode = OPCODE_ADD;
+      funct3 = FUNC3_ADD;
+      funct7 = FUNC_ADD;
+      break;
+    case TEST_SUB:
+      base = 0b01000000000000000000000000110011;
+      cmdname = "SUB";
+      opcode = OPCODE_ADD;
+      funct3 = FUNC3_SUB;
+      funct7 = FUNC_SUB;
+      break;
+    default:
+      printf("Test case is node defined yet\n");
+      return true;
+      break;
+    }
+
+    for (int i = 0; i < TEST_NUM; i++) {
+      uint32_t cmd;
+      uint8_t rd = rand() % 32;
+      uint8_t rs1 = rand() % 32;
+      uint8_t rs2 = rand() % 32;
+      switch (testcase) {
+      case TEST_ADD:
+        cmd = asm_add(rd, rs1, rs2);
+        break;
+      case TEST_SUB:
+        cmd = asm_sub(rd, rs1, rs2);
+        break;
+      default:
+        break;
+      }
+      uint32_t exp = gen_r_type(base, rd, rs1, rs2);
+      string test_string = cmdname + " " + to_string(rd) + ", " +
+                           to_string(rs1) + ", " + to_string(rs2);
+      error |= check_code_quiet(test_string, cmd, exp, verbose);
+      error |= test_r_type_decode_quiet(exp, opcode, funct3, funct7,
+                                        rd, rs1, rs2, verbose);
+    }
+    if (verbose) {
+      printf("Total %d %s random test finished. ", TEST_NUM, cmdname.c_str());
+      if (error) {
+        printf("%s test failed\n", cmdname.c_str());
+      } else {
+        printf("%s test passed\n", cmdname.c_str());
+      }
+    }
+    total_error |= error;
+  }
+  return total_error;
 }
 
 bool test_asm_addi(bool verbose = false) {
@@ -107,23 +210,14 @@ bool test_asm_addi(bool verbose = false) {
   cmd = asm_addi(T0, T0, 0);
   exp = 0b00000000000000101000001010010011;
   error |= check_code("addi T0, T0, 0", cmd, exp, verbose);
-  i_type addi;
-  addi.set_value(exp);
-  error |= check_equal("addi", addi.opcode, OPCODE_ADDI, subtest_verbose);
-  error |= check_equal("addi3", addi.funct3, FUNC3_ADDI);
-  error |= check_equal("rd", addi.rd, T0, subtest_verbose);
-  error |= check_equal("rs1", addi.rs1, T0, subtest_verbose);
-  error |= check_equal("imm12(0)", addi.imm12, 0, subtest_verbose);
+  error |= test_i_type_decode(exp, OPCODE_ADDI, FUNC3_ADDI, T0, T0, 0,
+                              subtest_verbose);
 
   cmd = asm_addi(T3, T4, 0b101010101010);
   exp = 0b10101010101011101000111000010011;
   error |= check_code("addi T3, T4, -1366", cmd, exp, verbose);
-  addi.set_value(exp);
-  error |= check_equal("addi", addi.opcode, OPCODE_ADDI, subtest_verbose);
-  error |= check_equal("addi3", addi.funct3, FUNC3_ADDI);
-  error |= check_equal("rd", addi.rd, T3, subtest_verbose);
-  error |= check_equal("rs1", addi.rs1, T4, subtest_verbose);
-  error |= check_equal("imm12(-1366)", addi.imm12, -1366, subtest_verbose);
+  error |= test_i_type_decode(exp, OPCODE_ADDI, FUNC3_ADDI, T3, T4, -1366,
+                              subtest_verbose);
 
   if (verbose && error) {
     printf("Addi test failed\n");
@@ -131,39 +225,6 @@ bool test_asm_addi(bool verbose = false) {
   return error;
 }
 
-bool test_asm_sub(bool verbose = false) {
-  bool subtest_verbose = false;
-
-  bool error = false;
-  uint32_t cmd, exp;
-  cmd = asm_sub(T0, T1, T2);
-  exp = 0b01000000011100110000001010110011;
-  error |= check_code("sub T0, T1, T2", cmd, exp, verbose);
-  r_type sub;
-  sub.set_value(exp);
-  error |= check_equal("sub", sub.opcode, OPCODE_ADD, subtest_verbose);
-  error |= check_equal("sub7", sub.funct7, FUNC_SUB);
-  error |= check_equal("sub3", sub.funct3, FUNC3_SUB);
-  error |= check_equal("rd", sub.rd, T0, subtest_verbose);
-  error |= check_equal("rs1", sub.rs1, T1, subtest_verbose);
-  error |= check_equal("rs2", sub.rs2, T2, subtest_verbose);
-
-  cmd = asm_sub(T3, T2, T1);
-  exp = 0b01000000011000111000111000110011;
-  error |= check_code("sub T3, T1, T2", cmd, exp, verbose);
-  sub.set_value(exp);
-  error |= check_equal("sub", sub.opcode, OPCODE_ADD, subtest_verbose);
-  error |= check_equal("sub7", sub.funct7, FUNC_SUB);
-  error |= check_equal("sub3", sub.funct3, FUNC3_SUB);
-  error |= check_equal("rd", sub.rd, T3, subtest_verbose);
-  error |= check_equal("rs1", sub.rs1, T2, subtest_verbose);
-  error |= check_equal("rs2", sub.rs2, T1, subtest_verbose);
-
-  if (verbose && error) {
-    printf("SUB test failed\n");
-  }
-  return error;
-}
 
 bool test_asm_beq(bool verbose = false) {
   bool subtest_verbose = false;
@@ -172,33 +233,20 @@ bool test_asm_beq(bool verbose = false) {
   cmd = asm_beq(T0, T0, 0);
   exp = 0b00000000010100101000000001100011;
   error |= check_code("beq T0, T0, 0", cmd, exp, verbose);
-  b_type beq;
-  beq.set_value(exp);
-  error |= check_equal("beq", beq.opcode, OPCODE_B, subtest_verbose);
-  error |= check_equal("beq3", beq.funct3, FUNC3_BEQ);
-  error |= check_equal("imm13", beq.imm13, 0, subtest_verbose);
-  error |= check_equal("rs1", beq.rs1, T0, subtest_verbose);
-  error |= check_equal("rs2", beq.rs2, T0, subtest_verbose);
+  error |=
+      test_b_type_decode(exp, OPCODE_B, FUNC3_BEQ, T0, T0, 0, subtest_verbose);
 
   cmd = asm_beq(T0, T0, 0b1010101010101);
   exp = 0b11010100010100101000101001100011;
-  error |= check_code("beq T0, T0, -1366", cmd, exp, verbose);
-  beq.set_value(exp);
-  error |= check_equal("beq", beq.opcode, OPCODE_B, subtest_verbose);
-  error |= check_equal("beq3", beq.funct3, FUNC3_BEQ);
-  error |= check_equal("imm13", beq.imm13, -2732, subtest_verbose);
-  error |= check_equal("rs1", beq.rs1, T0, subtest_verbose);
-  error |= check_equal("rs2", beq.rs2, T0, subtest_verbose);
+  error |= check_code("beq T0, T0, -2732", cmd, exp, verbose);
+  error |= test_b_type_decode(exp, OPCODE_B, FUNC3_BEQ, T0, T0, -2732,
+                              subtest_verbose);
 
   cmd = asm_beq(T3, T4, 0b1010101010101);
   exp = 0b11010101110111100000101001100011;
-  beq.set_value(exp);
   error |= check_code("beq T3, T4, -2732", cmd, exp, verbose);
-  error |= check_equal("beq", beq.opcode, OPCODE_B, subtest_verbose);
-  error |= check_equal("beq3", beq.funct3, FUNC3_BEQ);
-  error |= check_equal("imm13", beq.imm13, -2732, subtest_verbose);
-  error |= check_equal("rs1", beq.rs1, T3, subtest_verbose);
-  error |= check_equal("rs2", beq.rs2, T4, subtest_verbose);
+  error |= test_b_type_decode(exp, OPCODE_B, FUNC3_BEQ, T3, T4, -2732,
+                              subtest_verbose);
 
   if (verbose && error) {
     printf("BEQ test failed\n");
@@ -213,38 +261,25 @@ bool test_asm_jal(bool verbose = false) {
   cmd = asm_jal(T0, 0);
   exp = 0b00000000000000000000001011101111;
   error |= check_code("jal T0, 0", cmd, exp, verbose);
-  j_type inst;
-  inst.set_value(exp);
-  error |= check_equal("jal", inst.opcode, OPCODE_J, subtest_verbose);
-  error |= check_equal("imm21", inst.imm21, 0, subtest_verbose);
-  error |= check_equal("rd", inst.rd, T0, subtest_verbose);
+  error |= test_j_type_decode(exp, OPCODE_J, T0, 0, subtest_verbose);
 
   cmd = asm_jal(T4, 0b101010101010101010101);
   exp = 0b11010101010001010101111011101111;
-  error |= check_code("jal T4, 1398101", cmd, exp, verbose);
-  inst.set_value(exp);
-  error |= check_equal("jal", inst.opcode, OPCODE_J, subtest_verbose);
-  error |= check_equal("imm21", inst.imm21, -699052, subtest_verbose);
-  error |= check_equal("rd", inst.rd, T4, subtest_verbose);
+  error |= check_code("jal T4, -699052", cmd, exp, verbose);
+  error |= test_j_type_decode(exp, OPCODE_J, T4, -699052, subtest_verbose);
 
   cmd = asm_jal(ZERO, 0);
   exp = 0b00000000000000000000000001101111;
   error |= check_code("jal ZERO, 0", cmd, exp, verbose);
-  inst.set_value(exp);
-  error |= check_equal("jal", inst.opcode, OPCODE_J, subtest_verbose);
-  error |= check_equal("imm21", inst.imm21, 0, subtest_verbose);
-  error |= check_equal("rd", inst.rd, ZERO, subtest_verbose);
+  error |= test_j_type_decode(exp, OPCODE_J, ZERO, 0, subtest_verbose);
 
   cmd = asm_jal(ZERO, -16);
   exp = 0b11111111000111111111000001101111;
   error |= check_code("jal ZERO, -16", cmd, exp, verbose);
-  inst.set_value(exp);
-  error |= check_equal("jal", inst.opcode, OPCODE_J, subtest_verbose);
-  error |= check_equal("imm21", inst.imm21, -16, subtest_verbose);
-  error |= check_equal("rd", inst.rd, ZERO, subtest_verbose);
+  error |= test_j_type_decode(exp, OPCODE_J, ZERO, -16, subtest_verbose);
 
   if (verbose && error) {
-    printf("BEQ test failed\n");
+    printf("JAL test failed\n");
   }
   return error;
 }
@@ -256,33 +291,20 @@ bool test_asm_ld(bool verbose = false) {
   cmd = asm_ld(T0, T0, 0);
   exp = 0b00000000000000101011001010000011;
   error |= check_code("ld T0, T0, 0", cmd, exp, verbose);
-  i_type inst;
-  inst.set_value(exp);
-  error |= check_equal("ld", inst.opcode, OPCODE_LD, subtest_verbose);
-  error |= check_equal("ld3", inst.funct3, FUNC3_LD);
-  error |= check_equal("rd", inst.rd, T0, subtest_verbose);
-  error |= check_equal("rs1", inst.rs1, T0, subtest_verbose);
-  error |= check_equal("imm12(0)", inst.imm12, 0, subtest_verbose);
+  error |=
+      test_i_type_decode(exp, OPCODE_LD, FUNC3_LD, T0, T0, 0, subtest_verbose);
 
   cmd = asm_ld(T3, T4, 0);
   exp = 0b00000000000011101011111000000011;
   error |= check_code("ld T3, T4, 0", cmd, exp, verbose);
-  inst.set_value(exp);
-  error |= check_equal("ld", inst.opcode, OPCODE_LD, subtest_verbose);
-  error |= check_equal("ld3", inst.funct3, FUNC3_LD);
-  error |= check_equal("rd", inst.rd, T3, subtest_verbose);
-  error |= check_equal("rs1", inst.rs1, T4, subtest_verbose);
-  error |= check_equal("imm12(0)", inst.imm12, 0, subtest_verbose);
+  error |=
+      test_i_type_decode(exp, OPCODE_LD, FUNC3_LD, T3, T4, 0, subtest_verbose);
 
   cmd = asm_ld(T3, T4, 2730);
   exp = 0b10101010101011101011111000000011;
   error |= check_code("ld T3, T4, -1366", cmd, exp, verbose);
-  inst.set_value(exp);
-  error |= check_equal("ld", inst.opcode, OPCODE_LD, subtest_verbose);
-  error |= check_equal("ld3", inst.funct3, FUNC3_LD);
-  error |= check_equal("rd", inst.rd, T3, subtest_verbose);
-  error |= check_equal("rs1", inst.rs1, T4, subtest_verbose);
-  error |= check_equal("imm12(0)", inst.imm12, -1366, subtest_verbose);
+  error |= test_i_type_decode(exp, OPCODE_LD, FUNC3_LD, T3, T4, -1366,
+                              subtest_verbose);
 
   if (verbose && error) {
     printf("LD test failed\n");
@@ -316,43 +338,31 @@ bool test_asm_jalr(bool verbose = false) {
   cmd = asm_jalr(T0, T0, 0);
   exp = 0b00000000000000101000001011100111;
   error |= check_code("jalr T0, T0, 0", cmd, exp, verbose);
-  i_type inst;
-  inst.set_value(exp);
-  error |= check_equal("jalr", inst.opcode, OPCODE_JALR, subtest_verbose);
-  error |= check_equal("jalr3", inst.funct3, FUNC3_JALR);
-  error |= check_equal("rd", inst.rd, T0, subtest_verbose);
-  error |= check_equal("rs1", inst.rs1, T0, subtest_verbose);
-  error |= check_equal("imm12(0)", inst.imm12, 0, subtest_verbose);
+  error |= test_i_type_decode(exp, OPCODE_JALR, FUNC3_JALR, T0, T0, 0,
+                              subtest_verbose);
 
   cmd = asm_jalr(T3, T4, 0);
   exp = 0b00000000000011101000111001100111;
   error |= check_code("jalr T3, T4, 0", cmd, exp, verbose);
-  inst.set_value(exp);
-  error |= check_equal("jalr", inst.opcode, OPCODE_JALR, subtest_verbose);
-  error |= check_equal("jalr3", inst.funct3, FUNC3_JALR);
-  error |= check_equal("rd", inst.rd, T3, subtest_verbose);
-  error |= check_equal("rs1", inst.rs1, T4, subtest_verbose);
-  error |= check_equal("imm12(0)", inst.imm12, 0, subtest_verbose);
+  error |= test_i_type_decode(exp, OPCODE_JALR, FUNC3_JALR, T3, T4, 0,
+                              subtest_verbose);
 
   cmd = asm_jalr(T3, T4, 2730);
   exp = 0b10101010101011101000111001100111;
-  error |= check_code("jalr T3, T4, 2730", cmd, exp, verbose);
-  inst.set_value(exp);
-  error |= check_equal("jalr", inst.opcode, OPCODE_JALR, subtest_verbose);
-  error |= check_equal("jalr3", inst.funct3, FUNC3_JALR);
-  error |= check_equal("rd", inst.rd, T3, subtest_verbose);
-  error |= check_equal("rs1", inst.rs1, T4, subtest_verbose);
-  error |= check_equal("imm12(0)", inst.imm12, -1366, subtest_verbose);
+  error |= check_code("jalr T3, T4, -1366", cmd, exp, verbose);
+  error |= test_i_type_decode(exp, OPCODE_JALR, FUNC3_JALR, T3, T4, -1366,
+                              subtest_verbose);
 
   return error;
 }
 
 int main() {
+  constexpr int SEED = 0;
+  srand(SEED);
   bool verbose = true;
   bool error = false;
-  error |= test_asm_add(verbose);
+  error |= test_r_type(verbose);
   error |= test_asm_addi(verbose);
-  error |= test_asm_sub(verbose);
   error |= test_asm_beq(verbose);
   error |= test_asm_jal(verbose);
   error |= test_asm_ld(verbose);
