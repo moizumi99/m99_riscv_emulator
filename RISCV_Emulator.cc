@@ -6,7 +6,7 @@
 using namespace std;
 
 // Code
-uint32_t mem[256];
+uint8_t mem[256];
 
 int main() {
   // Generate very primitive assembly code

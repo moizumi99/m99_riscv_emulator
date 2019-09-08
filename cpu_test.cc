@@ -8,7 +8,7 @@ using namespace std;
 
 namespace cpu_test {
 
-uint32_t mem[0x010000];
+uint8_t mem[0x010000];
 
 bool test_sum(bool verbose) {
   load_assembler_sum(mem);

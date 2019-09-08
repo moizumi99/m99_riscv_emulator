@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-void load_assembler_sum(uint32_t *rom);
+uint8_t *load_assembler_sum(uint8_t *rom);
 
 #endif // LOAD_ASSEMBLER_H

@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "bit_tools.h"
 
-int run_cpu(uint32_t *rom, bool verbose=true);
+int run_cpu(uint8_t *mem, bool verbose=true);
 
 enum Registers {
   ZERO = 0,
