@@ -21,35 +21,6 @@ template <class T> void print_binary(T value) {
   }
 }
 
-// Compare the binary against expectation and show error message.
-template <class T>
-bool check_code(string text, T cmd, T exp, bool verbose = false) {
-  bool error = cmd != exp;
-  if (verbose) {
-    cout << text;
-    printf(": %04X (", cmd);
-    print_binary(cmd);
-    printf(")");
-    if (error) {
-      printf(" - Error (");
-      print_binary(exp);
-      printf(")\n");
-    } else {
-      printf(" - Pass\n");
-    }
-  }
-  return error;
-}
-
-template <class T>
-bool check_code_quiet(string text, T cmd, T exp, bool verbose = false) {
-  bool error = check_code(text, cmd, exp, false);
-  if (error & verbose) {
-    error = check_code(text, cmd, exp, true);
-  }
-  return error;
-}
-
 bool check_equal(string text, uint32_t value, uint32_t exp,
                  bool verbose = false) {
   bool error = value != exp;
@@ -68,6 +39,15 @@ bool check_equal(string text, uint32_t value, uint32_t exp,
   }
   return error;
 }
+
+bool check_equal_quiet(string text, uint32_t cmd, uint32_t exp, bool verbose = false) {
+  bool error = check_equal(text, cmd, exp, false);
+  if (error & verbose) {
+    error = check_equal(text, cmd, exp, true);
+  }
+  return error;
+}
+
 
 bool test_r_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
                         uint8_t funct7, uint8_t rd, uint8_t rs1, uint8_t rs2,
@@ -302,7 +282,7 @@ bool test_r_type(bool verbose = false) {
       uint32_t exp = gen_r_type(base, rd, rs1, rs2);
       string test_string = cmdname + " " + to_string(rd) + ", " +
                            to_string(rs1) + ", " + to_string(rs2);
-      error |= check_code_quiet(test_string, cmd, exp, verbose);
+      error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_r_type_decode_quiet(exp, opcode, funct3, funct7, rd, rs1,
                                         rs2, verbose);
     }
@@ -369,7 +349,7 @@ bool test_i_type(bool verbose = false) {
       uint32_t exp = gen_i_type(base, rd, rs1, imm12);
       string test_string = cmdname + " " + to_string(rd) + ", " +
                            to_string(rs1) + ", " + to_string(imm12);
-      error |= check_code_quiet(test_string, cmd, exp, verbose);
+      error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_i_type_decode_quiet(exp, opcode, funct3, rd, rs1, imm12,
                                         verbose);
     }
@@ -436,7 +416,7 @@ bool test_b_type(bool verbose = false) {
       uint32_t exp = gen_b_type(base, rs1, rs2, imm13);
       string test_string = cmdname + " " + to_string(rs1) + ", " +
                            to_string(rs2) + ", " + to_string(imm13);
-      error |= check_code_quiet(test_string, cmd, exp, verbose);
+      error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_b_type_decode_quiet(exp, opcode, funct3, rs1, rs2, imm13,
                                         verbose);
     }
@@ -480,7 +460,7 @@ bool test_j_type(bool verbose = false) {
       uint32_t exp = gen_j_type(base, rd, imm21);
       string test_string =
           cmdname + " " + to_string(rd) + ", " + ", " + to_string(imm21);
-      error |= check_code_quiet(test_string, cmd, exp, verbose);
+      error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_j_type_decode_quiet(exp, opcode, rd, imm21, verbose);
     }
     print_error_result(cmdname, TEST_NUM, error, verbose);
@@ -525,7 +505,7 @@ bool test_s_type(bool verbose = false) {
       uint32_t exp = gen_s_type(base, rs1, rs2, imm12);
       string test_string = cmdname + " " + to_string(rs1) + ", " +
                            to_string(rs2) + ", " + ", " + to_string(imm12);
-      error |= check_code_quiet(test_string, cmd, exp, verbose);
+      error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_s_type_decode_quiet(exp, opcode, funct3, rs1, rs2, imm12,
                                         verbose);
     }

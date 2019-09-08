@@ -82,6 +82,7 @@ uint32_t asm_lw(uint32_t rd, uint32_t rs1, int32_t offset12) {
   return cmd.value();
 }
 
+// B TYPE
 uint32_t asm_beq(uint32_t rs1, uint32_t rs2, int32_t offset13) {
   b_type cmd;
   cmd.opcode = OPCODE_B;
@@ -122,6 +123,7 @@ uint32_t asm_bne(uint32_t rs1, uint32_t rs2, int32_t offset13) {
   return cmd.value();
 }
 
+// J TYPE
 uint32_t asm_jal(uint32_t rd, int32_t offset21) {
   j_type cmd;
   cmd.opcode = OPCODE_J;
@@ -130,6 +132,7 @@ uint32_t asm_jal(uint32_t rd, int32_t offset21) {
   return cmd.value();
 }
 
+// S TYPE
 uint32_t asm_sw(uint32_t rs1, uint32_t rs2, int32_t offset12) {
   s_type cmd;
   cmd.opcode = OPCODE_S;
