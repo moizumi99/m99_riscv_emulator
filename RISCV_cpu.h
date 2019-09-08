@@ -73,20 +73,25 @@ enum op_funct3 {
   FUNC3_BGE = 0b101,
   FUNC3_BLTU = 0b110,
   FUNC3_BNE = 0b001,
-  FUNC3_LD = 0b011,
   FUNC3_LW = 0b010,
   FUNC3_SW = 0b010,
   FUNC3_JALR = 0b000,
 };
 
 enum instruction {
-  INST_ERROR = 0,
-  INST_ADD = 1,
-  INST_SUB = 2,
-  INST_ADDI = 3,
-  INST_BEQ = 4,
-  INST_JAL = 5,
-  INST_JALR = 6,
+  INST_ERROR,
+  INST_ADD,
+  INST_SUB,
+  INST_ADDI,
+  INST_SLLI,
+  INST_BEQ,
+  INST_BGE,
+  INST_BLTU,
+  INST_BNE,
+  INST_JAL,
+  INST_JALR,
+  INST_LW,
+  INST_SW,
 };
 
 

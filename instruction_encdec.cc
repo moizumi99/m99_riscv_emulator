@@ -144,3 +144,10 @@ uint32_t get_stype_imm12(uint32_t ir) {
   imm12 |= (imm12 & (1 << 11)) ? 0xFFFFF000 : 0;
   return imm12;
 }
+
+uint32_t get_shamt(uint32_t ir) {
+  uint32_t shamt = bitcrop(ir, 5, 20);
+  return shamt;
+}
+
+

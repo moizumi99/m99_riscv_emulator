@@ -37,31 +37,71 @@ int run_cpu(uint8_t *mem, bool verbose) {
 
     next_pc = pc + 4;
 
-    uint32_t rd = get_rd(ir);
-    switch (get_code(ir)) {
+    // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
+    uint8_t instruction = get_code(ir);
+    uint8_t rd = get_rd(ir);
+    uint8_t rs1 = get_rs1(ir);
+    uint8_t rs2 = get_rs2(ir);
+    int16_t imm12 = get_imm12(ir);
+    uint8_t shamt = get_shamt(ir);
+    int16_t imm13 = get_imm13(ir);
+    int32_t imm21 = get_imm21(ir);
+    int16_t imm12_stype = get_stype_imm12(ir);
+    uint32_t address;
+    int32_t sreg_rs1, sreg_rs2;
+
+    switch (instruction) {
     case INST_ADD:
-      reg[rd] = reg[get_rs1(ir)] + reg[get_rs2(ir)];
-      // TODO: update flag
+      reg[rd] = reg[rs1] + reg[rs2];
       break;
     case INST_ADDI:
-      reg[rd] = reg[get_rs1(ir)] + get_imm12(ir);
-      // TODO: update flag
+      reg[rd] = reg[rs1] + imm12;
+      break;
+    case INST_SLLI:
+      reg[rd] = reg[rs1] << shamt;
+      // With RIV32I, shamt[5] must be zero.
+      error_flag |= (shamt >> 4) & 1;
       break;
     case INST_BEQ:
-      if (reg[get_rs1(ir)] == reg[get_rs2(ir)]) {
-        next_pc = pc + get_imm13(ir);
+      if (reg[rs1] == reg[rs2]) {
+        next_pc = pc + imm13;
+      }
+      break;
+    case INST_BGE:
+      sreg_rs1 = static_cast<int32_t>(reg[rs1]);
+      sreg_rs2 = static_cast<int32_t>(reg[rs2]);
+      if (sreg_rs1 >= sreg_rs2) {
+        next_pc = pc + imm13;
+      }
+      break;
+    case INST_BLTU:
+      if (reg[rs1] < reg[rs2]) {
+        next_pc = pc + imm13;
+      }
+      break;
+    case INST_BNE:
+      if (reg[rs1] != reg[rs2]) {
+        next_pc = pc + imm13;
       }
       break;
     case INST_JAL:
-      reg[get_rd(ir)] = pc + 4;
-      next_pc = pc + get_imm21(ir);
+      reg[rd] = pc + 4;
+      next_pc = pc + imm21;
       break;
     case INST_JALR:
-      next_pc = pc + reg[get_rs1(ir)] + get_imm12(ir);
-      reg[get_rd(ir)] = pc + 4;
-      if (get_rd(ir) == ZERO && get_rs1(ir) == RA && get_imm12(ir) == 0) {
+      next_pc = pc + reg[rs1] + imm12;
+      reg[rd] = pc + 4;
+      if (rd == ZERO && rs1 == RA && imm12 == 0) {
         end_flag = true;
       }
+      break;
+    case INST_LW:
+      address = reg[rs1] + imm12;
+      reg[rd] = mem[address];
+      break;
+    case INST_SW:
+      address = reg[rs1] + imm12_stype;
+      mem[address] = reg[rs2];
       break;
     default:
       error_flag = true;
@@ -81,31 +121,47 @@ uint32_t get_code(uint32_t ir) {
   // uint8_t funct7 = bitcrop(ir, 7, 25);
   uint32_t instruction = 0;
   switch (opcode) {
-  case 0b0110011: // ADD, SUB
+  case OPCODE_ADD: // ADD, SUB
     if (funct3 == FUNC3_ADD) {
       instruction = INST_ADD;
     } else if (funct3 == FUNC3_SUB) {
       instruction = INST_SUB;
     }
     break;
-  case 0b0010011: // ADDI, SUBI
+  case OPCODE_ADDI: // ADDI, SUBI
     if (funct3 == FUNC3_ADDI) {
       instruction = INST_ADDI;
+    } else if (funct3 == FUNC3_SLLI) {
+      instruction = INST_SLLI;
     }
     break;
-  case 0b1100011: // beq
+  case OPCODE_B: // beq, bltu, bge, bne
     if (funct3 == FUNC3_BEQ) {
       instruction = INST_BEQ;
+    } else if (funct3 == FUNC3_BLTU) {
+      instruction = INST_BLTU;
+    } else if (funct3 == FUNC3_BGE) {
+      instruction = INST_BGE;
+    } else if (funct3 == FUNC3_BNE) {
+      instruction = INST_BNE;
     }
     break;
-  case 0b1101111: // jal
+  case OPCODE_J: // jal
     instruction = INST_JAL;
     break;
-  case 0b1100111: // jalr
+  case OPCODE_JALR: // jalr
     if (funct3 == FUNC3_JALR) {
       instruction = INST_JALR;
     }
     break;
+  case OPCODE_LD: // LW
+    if (funct3 == FUNC3_LW) {
+      instruction = INST_LW;
+    }
+  case OPCODE_S: // SW
+    if (funct3 == FUNC3_SW) {
+      instruction = INST_SW;
+    }
   default:
     break;
   }

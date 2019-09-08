@@ -337,6 +337,8 @@ bool test_i_type(bool verbose = false) {
         break;
       case TEST_SLLI:
         cmd = asm_slli(rd, rs1, imm12);
+        // SLLI immediate is 6 bit.
+        imm12 &= 0b0111111;
         break;
       case TEST_LW:
         cmd = asm_lw(rd, rs1, imm12);
