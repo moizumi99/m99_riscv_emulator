@@ -59,11 +59,6 @@ enum op_funct {
   FUNC_SLLI = 0b000000,
   FUNC_SRLI = 0b000000,
   FUNC_SRAI = 0b010000,
-  FUNC_BEQ = 0b0000000,
-  FUNC_JAL = 0b0000000,
-  FUNC_LD = 0b0000000,
-  FUNC_SW = 0b0000000,
-  FUNC_JALR = 0b0000000
 };
 
 enum op_funct3 {
@@ -75,7 +70,11 @@ enum op_funct3 {
   FUNC3_SRLI = 0b101,
   FUNC3_SRAI = 0b101,
   FUNC3_BEQ = 0b000,
+  FUNC3_BGE = 0b101,
+  FUNC3_BLTU = 0b110,
+  FUNC3_BNE = 0b001,
   FUNC3_LD = 0b011,
+  FUNC3_LW = 0b010,
   FUNC3_SW = 0b010,
   FUNC3_JALR = 0b000,
 };

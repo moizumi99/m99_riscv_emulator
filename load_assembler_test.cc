@@ -21,7 +21,7 @@ template <class T> void print_binary(T value) {
   }
 }
 
-// Compare the
+// Compare the binary against expectation and show error message.
 template <class T>
 bool check_code(string text, T cmd, T exp, bool verbose = false) {
   bool error = cmd != exp;
@@ -204,6 +204,47 @@ bool test_s_type_decode_quiet(uint32_t instruction, uint8_t opcode,
   return error;
 }
 
+// Create R TYPE instruction with necessary parameters.
+uint32_t gen_r_type(uint32_t base, uint8_t rd, uint8_t rs1, uint8_t rs2) {
+  return base | ((rd & 0x01F) << 7) | ((rs1 & 0x01F) << 15) |
+         ((rs2 & 0x01F) << 20);
+}
+
+// Create I TYPE instruction with necessary parameters.
+uint32_t gen_i_type(uint32_t base, uint8_t rd, uint8_t rs1, int16_t imm12) {
+  return base | ((imm12 & 0xFFF) << 20) | ((rs1 & 0x1F) << 15) |
+         ((rd & 0x1F) << 7);
+}
+
+// Create B TYPE instruction with necessary parameters.
+uint32_t gen_b_type(uint32_t base, uint8_t rs1, uint8_t rs2, int16_t imm13) {
+  uint32_t instruction = base | ((rs2 & 0x1F) << 20) | ((rs1 & 0x1F) << 15);
+  instruction |= ((imm13 >> 12) & 0b01) << 31;
+  instruction |= ((imm13 >> 5) & 0b0111111) << 25;
+  instruction |= ((imm13 >> 1) & 0b01111) << 8;
+  instruction |= ((imm13 >> 11) & 0b01) << 7;
+  return instruction;
+}
+
+// Create J TYPE instruction with necessary parameters.
+uint32_t gen_j_type(uint32_t base, uint8_t rd, int32_t imm21) {
+  uint32_t instruction = base | ((rd & 0x1F) << 7);
+  instruction |= ((imm21 >> 20) & 0b01) << 31;
+  instruction |= ((imm21 >> 1) & 0b01111111111) << 21;
+  instruction |= ((imm21 >> 11) & 0b01) << 20;
+  instruction |= ((imm21 >> 12) & 0b011111111) << 12;
+  return instruction;
+}
+
+// Create S TYPE instruction with necessary parameters.
+uint32_t gen_s_type(uint32_t base, uint8_t rs1, uint8_t rs2, int16_t imm12) {
+  uint32_t instruction = base | ((rs1 & 0x01F) << 15) | ((rs2 & 0x01F) << 20);
+  instruction |=
+      (((imm12 >> 5) & 0b01111111) << 25) | ((imm12 & 0b011111) << 7);
+  return instruction;
+}
+
+// Support function for showing error message at the end of a test sequence.
 void print_error_result(string &cmdname, int num_test, bool error,
                         bool verbose) {
   if (verbose) {
@@ -217,11 +258,6 @@ void print_error_result(string &cmdname, int num_test, bool error,
   }
 }
 
-uint32_t gen_r_type(uint32_t base, uint8_t rd, uint8_t rs1, uint8_t rs2) {
-  return base | ((rd & 0x01F) << 7) | ((rs1 & 0x01F) << 15) |
-         ((rs2 & 0x01F) << 20);
-}
-
 bool test_r_type(bool verbose = false) {
   enum TEST_LIST { TEST_ADD, TEST_SUB };
   bool total_error = false;
@@ -230,27 +266,23 @@ bool test_r_type(bool verbose = false) {
     bool error = false;
     uint32_t base;
     string cmdname;
-    uint8_t opcode, funct3, funct7;
     switch (testcase) {
     case TEST_ADD:
       base = 0b00000000000000000000000000110011;
       cmdname = "ADD";
-      opcode = OPCODE_ADD;
-      funct3 = FUNC3_ADD;
-      funct7 = FUNC_ADD;
       break;
     case TEST_SUB:
       base = 0b01000000000000000000000000110011;
       cmdname = "SUB";
-      opcode = OPCODE_ADD;
-      funct3 = FUNC3_SUB;
-      funct7 = FUNC_SUB;
       break;
     default:
       printf("Test case is node defined yet\n");
       return true;
       break;
     }
+    uint8_t opcode = base & 0b01111111;
+    uint8_t funct3 = (base >> 12) & 0b111;
+    uint8_t funct7 = (base >> 25) & 0b1111111;
 
     for (int i = 0; i < TEST_NUM; i++) {
       uint32_t cmd;
@@ -280,46 +312,40 @@ bool test_r_type(bool verbose = false) {
   return total_error;
 }
 
-uint32_t gen_i_type(uint32_t base, uint8_t rd, uint8_t rs1, int16_t imm12) {
-  return base | ((imm12 & 0xFFF) << 20) | ((rs1 & 0x1F) << 15) |
-         ((rd & 0x1F) << 7);
-}
-
 bool test_i_type(bool verbose = false) {
-  enum TEST_LIST { TEST_ADDI, TEST_LD, TEST_JALR };
+  enum TEST_LIST { TEST_ADDI, TEST_SLLI, TEST_LW, TEST_JALR };
   bool total_error = false;
 
-  for (int testcase : {TEST_ADDI, TEST_LD, TEST_JALR}) {
+  for (int testcase : {TEST_ADDI, TEST_SLLI, TEST_LW, TEST_JALR}) {
     bool error = false;
     uint32_t base;
     string cmdname;
-    uint8_t opcode, funct3;
     switch (testcase) {
     case TEST_ADDI:
       base = 0b00000000000000000000000000010011;
       cmdname = "ADDI";
-      opcode = OPCODE_ADDI;
-      funct3 = FUNC3_ADDI;
       break;
-    case TEST_LD:
-      base = 0b00000000000000000011000000000011;
-      cmdname = "LD";
-      opcode = OPCODE_LD;
-      funct3 = FUNC3_LD;
+    case TEST_SLLI:
+      base = 0b00000000000000000001000000010011;
+      cmdname = "SLLI";
+      break;
+    case TEST_LW:
+      base = 0b00000000000000000010000000000011;
+      cmdname = "LW";
       break;
     case TEST_JALR:
       base = 0b00000000000000000000000001100111;
       cmdname = "JALR";
-      opcode = OPCODE_JALR;
-      funct3 = FUNC3_JALR;
       break;
     default:
       printf("Test case is node defined yet\n");
       return true;
       break;
     }
+    uint8_t opcode = base & 0b01111111;
+    uint8_t funct3 = (base >> 12) & 0b111;
 
-    for (int i = 0; i < TEST_NUM; i++) {
+    for (int i = 0; i < TEST_NUM && !error; i++) {
       uint32_t cmd;
       uint8_t rd = rand() % 32;
       uint8_t rs1 = rand() % 32;
@@ -328,8 +354,11 @@ bool test_i_type(bool verbose = false) {
       case TEST_ADDI:
         cmd = asm_addi(rd, rs1, imm12);
         break;
-      case TEST_LD:
-        cmd = asm_ld(rd, rs1, imm12);
+      case TEST_SLLI:
+        cmd = asm_slli(rd, rs1, imm12);
+        break;
+      case TEST_LW:
+        cmd = asm_lw(rd, rs1, imm12);
         break;
       case TEST_JALR:
         cmd = asm_jalr(rd, rs1, imm12);
@@ -350,38 +379,40 @@ bool test_i_type(bool verbose = false) {
   return total_error;
 }
 
-uint32_t gen_b_type(uint32_t base, uint8_t rs1, uint8_t rs2, int16_t imm13) {
-  uint32_t instruction = base | ((rs2 & 0x1F) << 20) | ((rs1 & 0x1F) << 15);
-  instruction |= ((imm13 >> 12) & 0b01) << 31;
-  instruction |= ((imm13 >> 5) & 0b0111111) << 25;
-  instruction |= ((imm13 >> 1) & 0b01111) << 8;
-  instruction |= ((imm13 >> 11) & 0b01) << 7;
-  return instruction;
-}
-
 bool test_b_type(bool verbose = false) {
-  enum TEST_LIST { TEST_BEQ };
+  enum TEST_LIST { TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE };
   bool total_error = false;
 
-  for (int testcase : {TEST_BEQ}) {
+  for (int testcase : {TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE }) {
     bool error = false;
     uint32_t base;
     string cmdname;
-    uint8_t opcode, funct3;
     switch (testcase) {
     case TEST_BEQ:
       base = 0b00000000000000000000000001100011;
       cmdname = "BEQ";
-      opcode = OPCODE_B;
-      funct3 = FUNC3_BEQ;
+      break;
+    case TEST_BGE:
+      base = 0b00000000000000000101000001100011;
+      cmdname = "BGE";
+      break;
+    case TEST_BLTU:
+      base = 0b00000000000000000110000001100011;
+      cmdname = "BLTU";
+      break;
+    case TEST_BNE:
+      base = 0b00000000000000000001000001100011;
+      cmdname = "BNE";
       break;
     default:
       printf("Test case is node defined yet\n");
       return true;
       break;
     }
+    uint8_t opcode = base & 0b01111111;
+    uint8_t funct3 = (base >> 12) & 0b111;
 
-    for (int i = 0; i < TEST_NUM; i++) {
+    for (int i = 0; i < TEST_NUM && !error; i++) {
       uint32_t cmd;
       uint8_t rs1 = rand() % 32;
       uint8_t rs2 = rand() % 32;
@@ -389,6 +420,15 @@ bool test_b_type(bool verbose = false) {
       switch (testcase) {
       case TEST_BEQ:
         cmd = asm_beq(rs1, rs2, imm13);
+        break;
+      case TEST_BGE:
+        cmd = asm_bge(rs1, rs2, imm13);
+        break;
+      case TEST_BLTU:
+        cmd = asm_bltu(rs1, rs2, imm13);
+        break;
+      case TEST_BNE:
+        cmd = asm_bne(rs1, rs2, imm13);
         break;
       default:
         break;
@@ -406,15 +446,6 @@ bool test_b_type(bool verbose = false) {
   return total_error;
 }
 
-uint32_t gen_j_type(uint32_t base, uint8_t rd, int32_t imm21) {
-  uint32_t instruction = base | ((rd & 0x1F) << 7);
-  instruction |= ((imm21 >> 20) & 0b01) << 31;
-  instruction |= ((imm21 >> 1) & 0b01111111111) << 21;
-  instruction |= ((imm21 >> 11) & 0b01) << 20;
-  instruction |= ((imm21 >> 12) & 0b011111111) << 12;
-  return instruction;
-}
-
 bool test_j_type(bool verbose = false) {
   enum TEST_LIST { TEST_JAL };
   bool total_error = false;
@@ -423,18 +454,17 @@ bool test_j_type(bool verbose = false) {
     bool error = false;
     uint32_t base;
     string cmdname;
-    uint8_t opcode;
     switch (testcase) {
     case TEST_JAL:
       base = 0b00000000000000000000000001101111;
       cmdname = "JAL";
-      opcode = OPCODE_J;
       break;
     default:
       printf("Test case is node defined yet\n");
       return true;
       break;
     }
+    uint8_t opcode = base & 0b01111111;
 
     for (int i = 0; i < TEST_NUM; i++) {
       uint32_t cmd;
@@ -459,13 +489,6 @@ bool test_j_type(bool verbose = false) {
   return total_error;
 }
 
-uint32_t gen_s_type(uint32_t base, uint8_t rs1, uint8_t rs2, int16_t imm12) {
-  uint32_t instruction = base | ((rs1 & 0x01F) << 15) | ((rs2 & 0x01F) << 20);
-  instruction |=
-      (((imm12 >> 5) & 0b01111111) << 25) | ((imm12 & 0b011111) << 7);
-  return instruction;
-}
-
 bool test_s_type(bool verbose = false) {
   enum TEST_LIST { TEST_SW };
   bool total_error = false;
@@ -474,20 +497,18 @@ bool test_s_type(bool verbose = false) {
     bool error = false;
     uint32_t base;
     string cmdname;
-    uint8_t opcode;
-    uint8_t funct3;
     switch (testcase) {
     case TEST_SW:
       base = 0b00000000000000000010000000100011;
       cmdname = "SW";
-      opcode = OPCODE_S;
-      funct3 = FUNC3_SW;
       break;
     default:
       printf("Test case is node defined yet\n");
       return true;
       break;
     }
+    uint8_t opcode = base & 0b01111111;
+    uint8_t funct3 = (base >> 12) & 0b111;
 
     for (int i = 0; i < TEST_NUM; i++) {
       uint32_t cmd;
@@ -535,7 +556,4 @@ bool run_all_test() {
 
 } // namespace load_assembler_test
 
-int main() {
-  load_assembler_test::run_all_test();
-}
-
+int main() { load_assembler_test::run_all_test(); }

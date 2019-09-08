@@ -18,6 +18,7 @@ void load_assembler(uint32_t *mem) {
   mem[8] = asm_jalr(ZERO, RA, 0);
 }
 
+// R_TYPE
 uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   r_type cmd;
   cmd.funct7 = FUNC_ADD;
@@ -26,16 +27,6 @@ uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   cmd.rs1 = rs1;
   cmd.rd = rd;
   cmd.funct3 = FUNC3_ADD;
-  return cmd.value();
-}
-
-uint32_t asm_addi(uint32_t rd, uint32_t rs1, int32_t imm12) {
-  i_type cmd;
-  cmd.imm12 = imm12;
-  cmd.rd = rd;
-  cmd.rs1 = rs1;
-  cmd.opcode = OPCODE_ADDI;
-  cmd.funct3 = FUNC3_ADDI;
   return cmd.value();
 }
 
@@ -50,21 +41,24 @@ uint32_t asm_sub(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   return cmd.value();
 }
 
-uint32_t asm_beq(uint32_t rs1, uint32_t rs2, int32_t offset13) {
-  b_type cmd;
-  cmd.opcode = OPCODE_B;
-  cmd.funct3 = FUNC3_BEQ;
-  cmd.rs2 = rs2;
+// I_TYPE
+uint32_t asm_addi(uint32_t rd, uint32_t rs1, int32_t imm12) {
+  i_type cmd;
+  cmd.imm12 = imm12;
+  cmd.rd = rd;
   cmd.rs1 = rs1;
-  cmd.imm13 = offset13;
+  cmd.opcode = OPCODE_ADDI;
+  cmd.funct3 = FUNC3_ADDI;
   return cmd.value();
 }
 
-uint32_t asm_jal(uint32_t rd, int32_t offset21) {
-  j_type cmd;
-  cmd.opcode = OPCODE_J;
+uint32_t asm_slli(uint32_t rd, uint32_t rs1, int32_t imm12) {
+  i_type cmd;
+  cmd.imm12 = imm12;
   cmd.rd = rd;
-  cmd.imm21 = offset21;
+  cmd.rs1 = rs1;
+  cmd.opcode = OPCODE_ADDI;
+  cmd.funct3 = FUNC3_SLLI;
   return cmd.value();
 }
 
@@ -78,13 +72,61 @@ uint32_t asm_jalr(uint32_t rd, uint32_t rs1, int32_t offset12) {
   return cmd.value();
 }
 
-uint32_t asm_ld(uint32_t rd, uint32_t rs1, int32_t offset12) {
+uint32_t asm_lw(uint32_t rd, uint32_t rs1, int32_t offset12) {
   i_type cmd;
   cmd.opcode = OPCODE_LD;
-  cmd.funct3 = FUNC3_LD;
+  cmd.funct3 = FUNC3_LW;
   cmd.rd = rd;
   cmd.rs1 = rs1;
   cmd.imm12 = offset12;
+  return cmd.value();
+}
+
+uint32_t asm_beq(uint32_t rs1, uint32_t rs2, int32_t offset13) {
+  b_type cmd;
+  cmd.opcode = OPCODE_B;
+  cmd.funct3 = FUNC3_BEQ;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.imm13 = offset13;
+  return cmd.value();
+}
+
+uint32_t asm_bge(uint32_t rs1, uint32_t rs2, int32_t offset13) {
+  b_type cmd;
+  cmd.opcode = OPCODE_B;
+  cmd.funct3 = FUNC3_BGE;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.imm13 = offset13;
+  return cmd.value();
+}
+
+uint32_t asm_bltu(uint32_t rs1, uint32_t rs2, int32_t offset13) {
+  b_type cmd;
+  cmd.opcode = OPCODE_B;
+  cmd.funct3 = FUNC3_BLTU;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.imm13 = offset13;
+  return cmd.value();
+}
+
+uint32_t asm_bne(uint32_t rs1, uint32_t rs2, int32_t offset13) {
+  b_type cmd;
+  cmd.opcode = OPCODE_B;
+  cmd.funct3 = FUNC3_BNE;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.imm13 = offset13;
+  return cmd.value();
+}
+
+uint32_t asm_jal(uint32_t rd, int32_t offset21) {
+  j_type cmd;
+  cmd.opcode = OPCODE_J;
+  cmd.rd = rd;
+  cmd.imm21 = offset21;
   return cmd.value();
 }
 
