@@ -1,6 +1,7 @@
 #include "RISCV_cpu.h"
 #include "instruction_encdec.h"
 #include "load_assembler.h"
+#include "assembler.h"
 #include <iostream>
 #include <string>
 
@@ -536,4 +537,6 @@ bool run_all_test() {
 
 } // namespace load_assembler_test
 
-int main() { load_assembler_test::run_all_test(); }
+int main() {
+  load_assembler_test::run_all_test();
+}

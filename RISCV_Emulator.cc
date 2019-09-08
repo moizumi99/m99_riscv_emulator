@@ -10,7 +10,7 @@ uint32_t mem[256];
 
 int main() {
   // Generate very primitive assembly code
-  load_assembler(mem);
+  load_assembler_sum(mem);
   printf("Assembler set.\n");
 
   // Run CPU emulator
