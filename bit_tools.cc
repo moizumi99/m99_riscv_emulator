@@ -19,3 +19,14 @@ uint32_t bitcrop(uint32_t val, int width, int offset) {
   val &= mask[width];
   return val;
 }
+
+uint32_t load_wd(uint8_t *address) {
+  return *address | (*(address + 1) << 8) | (*(address + 2) << 16) | (*(address + 3) << 24);
+}
+
+void store_wd(uint8_t *address, uint32_t data) {
+  *address = data & 0xFF;
+  *(address + 1) = (data >> 8) & 0xFF;
+  *(address + 2) = (data >> 16) & 0xFF;
+  *(address + 3) = (data >> 24) & 0xFF;
+}

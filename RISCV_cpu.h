@@ -3,10 +3,30 @@
 #include <stdint.h>
 #include "bit_tools.h"
 
-int run_cpu(uint8_t *mem, bool verbose=true);
+void set_register(uint32_t num, uint32_t value);
+uint32_t read_register(uint32_t num);
+
+int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose=true);
 
 enum Registers {
   ZERO = 0,
+  X0 = 0,
+  X1 = 1,
+  X2 = 2,
+  X3 = 3,
+  X4 = 4,
+  X5 = 5,
+  X6 = 6,
+  X7 = 7,
+  X8 = 8,
+  X9 = 9,
+  X10 = 10,
+  X11 = 11,
+  X12 = 12,
+  X13 = 13,
+  X14 = 14,
+  X15 = 15,
+  X16 = 16,
   RA = 1,
   SP = 2,
   GP = 3,

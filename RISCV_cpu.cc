@@ -9,30 +9,39 @@ using namespace std;
 uint32_t get_code(uint32_t ir);
 
 uint32_t reg[32];
+uint32_t pc;
+
+void set_register(uint32_t num, uint32_t value) { reg[num] = value; }
+
+uint32_t read_register(uint32_t num) { return reg[num]; }
 
 uint32_t load_cmd(uint8_t *mem, uint32_t pc) {
   uint8_t *address = mem + pc;
-  return *address | (*(address + 1) << 8) | (*(address + 2) << 16) | (*(address + 3) << 24);
+  return *address | (*(address + 1) << 8) | (*(address + 2) << 16) |
+         (*(address + 3) << 24);
 }
 
-int run_cpu(uint8_t *mem, bool verbose) {
-  uint32_t pc, next_pc;
-  uint32_t ir;
+int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
   bool error_flag = false;
   bool end_flag = false;
 
   if (verbose) {
-    printf("   PC    Binary     T0     T1     T2     T3     A0\n");
+    printf("   PC    Binary       T0       T1       T2       T3       A0       "
+           "A1       A2       A3       A4       A5       A6       A7\n");
   }
 
-  pc = 0;
+  pc = start_pc;
   do {
+    uint32_t next_pc;
+    uint32_t ir;
 
     // TODO: memory is byte aligned. Fix this.
     ir = load_cmd(mem, pc);
     if (verbose) {
-      printf(" %4d  %08x  %5d  %5d  %5d  %5d  %5d\n", pc, ir, reg[T0], reg[T1],
-             reg[T2], reg[T3], reg[A0]);
+      printf(" %4x  %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x "
+             "%08x %08x\n",
+             pc, ir, reg[T0], reg[T1], reg[T2], reg[T3], reg[A0], reg[A1],
+             reg[A2], reg[A3], reg[A4], reg[A5], reg[A6], reg[A7]);
     }
 
     next_pc = pc + 4;
@@ -97,11 +106,11 @@ int run_cpu(uint8_t *mem, bool verbose) {
       break;
     case INST_LW:
       address = reg[rs1] + imm12;
-      reg[rd] = mem[address];
+      reg[rd] = load_wd(mem + address);
       break;
     case INST_SW:
       address = reg[rs1] + imm12_stype;
-      mem[address] = reg[rs2];
+      store_wd(mem + address, reg[rs2]);
       break;
     default:
       error_flag = true;
@@ -112,7 +121,7 @@ int run_cpu(uint8_t *mem, bool verbose) {
     pc = next_pc & 0xFFFF;
   } while (!error_flag && !end_flag);
 
-  return reg[A0];
+  return error_flag;
 }
 
 uint32_t get_code(uint32_t ir) {
@@ -158,10 +167,12 @@ uint32_t get_code(uint32_t ir) {
     if (funct3 == FUNC3_LW) {
       instruction = INST_LW;
     }
+    break;
   case OPCODE_S: // SW
     if (funct3 == FUNC3_SW) {
       instruction = INST_SW;
     }
+    break;
   default:
     break;
   }

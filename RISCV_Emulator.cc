@@ -15,7 +15,11 @@ int main() {
 
   // Run CPU emulator
   printf("Execution start\n");
-  int return_value = run_cpu(mem);
+  int error = run_cpu(mem, 0);
+  if (error) {
+    printf("CPU execution fail.\n");
+  }
+  int return_value = read_register(A0);
 
   printf("Return value: %d\n", return_value);
 
