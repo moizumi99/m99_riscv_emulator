@@ -3,3 +3,4 @@ cpu_test
 load_assembler
 load_assembler_test
 RISCV_Emulator
+cmake-build-debug/*

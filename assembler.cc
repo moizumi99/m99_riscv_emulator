@@ -1,7 +1,7 @@
 #include "load_assembler.h"
 #include "RISCV_cpu.h"
 #include "instruction_encdec.h"
-#include <stdint.h>
+#include <cstdint>
 
 // R_TYPE
 uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
@@ -16,13 +16,24 @@ uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
 }
 
 uint32_t asm_sub(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+    r_type cmd;
+    cmd.funct7 = FUNC_SUB;
+    cmd.opcode = OPCODE_ADD;
+    cmd.rs2 = rs2;
+    cmd.rs1 = rs1;
+    cmd.rd = rd;
+    cmd.funct3 = FUNC3_SUB;
+    return cmd.value();
+}
+
+uint32_t asm_and(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   r_type cmd;
-  cmd.funct7 = FUNC_SUB;
+  cmd.funct7 = FUNC_AND;
   cmd.opcode = OPCODE_ADD;
   cmd.rs2 = rs2;
   cmd.rs1 = rs1;
   cmd.rd = rd;
-  cmd.funct3 = FUNC3_SUB;
+  cmd.funct3 = FUNC3_AND;
   return cmd.value();
 }
 
@@ -40,7 +51,7 @@ uint32_t asm_addi(uint32_t rd, uint32_t rs1, int32_t imm12) {
 uint32_t asm_slli(uint32_t rd, uint32_t rs1, int32_t imm12) {
   i_type cmd;
   // SLLI immediate is 6 bit wide.
-  cmd.imm12 = imm12 & 0b0111111;
+  cmd.imm12 = static_cast<uint32_t>(imm12) & 0b0111111;
   cmd.rd = rd;
   cmd.rs1 = rs1;
   cmd.opcode = OPCODE_ADDI;

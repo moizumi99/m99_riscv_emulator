@@ -1,6 +1,6 @@
 #include "instruction_encdec.h"
 #include "bit_tools.h"
-#include <stdint.h>
+#include <cstdint>
 
 uint32_t r_type::value() {
   uint32_t value = 0;

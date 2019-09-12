@@ -1,0 +1,1 @@
+/usr/bin/g++  -g   CMakeFiles/cpu_test.dir/assembler.cc.o CMakeFiles/cpu_test.dir/bit_tools.cc.o CMakeFiles/cpu_test.dir/instruction_encdec.cc.o CMakeFiles/cpu_test.dir/load_assembler.cc.o CMakeFiles/cpu_test.dir/cpu_test.cc.o CMakeFiles/cpu_test.dir/RISCV_cpu.cc.o  -o cpu_test 

@@ -1,7 +1,7 @@
 #ifndef INSTRUCTION_ENCDEC_H
 #define INSTRUCTION_ENCDEC_H
 
-#include <stdint.h>
+#include <cstdint>
 
 class bitfield {
   public:

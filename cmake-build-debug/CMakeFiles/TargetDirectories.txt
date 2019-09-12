@@ -1,0 +1,5 @@
+/home/moiz/work/BuildCPU/Emulator/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/moiz/work/BuildCPU/Emulator/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/moiz/work/BuildCPU/Emulator/cmake-build-debug/CMakeFiles/RISCV_Emulator.dir
+/home/moiz/work/BuildCPU/Emulator/cmake-build-debug/CMakeFiles/assembler_test.dir
+/home/moiz/work/BuildCPU/Emulator/cmake-build-debug/CMakeFiles/cpu_test.dir
