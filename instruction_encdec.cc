@@ -72,13 +72,13 @@ void b_type::set_value(uint32_t value) {
 
 uint32_t u_type::value() {
   uint32_t value = 0;
-  value |= bitcrop(imm32, 24, 12) << 12;
+  value |= (imm20 & (0xFFFFF)) << 12;
   value |= rd << 7 | opcode;
   return value;
 };
 
 void u_type::set_value(uint32_t value) {
-  imm32 = bitcrop(value, 24, 12) << 12;
+  imm20 = get_imm20(value);
   rd = bitcrop(value, 5, 7);
   opcode = bitcrop(value, 7, 0);
 };
@@ -109,16 +109,16 @@ uint32_t get_rs1(uint32_t ir) { return bitcrop(ir, 5, 15); }
 
 uint32_t get_rs2(uint32_t ir) { return bitcrop(ir, 5, 20); }
 
-uint32_t get_imm12(uint32_t ir) {
-  uint32_t imm12 = bitcrop(ir, 12, 20);
+int32_t get_imm12(uint32_t ir) {
+  int32_t imm12 = bitcrop(ir, 12, 20);
   
   // Sign extend
   imm12 |= (imm12 & (1 << 11)) ? 0xFFFFF000 : 0;
   return imm12;
 }
 
-uint32_t get_imm13(uint32_t ir) {
-  uint32_t imm13 = 0;
+int32_t get_imm13(uint32_t ir) {
+  int32_t imm13 = 0;
   imm13 |= bitshift(ir, 1, 31, 12) | bitshift(ir, 6, 25, 5);
   imm13 |= bitshift(ir, 4, 8, 1) | bitshift(ir, 1, 7, 11);
 
@@ -127,20 +127,20 @@ uint32_t get_imm13(uint32_t ir) {
   return imm13;
 }
 
-uint32_t get_imm21(uint32_t ir) {
-  uint32_t imm21 = 0;
+int32_t get_imm21(uint32_t ir) {
+  int32_t imm21 = 0;
   imm21 |= (bitcrop(ir, 1, 31) << 20) | (bitcrop(ir, 8, 12) << 12);
   imm21 |= (bitcrop(ir, 1, 20) << 11) | (bitcrop(ir, 10, 21) << 1);
 
-  // Sign extend
+  // Sign extend.
   imm21 |= (imm21 & (1 << 20)) ? 0xFFE00000 : 0;
   return imm21;
 }
 
-uint32_t get_stype_imm12(uint32_t ir) {
-  uint32_t imm12 = (bitcrop(ir, 7, 25) << 5) | bitcrop(ir, 5, 7);
+int32_t get_stype_imm12(uint32_t ir) {
+  int32_t imm12 = (bitcrop(ir, 7, 25) << 5) | bitcrop(ir, 5, 7);
   
-  // Sign extend
+  // Sign extend.
   imm12 |= (imm12 & (1 << 11)) ? 0xFFFFF000 : 0;
   return imm12;
 }
@@ -150,4 +150,9 @@ uint32_t get_shamt(uint32_t ir) {
   return shamt;
 }
 
-
+int32_t get_imm20(uint32_t ir) {
+    uint32_t imm20 = bitcrop(ir, 20, 12);
+    // Sign extend.
+    imm20 |= (imm20 & (1 << 19)) ? 0xFFF00000 : 0;
+    return imm20;
+}

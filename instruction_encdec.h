@@ -43,16 +43,16 @@ class b_type : public bitfield {
     void set_value(uint32_t value) override;
 };
 
-class u_type: public bitfield {
+class j_type : public bitfield {
   public:
-    int32_t imm32 : 32;
+    int32_t imm21 : 21;
     uint32_t value();
     void set_value(uint32_t value) override;
 };
 
-class j_type : public bitfield {
-  public:
-    int32_t imm21 : 21;
+class u_type : public bitfield{
+public:
+    int32_t imm20: 24;
     uint32_t value();
     void set_value(uint32_t value) override;
 };
@@ -61,10 +61,11 @@ uint32_t get_opcode(uint32_t ir);
 uint32_t get_rd(uint32_t ir);
 uint32_t get_rs1(uint32_t ir);
 uint32_t get_rs2(uint32_t ir);
-uint32_t get_imm12(uint32_t ir);
-uint32_t get_imm13(uint32_t ir);
-uint32_t get_imm21(uint32_t ir);
-uint32_t get_stype_imm12(uint32_t ir);
+int32_t get_imm12(uint32_t ir);
+int32_t get_imm13(uint32_t ir);
+int32_t get_imm21(uint32_t ir);
+int32_t get_imm20(uint32_t ir);
+int32_t get_stype_imm12(uint32_t ir);
 uint32_t get_shamt(uint32_t ir);
 
 #endif // INSTRUCTION_ENCDEC_H

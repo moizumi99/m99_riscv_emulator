@@ -21,7 +21,7 @@ namespace load_assembler_test {
         }
     }
 
-    bool check_equal(string text, uint32_t value, uint32_t exp,
+    bool check_equal(const string &text, uint32_t value, uint32_t exp,
                      bool verbose = false) {
         bool error = value != exp;
         if (verbose) {
@@ -40,7 +40,7 @@ namespace load_assembler_test {
         return error;
     }
 
-    bool check_equal_quiet(string text, uint32_t cmd, uint32_t exp, bool verbose = false) {
+    bool check_equal_quiet(const string &text, uint32_t cmd, uint32_t exp, bool verbose = false) {
         bool error = check_equal(text, cmd, exp, false);
         if (error & verbose) {
             error = check_equal(text, cmd, exp, true);
@@ -70,7 +70,7 @@ namespace load_assembler_test {
                                   uint8_t rs1, uint8_t rs2, bool verbose = false) {
         bool error = test_r_type_decode(instruction, opcode, funct3, funct7, rd, rs1,
                                         rs2, false);
-        if (error) {
+        if (error && verbose) {
             // Show error message.
             error = test_r_type_decode(instruction, opcode, funct3, funct7, rd, rs1,
                                        rs2, true);
@@ -98,7 +98,7 @@ namespace load_assembler_test {
                                   int16_t imm12, bool verbose = false) {
         bool error =
                 test_i_type_decode(instruction, opcode, funct3, rd, rs1, imm12, false);
-        if (error) {
+        if (error && verbose) {
             // Show error message.
             error =
                     test_i_type_decode(instruction, opcode, funct3, rd, rs1, imm12, true);
@@ -126,7 +126,7 @@ namespace load_assembler_test {
                                   int16_t imm13, bool verbose = false) {
         bool error =
                 test_b_type_decode(instruction, opcode, funct3, rs1, rs2, imm13, false);
-        if (error) {
+        if (error && verbose) {
             // Show error message.
             error =
                     test_b_type_decode(instruction, opcode, funct3, rs1, rs2, imm13, true);
@@ -149,7 +149,7 @@ namespace load_assembler_test {
     bool test_j_type_decode_quiet(uint32_t instruction, uint8_t opcode, uint8_t rd,
                                   int32_t imm21, bool verbose = false) {
         bool error = test_j_type_decode(instruction, opcode, rd, imm21, false);
-        if (error) {
+        if (error && verbose) {
             // Show error message.
             error = test_j_type_decode(instruction, opcode, rd, imm21, true);
         }
@@ -176,7 +176,7 @@ namespace load_assembler_test {
                                   int16_t imm12, bool verbose = false) {
         bool error =
                 test_s_type_decode(instruction, opcode, funct3, rs1, rs2, imm12, false);
-        if (error) {
+        if (error && verbose) {
             // Show error message.
             error =
                     test_s_type_decode(instruction, opcode, funct3, rs1, rs2, imm12, true);
@@ -534,6 +534,85 @@ namespace load_assembler_test {
         return total_error;
     }
 
+
+    bool test_u_type_decode(uint32_t instruction, uint8_t opcode,
+                            uint8_t rd, int32_t imm20,
+                            bool verbose = false) {
+        bool error = false;
+        u_type cmd;
+        cmd.set_value(instruction);
+        error |= check_equal("cmd", cmd.opcode, opcode, verbose);
+        error |= check_equal("rd", cmd.rd, rd, verbose);
+        error |= check_equal("imm20", cmd.imm20, imm20, verbose);
+        return error;
+    }
+
+// Only shows message when there's an error.
+    bool test_u_type_decode_quiet(uint32_t instruction, uint8_t opcode,
+                                  uint8_t rd,
+                                  int32_t imm24, bool verbose = false) {
+        bool error =
+                test_u_type_decode(instruction, opcode, rd, imm24, false);
+        if (error && verbose) {
+            // Show error message.
+            error =
+                    test_u_type_decode(instruction, opcode, rd, imm24, true);
+        }
+        return error;
+    }
+
+// Create U TYPE instruction with necessary parameters.
+    uint32_t gen_u_type(uint32_t base, uint8_t rd, int32_t imm20) {
+        uint32_t instruction = base | ((rd & 0x01F) << 7) | ((imm20 & 0x0FFFFF) << 12);
+        return instruction;
+    }
+
+    bool test_u_type(bool verbose = false) {
+        enum TEST_LIST {
+            TEST_LUI
+        };
+        bool total_error = false;
+
+        for (int testcase : {TEST_LUI}) {
+            bool error = false;
+            uint32_t base;
+            string cmdname;
+            switch (testcase) {
+                case TEST_LUI:
+                    base = 0b00000000000000000000000000110111;
+                    cmdname = "LUI";
+                    break;
+                default:
+                    printf("Test case is node defined yet\n");
+                    return true;
+                    break;
+            }
+            uint8_t opcode = base & 0b01111111;
+
+            for (int i = 0; i < TEST_NUM && !error; i++) {
+                uint32_t cmd;
+                uint8_t rd = rand() % 32;
+                int32_t imm20 = (rand() % (1 << 20)) - (1 << 19);
+                switch (testcase) {
+                    case TEST_LUI:
+                        cmd = asm_lui(rd, imm20);
+                        break;
+                    default:
+                        break;
+                }
+                uint32_t exp = gen_u_type(base, rd, imm20);
+                string test_string = cmdname + " " + to_string(rd) + ", "
+                                     + to_string(imm20);
+                error |= check_equal_quiet(test_string, cmd, exp, verbose);
+                error |= test_u_type_decode_quiet(exp, opcode, rd, imm20,
+                                                  verbose);
+            }
+            print_error_result(cmdname, TEST_NUM, error, verbose);
+            total_error |= error;
+        }
+        return total_error;
+    }
+
     bool run_all_test() {
         constexpr int SEED = 0;
         srand(SEED);
@@ -544,6 +623,7 @@ namespace load_assembler_test {
         error |= test_b_type(verbose);
         error |= test_j_type(verbose);
         error |= test_s_type(verbose);
+        error |= test_u_type(verbose);
 
         if (error) {
             printf("Test failed\n");

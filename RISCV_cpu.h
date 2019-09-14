@@ -71,6 +71,7 @@ enum op_label {
     OPCODE_J = 0b1101111,
     OPCODE_S = 0b0100011,
     OPCODE_JALR = 0b1100111,
+    OPCODE_LUI = 0b0110111,
 };
 
 enum op_funct {
@@ -117,6 +118,7 @@ enum instruction {
     INST_JALR,
     INST_LW,
     INST_SW,
+    INST_LUI,
 };
 
 

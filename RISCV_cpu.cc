@@ -116,7 +116,7 @@ int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 store_wd(mem + address, reg[rs2]);
                 break;
             case INST_LUI:
-                reg[rd] = imm20 << 12;
+                reg[rd] = (reg[rd] & 0x00000FFF) | (imm20 << 12);
                 break;
             default:
                 error_flag = true;
