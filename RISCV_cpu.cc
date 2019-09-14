@@ -55,6 +55,7 @@ int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
         int16_t imm13 = get_imm13(ir);
         int32_t imm21 = get_imm21(ir);
         int16_t imm12_stype = get_stype_imm12(ir);
+        int32_t imm20 = get_imm20(ir);
         uint32_t address;
         int32_t sreg_rs1, sreg_rs2;
 
@@ -113,6 +114,9 @@ int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
             case INST_SW:
                 address = reg[rs1] + imm12_stype;
                 store_wd(mem + address, reg[rs2]);
+                break;
+            case INST_LUI:
+                reg[rd] = imm20 << 12;
                 break;
             default:
                 error_flag = true;
@@ -177,6 +181,8 @@ uint32_t get_code(uint32_t ir) {
                 instruction = INST_SW;
             }
             break;
+        case OPCODE_LUI: // LUI
+            instruction = INST_LUI;
         default:
             break;
     }
