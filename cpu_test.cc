@@ -26,7 +26,7 @@ namespace cpu_test {
     }
 
     enum ITYPE_TEST_LIST {
-        TEST_ADDI, TEST_SLLI
+        TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI
     };
 
     bool test_i_type(int test_type, int32_t rd, int32_t rs1, int32_t value, int32_t imm12, bool verbose) {
@@ -44,11 +44,28 @@ namespace cpu_test {
             case TEST_ADDI:
                 pointer = add_cmd(pointer, asm_addi(rd, rs1, imm12));
                 expected = value + sext(imm12 & 0x0FFF, 12);
+                test_case = "ADDI";
+                break;
+            case TEST_ANDI:
+                pointer = add_cmd(pointer, asm_andi(rd, rs1, imm12));
+                expected = value & sext(imm12 & 0x0FFF, 12);
+                test_case = "ANDI";
+                break;
+            case TEST_ORI:
+                pointer = add_cmd(pointer, asm_ori(rd, rs1, imm12));
+                expected = value | sext(imm12 & 0x0FFF, 12);
+                test_case = "ORI";
+                break;
+            case TEST_XORI:
+                pointer = add_cmd(pointer, asm_xori(rd, rs1, imm12));
+                expected = value ^ sext(imm12 & 0x0FFF, 12);
+                test_case = "XORI";
                 break;
             case TEST_SLLI:
                 imm12 = imm12 & 0b0011111;
                 pointer = add_cmd(pointer, asm_slli(rd, rs1, imm12));
                 expected = value << imm12;
+                test_case = "SLLI";
                 break;
             default:
                 printf("I TYPE Test case undefined.\n");
@@ -75,7 +92,7 @@ namespace cpu_test {
 
     bool test_i_type_loop(bool verbose) {
         bool total_error = false;
-        for (int test_case: {TEST_ADDI, TEST_SLLI}) {
+        for (int test_case: {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI}) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
                 uint32_t rd = rand() & 0x1F;

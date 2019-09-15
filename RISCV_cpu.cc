@@ -120,6 +120,15 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
             case INST_ADDI:
                 reg[rd] = reg[rs1] + imm12;
                 break;
+            case INST_ANDI:
+                reg[rd] = reg[rs1] & imm12;
+                break;
+            case INST_ORI:
+                reg[rd] = reg[rs1] | imm12;
+                break;
+            case INST_XORI:
+                reg[rd] = reg[rs1] ^ imm12;
+                break;
             case INST_SLLI:
                 reg[rd] = reg[rs1] << shamt;
                 // With RIV32I, shamt[5] must be zero.
@@ -208,6 +217,12 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
         case OPCODE_ADDI: // ADDI, SUBI
             if (funct3 == FUNC3_ADDSUB) {
                 instruction = INST_ADDI;
+            } else if (funct3 == FUNC3_AND) {
+                instruction = INST_ANDI;
+            } else if (funct3 == FUNC3_OR) {
+                instruction = INST_ORI;
+            } else if (funct3 == FUNC3_XOR) {
+                instruction = INST_XORI;
             } else if (funct3 == FUNC3_SL) {
                 instruction = INST_SLLI;
             }

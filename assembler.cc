@@ -103,6 +103,36 @@ uint32_t asm_addi(uint32_t rd, uint32_t rs1, int32_t imm12) {
     return cmd.value();
 }
 
+uint32_t asm_andi(uint32_t rd, uint32_t rs1, int32_t imm12) {
+    i_type cmd;
+    cmd.imm12 = imm12 & 0xFFF;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.opcode = OPCODE_ADDI;
+    cmd.funct3 = FUNC3_AND;
+    return cmd.value();
+}
+
+uint32_t asm_ori(uint32_t rd, uint32_t rs1, int32_t imm12) {
+    i_type cmd;
+    cmd.imm12 = imm12 & 0xFFF;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.opcode = OPCODE_ADDI;
+    cmd.funct3 = FUNC3_OR;
+    return cmd.value();
+}
+
+uint32_t asm_xori(uint32_t rd, uint32_t rs1, int32_t imm12) {
+    i_type cmd;
+    cmd.imm12 = imm12 & 0xFFF;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.opcode = OPCODE_ADDI;
+    cmd.funct3 = FUNC3_XOR;
+    return cmd.value();
+}
+
 uint32_t asm_slli(uint32_t rd, uint32_t rs1, int32_t imm12) {
     i_type cmd;
     // SLLI immediate is 6 bit wide.

@@ -339,11 +339,11 @@ namespace load_assembler_test {
 
     bool test_i_type(bool verbose = false) {
         enum TEST_LIST {
-            TEST_ADDI, TEST_SLLI, TEST_LW, TEST_JALR
+            TEST_ADDI, TEST_SLLI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI
         };
         bool total_error = false;
 
-        for (int test_case : {TEST_ADDI, TEST_SLLI, TEST_LW, TEST_JALR}) {
+        for (int test_case : {TEST_ADDI, TEST_SLLI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI}) {
             bool error = false;
             uint32_t base;
             string cmdname;
@@ -364,6 +364,18 @@ namespace load_assembler_test {
                     base = 0b00000000000000000000000001100111;
                     cmdname = "JALR";
                     break;
+                case TEST_ANDI:
+                    base = 0b00000000000000000111000000010011;
+                    cmdname = "ANDI";
+                    break;
+                case TEST_ORI:
+                    base = 0b00000000000000000110000000010011;
+                    cmdname = "ORI";
+                    break;
+                case TEST_XORI:
+                    base = 0b00000000000000000100000000010011;
+                    cmdname = "XORI";
+                    break;
                 default:
                     printf("Test case is node defined yet\n");
                     return true;
@@ -380,6 +392,15 @@ namespace load_assembler_test {
                 switch (test_case) {
                     case TEST_ADDI:
                         cmd = asm_addi(rd, rs1, imm12);
+                        break;
+                    case TEST_ANDI:
+                        cmd = asm_andi(rd, rs1, imm12);
+                        break;
+                    case TEST_ORI:
+                        cmd = asm_ori(rd, rs1, imm12);
+                        break;
+                    case TEST_XORI:
+                        cmd = asm_xori(rd, rs1, imm12);
                         break;
                     case TEST_SLLI:
                         cmd = asm_slli(rd, rs1, imm12);

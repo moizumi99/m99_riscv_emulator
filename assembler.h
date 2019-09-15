@@ -22,6 +22,12 @@ uint32_t asm_sra(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
 uint32_t asm_addi(uint32_t rd, uint32_t rs1, int32_t imm12);
 
+uint32_t asm_andi(uint32_t rd, uint32_t rs1, int32_t imm12);
+
+uint32_t asm_ori(uint32_t rd, uint32_t rs1, int32_t imm12);
+
+uint32_t asm_xori(uint32_t rd, uint32_t rs1, int32_t imm12);
+
 uint32_t asm_slli(uint32_t rd, uint32_t rs1, int32_t imm12);
 
 uint32_t asm_beq(uint32_t rs1, uint32_t rs2, int32_t offset13);
