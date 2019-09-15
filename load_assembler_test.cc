@@ -1,5 +1,6 @@
 #include "instruction_encdec.h"
 #include "assembler.h"
+#include "bit_tools.h"
 #include <iostream>
 #include <string>
 
@@ -88,7 +89,7 @@ namespace load_assembler_test {
         error |= check_equal("funct3", cmd.funct3, funct3, verbose);
         error |= check_equal("rd", cmd.rd, rd, verbose);
         error |= check_equal("rs1", cmd.rs1, rs1, verbose);
-        error |= check_equal("imm12", cmd.imm12, imm12, verbose);
+        error |= check_equal("imm12", sext(cmd.imm12, 12), imm12, verbose);
         return error;
     }
 
@@ -116,7 +117,7 @@ namespace load_assembler_test {
         error |= check_equal("funct3", cmd.funct3, funct3);
         error |= check_equal("rs1", cmd.rs1, rs1, verbose);
         error |= check_equal("rs2", cmd.rs2, rs2, verbose);
-        error |= check_equal("imm13", cmd.imm13, imm13 & (~0b01), verbose);
+        error |= check_equal("imm13", sext(cmd.imm13, 13), imm13 & (~0b01), verbose);
         return error;
     }
 
@@ -141,7 +142,7 @@ namespace load_assembler_test {
         cmd.set_value(instruction);
         error |= check_equal("cmd", cmd.opcode, opcode, verbose);
         error |= check_equal("rd", cmd.rd, rd, verbose);
-        error |= check_equal("imm21", cmd.imm21, imm21 & (~1), verbose);
+        error |= check_equal("imm21", sext(cmd.imm21, 21), imm21 & (~1), verbose);
         return error;
     }
 
@@ -166,7 +167,7 @@ namespace load_assembler_test {
         error |= check_equal("funct3", cmd.funct3, funct3);
         error |= check_equal("rs1", cmd.rs1, rs1, verbose);
         error |= check_equal("rs2", cmd.rs2, rs2, verbose);
-        error |= check_equal("imm12", cmd.imm12, imm12, verbose);
+        error |= check_equal("imm12", sext(cmd.imm12, 12), imm12, verbose);
         return error;
     }
 
@@ -307,11 +308,11 @@ namespace load_assembler_test {
         };
         bool total_error = false;
 
-        for (int testcase : {TEST_ADDI, TEST_SLLI, TEST_LW, TEST_JALR}) {
+        for (int test_case : {TEST_ADDI, TEST_SLLI, TEST_LW, TEST_JALR}) {
             bool error = false;
             uint32_t base;
             string cmdname;
-            switch (testcase) {
+            switch (test_case) {
                 case TEST_ADDI:
                     base = 0b00000000000000000000000000010011;
                     cmdname = "ADDI";
@@ -341,7 +342,7 @@ namespace load_assembler_test {
                 uint8_t rd = rand() % 32;
                 uint8_t rs1 = rand() % 32;
                 int16_t imm12 = (rand() % (1 << 12)) - (1 << 11);
-                switch (testcase) {
+                switch (test_case) {
                     case TEST_ADDI:
                         cmd = asm_addi(rd, rs1, imm12);
                         break;
@@ -543,7 +544,7 @@ namespace load_assembler_test {
         cmd.set_value(instruction);
         error |= check_equal("cmd", cmd.opcode, opcode, verbose);
         error |= check_equal("rd", cmd.rd, rd, verbose);
-        error |= check_equal("imm20", cmd.imm20, imm20, verbose);
+        error |= check_equal("imm20", sext(cmd.imm20, 20), imm20, verbose);
         return error;
     }
 

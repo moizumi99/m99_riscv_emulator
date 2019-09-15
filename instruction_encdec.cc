@@ -110,10 +110,7 @@ uint32_t get_rs1(uint32_t ir) { return bitcrop(ir, 5, 15); }
 uint32_t get_rs2(uint32_t ir) { return bitcrop(ir, 5, 20); }
 
 int32_t get_imm12(uint32_t ir) {
-  int32_t imm12 = bitcrop(ir, 12, 20);
-  
-  // Sign extend
-  imm12 |= (imm12 & (1 << 11)) ? 0xFFFFF000 : 0;
+  int32_t imm12 = sext(bitcrop(ir, 12, 20), 12);
   return imm12;
 }
 
@@ -122,7 +119,6 @@ int32_t get_imm13(uint32_t ir) {
   imm13 |= bitshift(ir, 1, 31, 12) | bitshift(ir, 6, 25, 5);
   imm13 |= bitshift(ir, 4, 8, 1) | bitshift(ir, 1, 7, 11);
 
-  // Sign extend
   imm13 |= (imm13 & (1 << 12)) ? 0xFFFFE000 : 0;
   return imm13;
 }
@@ -150,9 +146,7 @@ uint32_t get_shamt(uint32_t ir) {
   return shamt;
 }
 
-int32_t get_imm20(uint32_t ir) {
+uint32_t get_imm20(uint32_t ir) {
     uint32_t imm20 = bitcrop(ir, 20, 12);
-    // Sign extend.
-    imm20 |= (imm20 & (1 << 19)) ? 0xFFF00000 : 0;
     return imm20;
 }

@@ -12,15 +12,6 @@ uint8_t *add_cmd(uint8_t *mem, uint32_t cmd) {
     return mem;
 }
 
-uint8_t *load_assembler_and(uint8_t *mem) {
-    mem = add_cmd(mem, asm_addi(T0, ZERO, 0b0101010101010));
-    mem = add_cmd(mem, asm_addi(T1, ZERO, 0b0111100001111));
-    mem = add_cmd(mem, asm_and(A0, T0, T1));
-    mem = add_cmd(mem, asm_jalr(ZERO, RA, 0));
-
-    return mem;
-}
-
 uint8_t *load_assembler_sum(uint8_t *mem) {
     mem = add_cmd(mem, asm_addi(T0, ZERO, 0));
     mem = add_cmd(mem, asm_addi(T1, ZERO, 0));

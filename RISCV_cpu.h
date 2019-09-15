@@ -4,11 +4,26 @@
 #include <cstdint>
 #include "bit_tools.h"
 
-void set_register(uint32_t num, uint32_t value);
+class RiscvCpu {
+public:
+    RiscvCpu(bool randomize=true);
+    ~RiscvCpu() {};
+    uint32_t reg[32];
+    uint32_t pc;
 
-uint32_t read_register(uint32_t num);
+    void set_register(uint32_t num, uint32_t value);
 
-int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose = true);
+    uint32_t read_register(uint32_t num);
+
+    int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose = true);
+
+    void randomize_registers();
+
+private:
+    uint32_t load_cmd(uint8_t *mem, uint32_t pc);
+    uint32_t get_code(uint32_t ir);
+
+};
 
 enum Registers {
     ZERO = 0,
@@ -86,9 +101,8 @@ enum op_funct {
 };
 
 enum op_funct3 {
-    FUNC3_ADD = 0b000,
+    FUNC3_ADDSUB = 0b000,
     FUNC3_AND = 0b111,
-    FUNC3_SUB = 0b000,
     FUNC3_OR = 0b110,
     FUNC3_ADDI = 0b000,
     FUNC3_SLLI = 0b001,

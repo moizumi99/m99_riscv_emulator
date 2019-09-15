@@ -11,7 +11,7 @@ uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
     cmd.rs2 = rs2;
     cmd.rs1 = rs1;
     cmd.rd = rd;
-    cmd.funct3 = FUNC3_ADD;
+    cmd.funct3 = FUNC3_ADDSUB;
     return cmd.value();
 }
 
@@ -22,7 +22,7 @@ uint32_t asm_sub(uint32_t rd, uint32_t rs1, uint32_t rs2) {
     cmd.rs2 = rs2;
     cmd.rs1 = rs1;
     cmd.rd = rd;
-    cmd.funct3 = FUNC3_SUB;
+    cmd.funct3 = FUNC3_ADDSUB;
     return cmd.value();
 }
 
@@ -40,7 +40,7 @@ uint32_t asm_and(uint32_t rd, uint32_t rs1, uint32_t rs2) {
 // I_TYPE
 uint32_t asm_addi(uint32_t rd, uint32_t rs1, int32_t imm12) {
     i_type cmd;
-    cmd.imm12 = imm12;
+    cmd.imm12 = imm12 & 0xFFF;
     cmd.rd = rd;
     cmd.rs1 = rs1;
     cmd.opcode = OPCODE_ADDI;
@@ -145,7 +145,7 @@ uint32_t asm_lui(uint32_t rd, int32_t imm20) {
     u_type cmd;
     cmd.opcode = OPCODE_LUI;
     cmd.rd = rd;
-    cmd.imm20 = imm20;
+    cmd.imm20 = imm20 & 0x0FFFFF;
     return cmd.value();
 }
 

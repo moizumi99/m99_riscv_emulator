@@ -2,31 +2,55 @@
 #include "bit_tools.h"
 #include "instruction_encdec.h"
 #include <iostream>
+#include <random>
 
 using namespace std;
 
-uint32_t get_code(uint32_t ir);
+constexpr int kRegNum = 32;
 
-uint32_t reg[32];
-uint32_t pc;
+RiscvCpu::RiscvCpu(bool randomize) {
+    if (randomize) {
+        randomize_registers();
+    } else {
+        for (int i = 0; i < kRegNum; i++) {
+            reg[i] = 0;
+        }
+    }
+}
 
-void set_register(uint32_t num, uint32_t value) { reg[num] = value; }
+void RiscvCpu::set_register(uint32_t num, uint32_t value) { reg[num] = value; }
 
-uint32_t read_register(uint32_t num) { return reg[num]; }
-
-uint32_t load_cmd(uint8_t *mem, uint32_t pc) {
+uint32_t RiscvCpu::load_cmd(uint8_t *mem, uint32_t pc) {
     uint8_t *address = mem + pc;
     return *address | (*(address + 1) << 8) | (*(address + 2) << 16) |
            (*(address + 3) << 24);
 }
 
-int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
+
+uint32_t RiscvCpu::read_register(uint32_t num) {
+    return reg[num];
+}
+
+void RiscvCpu::randomize_registers() {
+    std::mt19937_64 gen(std::random_device{}());
+
+    for (int i = 1; i < 32; i++) {
+        reg[i] = gen() & 0xFFFFFFFF;
+    }
+    reg[0] = 0;
+}
+
+
+int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
     bool error_flag = false;
     bool end_flag = false;
 
     if (verbose) {
-        printf("   PC    Binary       T0       T1       T2       T3       A0       "
-               "A1       A2       A3       A4       A5       A6       A7\n");
+        printf("   PC    Binary       X0       X1       X2      X3       X3       X4       "
+               "X5       X6       X7       X8      X10      X11      X12      "
+               "X13      X14      X15      X16      X17      X18      X19      "
+               "X20      X21      X22      X23      X24      X25      X26      "
+               "X27      X28      X29      X30      X31\n");
     }
 
     pc = start_pc;
@@ -34,13 +58,19 @@ int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
         uint32_t next_pc;
         uint32_t ir;
 
-        // TODO: memory is byte aligned. Fix this.
         ir = load_cmd(mem, pc);
         if (verbose) {
-            printf(" %4x  %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x "
-                   "%08x %08x\n",
-                   pc, ir, reg[T0], reg[T1], reg[T2], reg[T3], reg[A0], reg[A1],
-                   reg[A2], reg[A3], reg[A4], reg[A5], reg[A6], reg[A7]);
+            printf(" %4x  %08x %08x %08x %08x %08x %08x %08x %08x %08x "
+                   "%08x %08x %08x %08x %08x %08x %08x %08x "
+                   "%08x %08x %08x %08x %08x %08x %08x %08x "
+                   "%08x %08x %08x %08x %08x %08x %08x %08x \n",
+                   pc, ir, reg[0], reg[1], reg[2], reg[3], reg[4], reg[5],
+                   reg[6], reg[7], reg[8], reg[9], reg[10], reg[11],
+                   reg[12], reg[13], reg[14], reg[15], reg[16], reg[17],
+                   reg[18], reg[19], reg[20], reg[21], reg[22], reg[23],
+                   reg[24], reg[25], reg[26], reg[27], reg[28], reg[29],
+                   reg[30], reg[31]
+                   );
         }
 
         next_pc = pc + 4;
@@ -66,13 +96,16 @@ int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
             case INST_AND:
                 reg[rd] = reg[rs1] & reg[rs2];
                 break;
+            case INST_SUB:
+                reg[rd] = reg[rs1] - reg[rs2];
+                break;
             case INST_ADDI:
                 reg[rd] = reg[rs1] + imm12;
                 break;
             case INST_SLLI:
                 reg[rd] = reg[rs1] << shamt;
                 // With RIV32I, shamt[5] must be zero.
-                error_flag |= (shamt >> 4) & 1;
+                error_flag |= (shamt >> 5) & 1;
                 break;
             case INST_BEQ:
                 if (reg[rs1] == reg[rs2]) {
@@ -130,17 +163,19 @@ int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
     return error_flag;
 }
 
-uint32_t get_code(uint32_t ir) {
+uint32_t RiscvCpu::get_code(uint32_t ir) {
     uint16_t opcode = bitcrop(ir, 7, 0);
     uint8_t funct3 = bitcrop(ir, 3, 12);
-    // uint8_t funct7 = bitcrop(ir, 7, 25);
+    uint8_t funct7 = bitcrop(ir, 7, 25);
     uint32_t instruction = 0;
     switch (opcode) {
         case OPCODE_ADD: // ADD, SUB
-            if (funct3 == FUNC3_ADD) {
-                instruction = INST_ADD;
-            } else if (funct3 == FUNC3_SUB) {
-                instruction = INST_SUB;
+            if (funct3 == FUNC3_ADDSUB) {
+                if (funct7 == FUNC_ADD) {
+                    instruction = INST_ADD;
+                } else if (funct7 == FUNC_SUB) {
+                    instruction = INST_SUB;
+                }
             } else if (funct3 == FUNC3_AND) {
                 instruction = INST_AND;
             }
