@@ -94,7 +94,7 @@ namespace cpu_test {
     }
 
     enum R_TYPE_TEST_LIST {
-        TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR,
+        TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA
     };
 
     bool
@@ -144,8 +144,25 @@ namespace cpu_test {
                 expected = value1 ^ value2;
                 test_case = "XOR";
                 break;
+            case TEST_SLL:
+                pointer = add_cmd(pointer, asm_sll(rd, rs1, rs2));
+                expected = value1 << (value2 & 0x1F);
+                test_case = "SLL";
+                break;
+            case TEST_SRL:
+                pointer = add_cmd(pointer, asm_srl(rd, rs1, rs2));
+                expected = static_cast<uint32_t>(value1) >> (value2 & 0x1F);
+                test_case = "SRL";
+                break;
+            case TEST_SRA:
+                pointer = add_cmd(pointer, asm_sra(rd, rs1, rs2));
+                expected = value1 >> (value2 & 0x1F);
+                test_case = "SRA";
+                break;
             default:
-                printf("Undefined test case.\n");
+                if (verbose) {
+                    printf("Undefined test case.\n");
+                }
                 return true;
         }
         pointer = add_cmd(pointer, asm_addi(A0, rd, 0));
@@ -170,7 +187,7 @@ namespace cpu_test {
 
     bool test_r_type_loop(bool verbose = true) {
         bool total_error = false;
-        for (int test_case: {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR}) {
+        for (int test_case: {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA}) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
                 int32_t rd = rand() & 0x1F;

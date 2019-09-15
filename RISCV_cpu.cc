@@ -6,6 +6,8 @@
 
 using namespace std;
 
+#define ASSERT(X) if (X) {printf("SRA sign error.\n"); error_flag = true;}
+
 constexpr int kRegNum = 32;
 
 RiscvCpu::RiscvCpu(bool randomize) {
@@ -70,7 +72,7 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                    reg[18], reg[19], reg[20], reg[21], reg[22], reg[23],
                    reg[24], reg[25], reg[26], reg[27], reg[28], reg[29],
                    reg[30], reg[31]
-                   );
+            );
         }
 
         next_pc = pc + 4;
@@ -104,6 +106,16 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 break;
             case INST_XOR:
                 reg[rd] = reg[rs1] ^ reg[rs2];
+                break;
+            case INST_SLL:
+                reg[rd] = reg[rs1] << (reg[rs2] & 0x1F);
+                break;
+            case INST_SRL:
+                reg[rd] = reg[rs1] >> (reg[rs2] & 0x1F);
+                break;
+            case INST_SRA:
+                reg[rd] = static_cast<int32_t>(reg[rs1]) >> (reg[rs2] & 0x1F);
+                ASSERT((reg[rs1] & 0x1F <= 0) || (reg[rs1] & 0x80000000 == 0));
                 break;
             case INST_ADDI:
                 reg[rd] = reg[rs1] + imm12;
@@ -157,6 +169,7 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
             case INST_LUI:
                 reg[rd] = (reg[rd] & 0x00000FFF) | (imm20 << 12);
                 break;
+            case INST_ERROR:
             default:
                 error_flag = true;
                 break;
@@ -169,6 +182,8 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
     return error_flag;
 }
 
+static int counter = 0;
+
 uint32_t RiscvCpu::get_code(uint32_t ir) {
     uint16_t opcode = bitcrop(ir, 7, 0);
     uint8_t funct3 = bitcrop(ir, 3, 12);
@@ -177,23 +192,23 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
     switch (opcode) {
         case OPCODE_ARITHLOG: // ADD, SUB
             if (funct3 == FUNC3_ADDSUB) {
-                if (funct7 == FUNC_ADD) {
-                    instruction = INST_ADD;
-                } else if (funct7 == FUNC_SUB) {
-                    instruction = INST_SUB;
-                }
+                instruction = (funct7 == FUNC_NORM) ? INST_ADD : INST_SUB;
             } else if (funct3 == FUNC3_AND) {
                 instruction = INST_AND;
             } else if (funct3 == FUNC3_OR) {
                 instruction = INST_OR;
             } else if (funct3 == FUNC3_XOR) {
                 instruction = INST_XOR;
-            }
+            } else if (funct3 == FUNC3_SR) {
+                instruction = (funct7 == FUNC_NORM) ? INST_SRL : INST_SRA;
+            } else if (funct3 == FUNC3_SL) {
+                instruction = INST_SLL;
+           }
             break;
         case OPCODE_ADDI: // ADDI, SUBI
-            if (funct3 == FUNC3_ADDI) {
+            if (funct3 == FUNC3_ADDSUB) {
                 instruction = INST_ADDI;
-            } else if (funct3 == FUNC3_SLLI) {
+            } else if (funct3 == FUNC3_SL) {
                 instruction = INST_SLLI;
             }
             break;
@@ -217,21 +232,24 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
             }
             break;
         case OPCODE_LD: // LW
-            if (funct3 == FUNC3_LW) {
+            if (funct3 == FUNC3_LS) {
                 instruction = INST_LW;
             }
             break;
         case OPCODE_S: // SW
-            if (funct3 == FUNC3_SW) {
+            if (funct3 == FUNC3_LS) {
                 instruction = INST_SW;
             }
             break;
         case OPCODE_LUI: // LUI
             instruction = INST_LUI;
+            break;
         default:
+            instruction = INST_ERROR;
             break;
     }
-    if (instruction == 0) {
+    if (instruction == INST_ERROR) {
+        printf("counter %d\n", counter);
         printf("Error decoding 0x%08x\n", ir);
     }
     return instruction;

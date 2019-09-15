@@ -6,7 +6,7 @@
 // R_TYPE
 uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
     r_type cmd;
-    cmd.funct7 = FUNC_ADD;
+    cmd.funct7 = FUNC_NORM;
     cmd.opcode = OPCODE_ARITHLOG;
     cmd.rs2 = rs2;
     cmd.rs1 = rs1;
@@ -17,7 +17,7 @@ uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
 
 uint32_t asm_sub(uint32_t rd, uint32_t rs1, uint32_t rs2) {
     r_type cmd;
-    cmd.funct7 = FUNC_SUB;
+    cmd.funct7 = FUNC_ALT;
     cmd.opcode = OPCODE_ARITHLOG;
     cmd.rs2 = rs2;
     cmd.rs1 = rs1;
@@ -28,7 +28,7 @@ uint32_t asm_sub(uint32_t rd, uint32_t rs1, uint32_t rs2) {
 
 uint32_t asm_and(uint32_t rd, uint32_t rs1, uint32_t rs2) {
     r_type cmd;
-    cmd.funct7 = FUNC_AND;
+    cmd.funct7 = FUNC_NORM;
     cmd.opcode = OPCODE_ARITHLOG;
     cmd.rs2 = rs2;
     cmd.rs1 = rs1;
@@ -39,7 +39,7 @@ uint32_t asm_and(uint32_t rd, uint32_t rs1, uint32_t rs2) {
 
 uint32_t asm_or(uint32_t rd, uint32_t rs1, uint32_t rs2) {
     r_type cmd;
-    cmd.funct7 = FUNC_OR;
+    cmd.funct7 = FUNC_NORM;
     cmd.opcode = OPCODE_ARITHLOG;
     cmd.rs2 = rs2;
     cmd.rs1 = rs1;
@@ -50,12 +50,45 @@ uint32_t asm_or(uint32_t rd, uint32_t rs1, uint32_t rs2) {
 
 uint32_t asm_xor(uint32_t rd, uint32_t rs1, uint32_t rs2) {
     r_type cmd;
-    cmd.funct7 = FUNC_XOR;
+    cmd.funct7 = FUNC_NORM;
     cmd.opcode = OPCODE_ARITHLOG;
     cmd.rs2 = rs2;
     cmd.rs1 = rs1;
     cmd.rd = rd;
     cmd.funct3 = FUNC3_XOR;
+    return cmd.value();
+}
+
+uint32_t asm_sll(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+    r_type cmd;
+    cmd.funct7 = FUNC_NORM;
+    cmd.opcode = OPCODE_ARITHLOG;
+    cmd.rs2 = rs2;
+    cmd.rs1 = rs1;
+    cmd.rd = rd;
+    cmd.funct3 = FUNC3_SL;
+    return cmd.value();
+}
+
+uint32_t asm_srl(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+    r_type cmd;
+    cmd.funct7 = FUNC_NORM;
+    cmd.opcode = OPCODE_ARITHLOG;
+    cmd.rs2 = rs2;
+    cmd.rs1 = rs1;
+    cmd.rd = rd;
+    cmd.funct3 = FUNC3_SR;
+    return cmd.value();
+}
+
+uint32_t asm_sra(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+    r_type cmd;
+    cmd.funct7 = FUNC_ALT;
+    cmd.opcode = OPCODE_ARITHLOG;
+    cmd.rs2 = rs2;
+    cmd.rs1 = rs1;
+    cmd.rd = rd;
+    cmd.funct3 = FUNC3_SR;
     return cmd.value();
 }
 
@@ -66,7 +99,7 @@ uint32_t asm_addi(uint32_t rd, uint32_t rs1, int32_t imm12) {
     cmd.rd = rd;
     cmd.rs1 = rs1;
     cmd.opcode = OPCODE_ADDI;
-    cmd.funct3 = FUNC3_ADDI;
+    cmd.funct3 = FUNC3_ADDSUB;
     return cmd.value();
 }
 
@@ -77,7 +110,7 @@ uint32_t asm_slli(uint32_t rd, uint32_t rs1, int32_t imm12) {
     cmd.rd = rd;
     cmd.rs1 = rs1;
     cmd.opcode = OPCODE_ADDI;
-    cmd.funct3 = FUNC3_SLLI;
+    cmd.funct3 = FUNC3_SL;
     return cmd.value();
 }
 
@@ -94,7 +127,7 @@ uint32_t asm_jalr(uint32_t rd, uint32_t rs1, int32_t offset12) {
 uint32_t asm_lw(uint32_t rd, uint32_t rs1, int32_t offset12) {
     i_type cmd;
     cmd.opcode = OPCODE_LD;
-    cmd.funct3 = FUNC3_LW;
+    cmd.funct3 = FUNC3_LS;
     cmd.rd = rd;
     cmd.rs1 = rs1;
     cmd.imm12 = offset12;
@@ -155,7 +188,7 @@ uint32_t asm_jal(uint32_t rd, int32_t offset21) {
 uint32_t asm_sw(uint32_t rs1, uint32_t rs2, int32_t offset12) {
     s_type cmd;
     cmd.opcode = OPCODE_S;
-    cmd.funct3 = FUNC3_SW;
+    cmd.funct3 = FUNC3_LS;
     cmd.rs2 = rs2;
     cmd.rs1 = rs1;
     cmd.imm12 = offset12;
