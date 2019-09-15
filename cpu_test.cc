@@ -92,8 +92,11 @@ namespace cpu_test {
     }
 
     void print_i_type_instruction_message(int test_case, bool error) {
-        map<int, const string> test_name = {{TEST_ADDI, "ADDI"}, {TEST_ANDI, "ANDI"}, {TEST_ORI, "ORI"},
-                                            {TEST_XORI, "XORI"}, {TEST_SLLI, "SLLI"}};
+        map<int, const string> test_name = {{TEST_ADDI, "ADDI"},
+                                            {TEST_ANDI, "ANDI"},
+                                            {TEST_ORI,  "ORI"},
+                                            {TEST_XORI, "XORI"},
+                                            {TEST_SLLI, "SLLI"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
@@ -121,7 +124,7 @@ namespace cpu_test {
     }
 
     enum R_TYPE_TEST_LIST {
-        TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT
+        TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU
     };
 
     bool
@@ -191,6 +194,11 @@ namespace cpu_test {
                 expected = (value1 < value2) ? 1 : 0;
                 test_case = "SLT";
                 break;
+            case TEST_SLTU:
+                pointer = add_cmd(pointer, asm_sltu(rd, rs1, rs2));
+                expected = (static_cast<uint32_t>(value1) < static_cast<uint32_t>(value2)) ? 1 : 0;
+                test_case = "SLTU";
+                break;
             default:
                 if (verbose) {
                     printf("Undefined test case.\n");
@@ -218,15 +226,24 @@ namespace cpu_test {
     }
 
     void print_r_type_instruction_message(int test_case, bool error) {
-        map<int, const string> test_name = {{TEST_ADD, "ADD"}, {TEST_SUB, "SUB"}, {TEST_AND, "AND"},
-                                           {TEST_OR, "OR"}, {TEST_XOR, "XOR"}, {TEST_SLL, "SLL"},
-                                           {TEST_SRL, "SRL"}, {TEST_SRA, "SRA"}, {TEST_SLT, "SLT"}};
+        map<int, const string> test_name = {{TEST_ADD,  "ADD"},
+                                            {TEST_SUB,  "SUB"},
+                                            {TEST_AND,  "AND"},
+                                            {TEST_OR,   "OR"},
+                                            {TEST_XOR,  "XOR"},
+                                            {TEST_SLL,  "SLL"},
+                                            {TEST_SRL,  "SRL"},
+                                            {TEST_SRA,  "SRA"},
+                                            {TEST_SLT,  "SLT"},
+                                            {TEST_SLTU, "SLTU"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
     bool test_r_type_loop(bool verbose = true) {
         bool total_error = false;
-        for (int test_case: {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT}) {
+        int test_sets[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
+                           TEST_SLTU};
+        for (int test_case: test_sets) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
                 int32_t rd = rand() & 0x1F;
@@ -274,7 +291,7 @@ namespace cpu_test {
             if (test_error && verbose) {
                 test_error = test_lui(value, true);
             }
-           error |= test_error;
+            error |= test_error;
         }
         if (verbose) {
             printf("LUI test %s.\n", error ? "failsed" : "passed");

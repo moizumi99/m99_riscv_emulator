@@ -120,6 +120,9 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
             case INST_SLT:
                 reg[rd] = (static_cast<int32_t>(reg[rs1] < static_cast<int32_t>(reg[rs2]))) ? 1 : 0;
                 break;
+            case INST_SLTU:
+                reg[rd] = (reg[rs1] < reg[rs2]) ? 1 : 0;
+                break;
             case INST_ADDI:
                 reg[rd] = reg[rs1] + imm12;
                 break;
@@ -194,8 +197,6 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
     return error_flag;
 }
 
-static int counter = 0;
-
 uint32_t RiscvCpu::get_code(uint32_t ir) {
     uint16_t opcode = bitcrop(ir, 7, 0);
     uint8_t funct3 = bitcrop(ir, 3, 12);
@@ -215,8 +216,10 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
                 instruction = (funct7 == FUNC_NORM) ? INST_SRL : INST_SRA;
             } else if (funct3 == FUNC3_SL) {
                 instruction = INST_SLL;
-           } else if (funct3 == FUNC3_SLT) {
+            } else if (funct3 == FUNC3_SLT) {
                 instruction = INST_SLT;
+            } else if (funct3 == FUNC3_SLTU) {
+                instruction = INST_SLTU;
             }
             break;
         case OPCODE_ADDI: // ADDI, SUBI
@@ -269,7 +272,6 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
             break;
     }
     if (instruction == INST_ERROR) {
-        printf("counter %d\n", counter);
         printf("Error decoding 0x%08x\n", ir);
     }
     return instruction;
