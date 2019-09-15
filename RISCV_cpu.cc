@@ -99,6 +99,12 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
             case INST_SUB:
                 reg[rd] = reg[rs1] - reg[rs2];
                 break;
+            case INST_OR:
+                reg[rd] = reg[rs1] | reg[rs2];
+                break;
+            case INST_XOR:
+                reg[rd] = reg[rs1] ^ reg[rs2];
+                break;
             case INST_ADDI:
                 reg[rd] = reg[rs1] + imm12;
                 break;
@@ -169,7 +175,7 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
     uint8_t funct7 = bitcrop(ir, 7, 25);
     uint32_t instruction = 0;
     switch (opcode) {
-        case OPCODE_ADD: // ADD, SUB
+        case OPCODE_ARITHLOG: // ADD, SUB
             if (funct3 == FUNC3_ADDSUB) {
                 if (funct7 == FUNC_ADD) {
                     instruction = INST_ADD;
@@ -178,6 +184,10 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
                 }
             } else if (funct3 == FUNC3_AND) {
                 instruction = INST_AND;
+            } else if (funct3 == FUNC3_OR) {
+                instruction = INST_OR;
+            } else if (funct3 == FUNC3_XOR) {
+                instruction = INST_XOR;
             }
             break;
         case OPCODE_ADDI: // ADDI, SUBI

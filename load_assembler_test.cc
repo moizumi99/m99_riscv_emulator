@@ -241,11 +241,11 @@ namespace load_assembler_test {
 
     bool test_r_type(bool verbose = false) {
         enum TEST_LIST {
-            TEST_ADD, TEST_SUB, TEST_AND
+            TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR
         };
         bool total_error = false;
 
-        for (int testcase : {TEST_ADD, TEST_SUB, TEST_AND}) {
+        for (int testcase : {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR}) {
             bool error = false;
             uint32_t base;
             string cmdname;
@@ -261,6 +261,14 @@ namespace load_assembler_test {
                 case TEST_AND:
                     base = 0b00000000000000000111000000110011;
                     cmdname = "AND";
+                    break;
+                case TEST_OR:
+                    base = 0b00000000000000000110000000110011;
+                    cmdname = "OR";
+                    break;
+                case TEST_XOR:
+                    base = 0b00000000000000000100000000110011;
+                    cmdname = "XOR";
                     break;
                 default:
                     printf("Test case is node defined yet\n");
@@ -285,6 +293,12 @@ namespace load_assembler_test {
                         break;
                     case TEST_AND:
                         cmd = asm_and(rd, rs1, rs2);
+                        break;
+                    case TEST_OR:
+                        cmd = asm_or(rd, rs1, rs2);
+                        break;
+                    case TEST_XOR:
+                        cmd = asm_xor(rd, rs1, rs2);
                         break;
                     default:
                         break;

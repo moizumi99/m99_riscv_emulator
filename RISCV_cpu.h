@@ -79,7 +79,7 @@ enum Registers {
 };
 
 enum op_label {
-    OPCODE_ADD = 0b0110011,
+    OPCODE_ARITHLOG = 0b0110011,
     OPCODE_ADDI = 0b0010011,
     OPCODE_B = 0b1100011,
     OPCODE_LD = 0b0000011,
@@ -94,6 +94,7 @@ enum op_funct {
     FUNC_AND = 0b0000000,
     FUNC_SUB = 0b0100000,
     FUNC_OR = 0b0000000,
+    FUNC_XOR = 0b0000000,
     FUNC_ADDI = 0b0000000,
     FUNC_SLLI = 0b000000,
     FUNC_SRLI = 0b000000,
@@ -104,6 +105,7 @@ enum op_funct3 {
     FUNC3_ADDSUB = 0b000,
     FUNC3_AND = 0b111,
     FUNC3_OR = 0b110,
+    FUNC3_XOR = 0b100,
     FUNC3_ADDI = 0b000,
     FUNC3_SLLI = 0b001,
     FUNC3_SRLI = 0b101,
@@ -122,6 +124,8 @@ enum instruction {
     INST_ADD,
     INST_AND,
     INST_SUB,
+    INST_OR,
+    INST_XOR,
     INST_ADDI,
     INST_SLLI,
     INST_BEQ,

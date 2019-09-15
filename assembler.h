@@ -10,6 +10,10 @@ uint32_t asm_sub(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
 uint32_t asm_and(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
+uint32_t asm_or(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t asm_xor(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
 uint32_t asm_addi(uint32_t rd, uint32_t rs1, int32_t imm12);
 
 uint32_t asm_slli(uint32_t rd, uint32_t rs1, int32_t imm12);

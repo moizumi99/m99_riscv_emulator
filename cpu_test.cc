@@ -94,7 +94,7 @@ namespace cpu_test {
     }
 
     enum R_TYPE_TEST_LIST {
-        TEST_ADD, TEST_SUB, TEST_AND
+        TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR,
     };
 
     bool
@@ -134,6 +134,16 @@ namespace cpu_test {
                 expected = value1 & value2;
                 test_case = "AND";
                 break;
+            case TEST_OR:
+                pointer = add_cmd(pointer, asm_or(rd, rs1, rs2));
+                expected = value1 | value2;
+                test_case = "OR";
+                break;
+            case TEST_XOR:
+                pointer = add_cmd(pointer, asm_xor(rd, rs1, rs2));
+                expected = value1 ^ value2;
+                test_case = "XOR";
+                break;
             default:
                 printf("Undefined test case.\n");
                 return true;
@@ -160,7 +170,7 @@ namespace cpu_test {
 
     bool test_r_type_loop(bool verbose = true) {
         bool total_error = false;
-        for (int test_case: {TEST_ADD, TEST_SUB, TEST_AND}) {
+        for (int test_case: {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR}) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
                 int32_t rd = rand() & 0x1F;
