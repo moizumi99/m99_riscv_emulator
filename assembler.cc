@@ -166,6 +166,7 @@ uint32_t asm_slli(uint32_t rd, uint32_t rs1, int32_t imm12) {
     cmd.funct3 = FUNC3_SL;
     return cmd.value();
 }
+
 uint32_t asm_srli(uint32_t rd, uint32_t rs1, int32_t imm12) {
     i_type cmd;
     // SRLI immediate is 6 bit wide.
@@ -176,7 +177,6 @@ uint32_t asm_srli(uint32_t rd, uint32_t rs1, int32_t imm12) {
     cmd.funct3 = FUNC3_SR;
     return cmd.value();
 }
-
 
 uint32_t asm_srai(uint32_t rd, uint32_t rs1, int32_t imm12) {
     i_type cmd;
@@ -189,6 +189,26 @@ uint32_t asm_srai(uint32_t rd, uint32_t rs1, int32_t imm12) {
     cmd.rs1 = rs1;
     cmd.opcode = OPCODE_ARITHLOG_I;
     cmd.funct3 = FUNC3_SR;
+    return cmd.value();
+}
+
+uint32_t asm_slti(uint32_t rd, uint32_t rs1, int32_t imm12) {
+    i_type cmd;
+    cmd.imm12 = imm12;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.opcode = OPCODE_ARITHLOG_I;
+    cmd.funct3 = FUNC3_SLT;
+    return cmd.value();
+}
+
+uint32_t asm_sltiu(uint32_t rd, uint32_t rs1, int32_t imm12) {
+    i_type cmd;
+    cmd.imm12 = imm12;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.opcode = OPCODE_ARITHLOG_I;
+    cmd.funct3 = FUNC3_SLTU;
     return cmd.value();
 }
 

@@ -92,9 +92,6 @@ enum op_label {
 enum op_funct {
     FUNC_NORM = 0b0000000,
     FUNC_ALT = 0b0100000,
-    FUNC_SLLI = 0b000000,
-    FUNC_SRLI = 0b000000,
-    FUNC_SRAI = 0b010000,
 };
 
 enum op_funct3 {
@@ -133,6 +130,8 @@ enum instruction {
     INST_SLLI,
     INST_SRLI,
     INST_SRAI,
+    INST_SLTI,
+    INST_SLTIU,
     INST_BEQ,
     INST_BGE,
     INST_BLTU,

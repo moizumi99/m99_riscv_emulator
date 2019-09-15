@@ -245,7 +245,8 @@ namespace load_assembler_test {
         };
         bool total_error = false;
 
-        int test_set[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU};
+        int test_set[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
+                          TEST_SLTU};
         for (int testcase : test_set) {
             bool error = false;
             uint32_t base;
@@ -354,10 +355,21 @@ namespace load_assembler_test {
 
     bool test_i_type(bool verbose = false) {
         enum TEST_LIST {
-            TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI
+            TEST_ADDI,
+            TEST_SLLI,
+            TEST_SRLI,
+            TEST_SRAI,
+            TEST_LW,
+            TEST_JALR,
+            TEST_ANDI,
+            TEST_ORI,
+            TEST_XORI,
+            TEST_SLTI,
+            TEST_SLTIU
         };
         bool total_error = false;
-        int test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI};
+        int test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI,
+                          TEST_XORI, TEST_SLTI, TEST_SLTIU};
         for (int test_case : test_set) {
             bool error = false;
             uint32_t base;
@@ -379,15 +391,7 @@ namespace load_assembler_test {
                     base = 0b01000000000000000101000000010011;
                     cmdname = "SRAI";
                     break;
-                case TEST_LW:
-                    base = 0b00000000000000000010000000000011;
-                    cmdname = "LW";
-                    break;
-                case TEST_JALR:
-                    base = 0b00000000000000000000000001100111;
-                    cmdname = "JALR";
-                    break;
-                case TEST_ANDI:
+               case TEST_ANDI:
                     base = 0b00000000000000000111000000010011;
                     cmdname = "ANDI";
                     break;
@@ -398,6 +402,22 @@ namespace load_assembler_test {
                 case TEST_XORI:
                     base = 0b00000000000000000100000000010011;
                     cmdname = "XORI";
+                    break;
+                case TEST_SLTI:
+                    base = 0b00000000000000000010000000010011;
+                    cmdname = "SLTI";
+                    break;
+                case TEST_SLTIU:
+                    base = 0b00000000000000000011000000010011;
+                    cmdname = "SLTIU";
+                    break;
+                case TEST_LW:
+                    base = 0b00000000000000000010000000000011;
+                    cmdname = "LW";
+                    break;
+                case TEST_JALR:
+                    base = 0b00000000000000000000000001100111;
+                    cmdname = "JALR";
                     break;
                 default:
                     printf("Test case is node defined yet\n");
@@ -439,6 +459,12 @@ namespace load_assembler_test {
                         cmd = asm_srai(rd, rs1, imm12);
                         // SRAI immediate is 6 bit.
                         imm12 &= 0b0111111;
+                        break;
+                    case TEST_SLTI:
+                        cmd = asm_slti(rd, rs1, imm12);
+                        break;
+                    case TEST_SLTIU:
+                        cmd = asm_sltiu(rd, rs1, imm12);
                         break;
                     case TEST_LW:
                         cmd = asm_lw(rd, rs1, imm12);

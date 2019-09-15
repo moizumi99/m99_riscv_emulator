@@ -27,7 +27,7 @@ namespace cpu_test {
     }
 
     enum ITYPE_TEST_LIST {
-        TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI
+        TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI, TEST_SLTIU
     };
 
     bool test_i_type(int test_type, int32_t rd, int32_t rs1, int32_t value, int32_t imm12, bool verbose) {
@@ -80,6 +80,16 @@ namespace cpu_test {
                 expected = value >> imm12;
                 test_case = "SRAI";
                 break;
+            case TEST_SLTI:
+                pointer = add_cmd(pointer, asm_slti(rd, rs1, imm12));
+                expected = value < imm12 ? 1 : 0;
+                test_case = "SLTI";
+                break;
+            case TEST_SLTIU:
+                pointer = add_cmd(pointer, asm_sltiu(rd, rs1, imm12));
+                expected = static_cast<uint32_t>(value) < static_cast<uint32_t >(imm12) ? 1 : 0;
+                test_case = "SLTIU";
+                break;
             default:
                 printf("I TYPE Test case undefined.\n");
                 return true;
@@ -104,25 +114,29 @@ namespace cpu_test {
     }
 
     void print_i_type_instruction_message(int test_case, bool error) {
-        map<int, const string> test_name = {{TEST_ADDI, "ADDI"},
-                                            {TEST_ANDI, "ANDI"},
-                                            {TEST_ORI,  "ORI"},
-                                            {TEST_XORI, "XORI"},
-                                            {TEST_SLLI, "SLLI"},
-                                            {TEST_SRLI, "SRLI"},
-                                            {TEST_SRAI, "SRAI"}};
+        map<int, const string> test_name = {{TEST_ADDI,  "ADDI"},
+                                            {TEST_ANDI,  "ANDI"},
+                                            {TEST_ORI,   "ORI"},
+                                            {TEST_XORI,  "XORI"},
+                                            {TEST_SLLI,  "SLLI"},
+                                            {TEST_SRLI,  "SRLI"},
+                                            {TEST_SRAI,  "SRAI"},
+                                            {TEST_SLTI,  "SLTI"},
+                                            {TEST_SLTIU, "SLTIU"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
     bool test_i_type_loop(bool verbose) {
         bool total_error = false;
-        for (int test_case: {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI}) {
+        int test_set[] = {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI,
+                          TEST_SLTIU};
+        for (int test_case: test_set) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
                 uint32_t rd = rand() & 0x1F;
                 uint32_t rs1 = rand() & 0x1F;
                 int32_t value = rand();
-                int32_t imm12 = rand() & 0x0FFF;
+                int32_t imm12 = sext(rand() & 0x0FFF, 12);
                 bool test_error = test_i_type(test_case, rd, rs1, value, imm12, false);
                 if (test_error) {
                     test_error |= test_i_type(test_case, rd, rs1, value, imm12, true);

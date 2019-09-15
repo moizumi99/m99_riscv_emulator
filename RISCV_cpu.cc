@@ -147,6 +147,12 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 reg[rd] = static_cast<int32_t>(reg[rs1]) >> shamt;
                 ASSERT(shamt >> 5 & 1 == 0);
                 break;
+            case INST_SLTI:
+                reg[rd] = static_cast<int32_t>(reg[rs1]) < imm12 ? 1 : 0;
+                break;
+            case INST_SLTIU:
+                reg[rd] = reg[rs1] < static_cast<uint32_t>(imm12) ? 1 : 0;
+                break;
             case INST_BEQ:
                 if (reg[rs1] == reg[rs2]) {
                     next_pc = pc + imm13;
@@ -242,6 +248,10 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
                 instruction = INST_SLLI;
             } else if (funct3 == FUNC3_SR) {
                 instruction = (funct7 == FUNC_NORM) ? INST_SRLI : INST_SRAI;
+            } else if (funct3 == FUNC3_SLT) {
+                instruction = INST_SLTI;
+            } else if (funct3 == FUNC3_SLTU) {
+                instruction = INST_SLTIU;
             }
             break;
         case OPCODE_B: // beq, bltu, bge, bne
