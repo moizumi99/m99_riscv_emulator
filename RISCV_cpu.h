@@ -80,7 +80,7 @@ enum Registers {
 
 enum op_label {
     OPCODE_ARITHLOG = 0b0110011,
-    OPCODE_ADDI = 0b0010011,
+    OPCODE_ARITHLOG_I = 0b0010011,
     OPCODE_B = 0b1100011,
     OPCODE_LD = 0b0000011,
     OPCODE_J = 0b1101111,
@@ -131,6 +131,8 @@ enum instruction {
     INST_ORI,
     INST_XORI,
     INST_SLLI,
+    INST_SRLI,
+    INST_SRAI,
     INST_BEQ,
     INST_BGE,
     INST_BLTU,

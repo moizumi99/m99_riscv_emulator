@@ -137,8 +137,15 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 break;
             case INST_SLLI:
                 reg[rd] = reg[rs1] << shamt;
-                // With RIV32I, shamt[5] must be zero.
-                error_flag |= (shamt >> 5) & 1;
+                ASSERT(shamt >> 5 & 1 == 0);
+                break;
+            case INST_SRLI:
+                reg[rd] = reg[rs1] >> shamt;
+                ASSERT(shamt >> 5 & 1 == 0);
+                break;
+            case INST_SRAI:
+                reg[rd] = static_cast<int32_t>(reg[rs1]) >> shamt;
+                ASSERT(shamt >> 5 & 1 == 0);
                 break;
             case INST_BEQ:
                 if (reg[rs1] == reg[rs2]) {
@@ -222,7 +229,7 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
                 instruction = INST_SLTU;
             }
             break;
-        case OPCODE_ADDI: // ADDI, SUBI
+        case OPCODE_ARITHLOG_I: // ADDI, SUBI
             if (funct3 == FUNC3_ADDSUB) {
                 instruction = INST_ADDI;
             } else if (funct3 == FUNC3_AND) {
@@ -233,6 +240,8 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
                 instruction = INST_XORI;
             } else if (funct3 == FUNC3_SL) {
                 instruction = INST_SLLI;
+            } else if (funct3 == FUNC3_SR) {
+                instruction = (funct7 == FUNC_NORM) ? INST_SRLI : INST_SRAI;
             }
             break;
         case OPCODE_B: // beq, bltu, bge, bne

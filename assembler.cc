@@ -120,7 +120,7 @@ uint32_t asm_addi(uint32_t rd, uint32_t rs1, int32_t imm12) {
     cmd.imm12 = imm12 & 0xFFF;
     cmd.rd = rd;
     cmd.rs1 = rs1;
-    cmd.opcode = OPCODE_ADDI;
+    cmd.opcode = OPCODE_ARITHLOG_I;
     cmd.funct3 = FUNC3_ADDSUB;
     return cmd.value();
 }
@@ -130,7 +130,7 @@ uint32_t asm_andi(uint32_t rd, uint32_t rs1, int32_t imm12) {
     cmd.imm12 = imm12 & 0xFFF;
     cmd.rd = rd;
     cmd.rs1 = rs1;
-    cmd.opcode = OPCODE_ADDI;
+    cmd.opcode = OPCODE_ARITHLOG_I;
     cmd.funct3 = FUNC3_AND;
     return cmd.value();
 }
@@ -140,7 +140,7 @@ uint32_t asm_ori(uint32_t rd, uint32_t rs1, int32_t imm12) {
     cmd.imm12 = imm12 & 0xFFF;
     cmd.rd = rd;
     cmd.rs1 = rs1;
-    cmd.opcode = OPCODE_ADDI;
+    cmd.opcode = OPCODE_ARITHLOG_I;
     cmd.funct3 = FUNC3_OR;
     return cmd.value();
 }
@@ -150,7 +150,7 @@ uint32_t asm_xori(uint32_t rd, uint32_t rs1, int32_t imm12) {
     cmd.imm12 = imm12 & 0xFFF;
     cmd.rd = rd;
     cmd.rs1 = rs1;
-    cmd.opcode = OPCODE_ADDI;
+    cmd.opcode = OPCODE_ARITHLOG_I;
     cmd.funct3 = FUNC3_XOR;
     return cmd.value();
 }
@@ -158,11 +158,37 @@ uint32_t asm_xori(uint32_t rd, uint32_t rs1, int32_t imm12) {
 uint32_t asm_slli(uint32_t rd, uint32_t rs1, int32_t imm12) {
     i_type cmd;
     // SLLI immediate is 6 bit wide.
+    imm12 &= 0b0111111;
     cmd.imm12 = imm12 & 0b0111111;
     cmd.rd = rd;
     cmd.rs1 = rs1;
-    cmd.opcode = OPCODE_ADDI;
+    cmd.opcode = OPCODE_ARITHLOG_I;
     cmd.funct3 = FUNC3_SL;
+    return cmd.value();
+}
+uint32_t asm_srli(uint32_t rd, uint32_t rs1, int32_t imm12) {
+    i_type cmd;
+    // SRLI immediate is 6 bit wide.
+    cmd.imm12 = imm12 & 0b0111111;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.opcode = OPCODE_ARITHLOG_I;
+    cmd.funct3 = FUNC3_SR;
+    return cmd.value();
+}
+
+
+uint32_t asm_srai(uint32_t rd, uint32_t rs1, int32_t imm12) {
+    i_type cmd;
+    // SRAI immediate is 6 bit wide.
+    imm12 &= 0b0111111;
+    // SRAI imm12 top 6 bit is same as funct7
+    imm12 |= (FUNC_ALT >> 1) << 6;
+    cmd.imm12 = imm12;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.opcode = OPCODE_ARITHLOG_I;
+    cmd.funct3 = FUNC3_SR;
     return cmd.value();
 }
 

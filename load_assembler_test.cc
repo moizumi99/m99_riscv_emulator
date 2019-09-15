@@ -354,11 +354,11 @@ namespace load_assembler_test {
 
     bool test_i_type(bool verbose = false) {
         enum TEST_LIST {
-            TEST_ADDI, TEST_SLLI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI
+            TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI
         };
         bool total_error = false;
-
-        for (int test_case : {TEST_ADDI, TEST_SLLI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI}) {
+        int test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI};
+        for (int test_case : test_set) {
             bool error = false;
             uint32_t base;
             string cmdname;
@@ -370,6 +370,14 @@ namespace load_assembler_test {
                 case TEST_SLLI:
                     base = 0b00000000000000000001000000010011;
                     cmdname = "SLLI";
+                    break;
+                case TEST_SRLI:
+                    base = 0b00000000000000000101000000010011;
+                    cmdname = "SRLI";
+                    break;
+                case TEST_SRAI:
+                    base = 0b01000000000000000101000000010011;
+                    cmdname = "SRAI";
                     break;
                 case TEST_LW:
                     base = 0b00000000000000000010000000000011;
@@ -420,6 +428,16 @@ namespace load_assembler_test {
                     case TEST_SLLI:
                         cmd = asm_slli(rd, rs1, imm12);
                         // SLLI immediate is 6 bit.
+                        imm12 &= 0b0111111;
+                        break;
+                    case TEST_SRLI:
+                        cmd = asm_srli(rd, rs1, imm12);
+                        // SRLI immediate is 6 bit.
+                        imm12 &= 0b0111111;
+                        break;
+                    case TEST_SRAI:
+                        cmd = asm_srai(rd, rs1, imm12);
+                        // SRAI immediate is 6 bit.
                         imm12 &= 0b0111111;
                         break;
                     case TEST_LW:

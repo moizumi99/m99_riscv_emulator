@@ -1,5 +1,6 @@
 #include "instruction_encdec.h"
 #include "bit_tools.h"
+#include "RISCV_cpu.h"
 #include <cstdint>
 
 uint32_t r_type::value() {
@@ -26,11 +27,15 @@ uint32_t i_type::value() {
 };
 
 void i_type::set_value(uint32_t value) {
-    imm12 = get_imm12(value);
-    rs1 = bitcrop(value, 5, 15);
-    funct3 = bitcrop(value, 3, 12);
-    rd = bitcrop(value, 5, 7);
     opcode = bitcrop(value, 7, 0);
+    funct3 = bitcrop(value, 3, 12);
+    imm12 = get_imm12(value);
+    // For SLLI, SRLI, SRAI, only the lower 6 bits are relevant.
+    if (opcode == OPCODE_ARITHLOG_I and (funct3 == FUNC3_SR || funct3 == FUNC3_SL)) {
+        imm12 &= 0b0111111;
+    }
+    rs1 = bitcrop(value, 5, 15);
+    rd = bitcrop(value, 5, 7);
 };
 
 uint32_t s_type::value() {
