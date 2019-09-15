@@ -117,6 +117,9 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 reg[rd] = static_cast<int32_t>(reg[rs1]) >> (reg[rs2] & 0x1F);
                 ASSERT((reg[rs1] & 0x1F <= 0) || (reg[rs1] & 0x80000000 == 0));
                 break;
+            case INST_SLT:
+                reg[rd] = (static_cast<int32_t>(reg[rs1] < static_cast<int32_t>(reg[rs2]))) ? 1 : 0;
+                break;
             case INST_ADDI:
                 reg[rd] = reg[rs1] + imm12;
                 break;
@@ -212,7 +215,9 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
                 instruction = (funct7 == FUNC_NORM) ? INST_SRL : INST_SRA;
             } else if (funct3 == FUNC3_SL) {
                 instruction = INST_SLL;
-           }
+           } else if (funct3 == FUNC3_SLT) {
+                instruction = INST_SLT;
+            }
             break;
         case OPCODE_ADDI: // ADDI, SUBI
             if (funct3 == FUNC3_ADDSUB) {

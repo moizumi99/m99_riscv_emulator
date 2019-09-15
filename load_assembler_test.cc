@@ -241,11 +241,12 @@ namespace load_assembler_test {
 
     bool test_r_type(bool verbose = false) {
         enum TEST_LIST {
-            TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA
+            TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
         };
         bool total_error = false;
 
-        for (int testcase : {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA}) {
+        int test_set[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT};
+        for (int testcase : test_set) {
             bool error = false;
             uint32_t base;
             string cmdname;
@@ -281,6 +282,10 @@ namespace load_assembler_test {
                 case TEST_SRA:
                     base = 0b01000000000000000101000000110011;
                     cmdname = "SRA";
+                    break;
+                case TEST_SLT:
+                    base = 0b00000000000000000010000000110011;
+                    cmdname = "SLT";
                     break;
                 default:
                     printf("Test case is node defined yet\n");
@@ -320,6 +325,9 @@ namespace load_assembler_test {
                         break;
                     case TEST_SRA:
                         cmd = asm_sra(rd, rs1, rs2);
+                        break;
+                    case TEST_SLT:
+                        cmd = asm_slt(rd, rs1, rs2);
                         break;
                     default:
                         break;
