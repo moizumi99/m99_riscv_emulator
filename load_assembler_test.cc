@@ -245,9 +245,9 @@ namespace load_assembler_test {
         };
         bool total_error = false;
 
-        int test_set[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
+        TEST_LIST test_set[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
                           TEST_SLTU};
-        for (int testcase : test_set) {
+        for (TEST_LIST testcase : test_set) {
             bool error = false;
             uint32_t base;
             string cmdname;
@@ -368,9 +368,9 @@ namespace load_assembler_test {
             TEST_SLTIU
         };
         bool total_error = false;
-        int test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI,
+        TEST_LIST test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI,
                           TEST_XORI, TEST_SLTI, TEST_SLTIU};
-        for (int test_case : test_set) {
+        for (TEST_LIST test_case : test_set) {
             bool error = false;
             uint32_t base;
             string cmdname;
@@ -494,7 +494,7 @@ namespace load_assembler_test {
         };
         bool total_error = false;
 
-        for (int testcase : {TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE}) {
+        for (TEST_LIST testcase : {TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE}) {
             bool error = false;
             uint32_t base;
             string cmdname;
@@ -563,7 +563,7 @@ namespace load_assembler_test {
         };
         bool total_error = false;
 
-        for (int testcase : {TEST_JAL}) {
+        for (TEST_LIST testcase : {TEST_JAL}) {
             bool error = false;
             uint32_t base;
             string cmdname;
@@ -608,7 +608,7 @@ namespace load_assembler_test {
         };
         bool total_error = false;
 
-        for (int testcase : {TEST_SW}) {
+        for (TEST_LIST testcase : {TEST_SW}) {
             bool error = false;
             uint32_t base;
             string cmdname;
@@ -689,7 +689,7 @@ namespace load_assembler_test {
         };
         bool total_error = false;
 
-        for (int testcase : {TEST_LUI}) {
+        for (TEST_LIST testcase : {TEST_LUI}) {
             bool error = false;
             uint32_t base;
             string cmdname;

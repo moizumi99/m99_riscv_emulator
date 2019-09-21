@@ -26,11 +26,11 @@ namespace cpu_test {
         printf(" Expected %d, Actual %d\n", expected, actual);
     }
 
-    enum ITYPE_TEST_LIST {
+    enum ITYPE_TEST {
         TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI, TEST_SLTIU
     };
 
-    bool test_i_type(int test_type, int32_t rd, int32_t rs1, int32_t value, int32_t imm12, bool verbose) {
+    bool test_i_type(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int32_t imm12, bool verbose) {
         bool error = false;
         int32_t expected;
         string test_case = "";
@@ -113,24 +113,24 @@ namespace cpu_test {
         return error;
     }
 
-    void print_i_type_instruction_message(int test_case, bool error) {
-        map<int, const string> test_name = {{TEST_ADDI,  "ADDI"},
-                                            {TEST_ANDI,  "ANDI"},
-                                            {TEST_ORI,   "ORI"},
-                                            {TEST_XORI,  "XORI"},
-                                            {TEST_SLLI,  "SLLI"},
-                                            {TEST_SRLI,  "SRLI"},
-                                            {TEST_SRAI,  "SRAI"},
-                                            {TEST_SLTI,  "SLTI"},
-                                            {TEST_SLTIU, "SLTIU"}};
+    void print_i_type_instruction_message(ITYPE_TEST test_case, bool error) {
+        map<ITYPE_TEST , const string> test_name = {{TEST_ADDI, "ADDI"},
+                                                    {TEST_ANDI, "ANDI"},
+                                                    {TEST_ORI,  "ORI"},
+                                                    {TEST_XORI, "XORI"},
+                                                    {TEST_SLLI, "SLLI"},
+                                                    {TEST_SRLI, "SRLI"},
+                                                    {TEST_SRAI, "SRAI"},
+                                                    {TEST_SLTI, "SLTI"},
+                                                    {TEST_SLTIU, "SLTIU"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
     bool test_i_type_loop(bool verbose) {
         bool total_error = false;
-        int test_set[] = {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI,
+        ITYPE_TEST test_set[] = {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI,
                           TEST_SLTIU};
-        for (int test_case: test_set) {
+        for (ITYPE_TEST test_case: test_set) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
                 uint32_t rd = rand() & 0x1F;
@@ -151,12 +151,12 @@ namespace cpu_test {
         return total_error;
     }
 
-    enum R_TYPE_TEST_LIST {
+    enum R_TYPE_TEST {
         TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU
     };
 
     bool
-    test_r_type(int test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t value1, int32_t value2, bool verbose) {
+    test_r_type(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t value1, int32_t value2, bool verbose) {
         bool error = false;
         int32_t expected;
         string test_case = "";
@@ -253,8 +253,8 @@ namespace cpu_test {
         return error;
     }
 
-    void print_r_type_instruction_message(int test_case, bool error) {
-        map<int, const string> test_name = {{TEST_ADD,  "ADD"},
+    void print_r_type_instruction_message(R_TYPE_TEST test_case, bool error) {
+        map<R_TYPE_TEST , const string> test_name = {{TEST_ADD,  "ADD"},
                                             {TEST_SUB,  "SUB"},
                                             {TEST_AND,  "AND"},
                                             {TEST_OR,   "OR"},
@@ -269,9 +269,9 @@ namespace cpu_test {
 
     bool test_r_type_loop(bool verbose = true) {
         bool total_error = false;
-        int test_sets[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
+        R_TYPE_TEST test_sets[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
                            TEST_SLTU};
-        for (int test_case: test_sets) {
+        for (R_TYPE_TEST test_case: test_sets) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
                 int32_t rd = rand() & 0x1F;
