@@ -3,7 +3,6 @@
 #include "bit_tools.h"
 #include "load_assembler.h"
 #include "assembler.h"
-#include <iostream>
 #include <map>
 
 using namespace std;
@@ -114,22 +113,22 @@ namespace cpu_test {
     }
 
     void print_i_type_instruction_message(ITYPE_TEST test_case, bool error) {
-        map<ITYPE_TEST , const string> test_name = {{TEST_ADDI, "ADDI"},
-                                                    {TEST_ANDI, "ANDI"},
-                                                    {TEST_ORI,  "ORI"},
-                                                    {TEST_XORI, "XORI"},
-                                                    {TEST_SLLI, "SLLI"},
-                                                    {TEST_SRLI, "SRLI"},
-                                                    {TEST_SRAI, "SRAI"},
-                                                    {TEST_SLTI, "SLTI"},
-                                                    {TEST_SLTIU, "SLTIU"}};
+        map<ITYPE_TEST, const string> test_name = {{TEST_ADDI,  "ADDI"},
+                                                   {TEST_ANDI,  "ANDI"},
+                                                   {TEST_ORI,   "ORI"},
+                                                   {TEST_XORI,  "XORI"},
+                                                   {TEST_SLLI,  "SLLI"},
+                                                   {TEST_SRLI,  "SRLI"},
+                                                   {TEST_SRAI,  "SRAI"},
+                                                   {TEST_SLTI,  "SLTI"},
+                                                   {TEST_SLTIU, "SLTIU"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
     bool test_i_type_loop(bool verbose) {
         bool total_error = false;
         ITYPE_TEST test_set[] = {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI,
-                          TEST_SLTIU};
+                                 TEST_SLTIU};
         for (ITYPE_TEST test_case: test_set) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
@@ -156,7 +155,8 @@ namespace cpu_test {
     };
 
     bool
-    test_r_type(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t value1, int32_t value2, bool verbose) {
+    test_r_type(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t value1, int32_t value2,
+                bool verbose) {
         bool error = false;
         int32_t expected;
         string test_case = "";
@@ -254,23 +254,24 @@ namespace cpu_test {
     }
 
     void print_r_type_instruction_message(R_TYPE_TEST test_case, bool error) {
-        map<R_TYPE_TEST , const string> test_name = {{TEST_ADD,  "ADD"},
-                                            {TEST_SUB,  "SUB"},
-                                            {TEST_AND,  "AND"},
-                                            {TEST_OR,   "OR"},
-                                            {TEST_XOR,  "XOR"},
-                                            {TEST_SLL,  "SLL"},
-                                            {TEST_SRL,  "SRL"},
-                                            {TEST_SRA,  "SRA"},
-                                            {TEST_SLT,  "SLT"},
-                                            {TEST_SLTU, "SLTU"}};
+        map<R_TYPE_TEST, const string> test_name = {{TEST_ADD,  "ADD"},
+                                                    {TEST_SUB,  "SUB"},
+                                                    {TEST_AND,  "AND"},
+                                                    {TEST_OR,   "OR"},
+                                                    {TEST_XOR,  "XOR"},
+                                                    {TEST_SLL,  "SLL"},
+                                                    {TEST_SRL,  "SRL"},
+                                                    {TEST_SRA,  "SRA"},
+                                                    {TEST_SLT,  "SLT"},
+                                                    {TEST_SLTU, "SLTU"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
     bool test_r_type_loop(bool verbose = true) {
         bool total_error = false;
-        R_TYPE_TEST test_sets[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
-                           TEST_SLTU};
+        R_TYPE_TEST test_sets[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA,
+                                   TEST_SLT,
+                                   TEST_SLTU};
         for (R_TYPE_TEST test_case: test_sets) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
@@ -293,6 +294,45 @@ namespace cpu_test {
         return total_error;
     }
 
+    bool test_auipc(int32_t rd, int32_t val, int32_t offset, bool verbose) {
+        uint8_t *pointer = mem;
+        add_cmd(pointer, asm_jal(ZERO, offset));
+        pointer = mem + offset;
+        pointer = add_cmd(pointer, asm_auipc(rd, val));
+        pointer = add_cmd(pointer, asm_addi(A0, rd, 0));
+        pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+
+        int32_t expected = offset + (val << 12);
+        if (rd == 0) {
+            expected = 0;
+        }
+        RiscvCpu cpu;
+        bool error = cpu.run_cpu(mem, 0, verbose) != 0;
+        int return_value = cpu.read_register(A0);
+        error |= return_value != expected;
+        if (verbose) {
+            print_error_message("AUIPC", error, expected, return_value);
+        }
+        return error;
+    }
+
+    bool test_auipc_loop(bool verbose) {
+        bool error = false;
+        for (int i = 0; i < kUnitTestMax && !error; i++) {
+            int32_t value = static_cast<int32_t>(rand()) & 0x0FFFFF;
+            int32_t offset = static_cast<uint32_t>(rand()) & 0x0FFF0;
+            int32_t rd = rand() % 32;
+            bool test_error = test_auipc(A1, 0, 16, false);
+            if (test_error && verbose) {
+                test_error |= test_auipc(A1, 0, 16, true);
+            }
+            error |= test_error;
+        }
+        if (verbose) {
+            printf("AUIPC test %s.\n", error ? "failed" : "passed");
+        }
+    }
+
     bool test_lui(int32_t val, bool verbose) {
         // LUI test code
         uint8_t *pointer = mem;
@@ -304,7 +344,7 @@ namespace cpu_test {
         RiscvCpu cpu;
         bool error = cpu.run_cpu(mem, 0, verbose) != 0;
         int return_value = cpu.read_register(A0);
-        error = return_value != expected;
+        error |= return_value != expected;
         if (verbose) {
             print_error_message("LUI", error, expected, return_value);
         }
@@ -322,7 +362,7 @@ namespace cpu_test {
             error |= test_error;
         }
         if (verbose) {
-            printf("LUI test %s.\n", error ? "failsed" : "passed");
+            printf("LUI test %s.\n", error ? "failed" : "passed");
         }
         return error;
     }
@@ -413,6 +453,7 @@ int main() {
     error |= cpu_test::test_i_type_loop(verbose);
     error |= cpu_test::test_r_type_loop(verbose);
     error |= cpu_test::test_lui_loop(verbose);
+    error |= cpu_test::test_auipc_loop(verbose);
     error |= cpu_test::test_sum_quiet(verbose);
     error |= cpu_test::test_sort_quiet(verbose);
 

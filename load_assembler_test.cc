@@ -685,11 +685,11 @@ namespace load_assembler_test {
 
     bool test_u_type(bool verbose = false) {
         enum TEST_LIST {
-            TEST_LUI
+            TEST_LUI, TEST_AUIPC
         };
         bool total_error = false;
 
-        for (TEST_LIST testcase : {TEST_LUI}) {
+        for (TEST_LIST testcase : {TEST_LUI, TEST_AUIPC}) {
             bool error = false;
             uint32_t base;
             string cmdname;
@@ -697,6 +697,10 @@ namespace load_assembler_test {
                 case TEST_LUI:
                     base = 0b00000000000000000000000000110111;
                     cmdname = "LUI";
+                    break;
+                case TEST_AUIPC:
+                    base = 0b00000000000000000000000000010111;
+                    cmdname = "AUIPC";
                     break;
                 default:
                     printf("Test case is node defined yet\n");
@@ -713,6 +717,8 @@ namespace load_assembler_test {
                     case TEST_LUI:
                         cmd = asm_lui(rd, imm20);
                         break;
+                    case TEST_AUIPC:
+                        cmd = asm_auipc(rd, imm20);
                     default:
                         break;
                 }

@@ -302,3 +302,10 @@ uint32_t asm_lui(uint32_t rd, int32_t imm20) {
     return cmd.value();
 }
 
+uint32_t asm_auipc(uint32_t rd, int32_t imm20) {
+    u_type cmd;
+    cmd.opcode = OPCODE_AUIPC;
+    cmd.rd = rd;
+    cmd.imm20 = imm20 & 0x0FFFFF;
+    return cmd.value();
+}
