@@ -186,6 +186,22 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                     end_flag = true;
                 }
                 break;
+            case INST_LB:
+                address = reg[rs1] + imm12;
+                reg[rd] = sext(load_wd(mem + address) & 0xFF, 8);
+                break;
+            case INST_LBU:
+                address = reg[rs1] + imm12;
+                reg[rd] = load_wd(mem + address) & 0xFF;
+                break;
+            case INST_LH:
+                address = reg[rs1] + imm12;
+                reg[rd] = sext(load_wd(mem + address) & 0xFFFF, 8);
+                break;
+            case INST_LHU:
+                address = reg[rs1] + imm12;
+                reg[rd] = load_wd(mem + address) & 0xFFFF;
+                break;
             case INST_LW:
                 address = reg[rs1] + imm12;
                 reg[rd] = load_wd(mem + address);
@@ -277,8 +293,16 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
             }
             break;
         case OPCODE_LD: // LW
-            if (funct3 == FUNC3_LSW) {
-                instruction = INST_LW;
+            if (funct3 == FUNC3_LSB) {
+                instruction = INST_LB;
+            } else if (funct3 == FUNC3_LSBU) {
+                instruction = INST_LBU;
+            } else if (funct3 == FUNC3_LSH) {
+                instruction = INST_LH;
+            } else if (funct3 == FUNC3_LSHU) {
+                instruction = INST_LHU;
+            } else if (funct3 == FUNC3_LSW) {
+                    instruction = INST_LW;
             }
             break;
         case OPCODE_S: // SW
