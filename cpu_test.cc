@@ -396,32 +396,53 @@ namespace cpu_test {
         return error;
     }
 
-    bool test_load(uint32_t rd, uint32_t rs1, uint32_t offset0, uint32_t offset1, uint32_t val, bool verbose) {
+
+    enum LOAD_TEST {TEST_LB, TEST_LW};
+
+    bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0, uint32_t offset1, uint32_t val, bool verbose) {
+        bool error = false;
+        string test_case = "";
+
         if (rs1 == ZERO) {
             offset0 = 0;
         }
-        uint32_t address = offset0 + offset1;
+        uint32_t address = offset0 + sext(offset1, 12);
         mem[address] = val & 0xff;
         mem[address + 1] = (val >> 8) & 0xff;
         mem[address + 2] = (val >> 16) & 0xff;
         mem[address + 3] = (val >> 24) & 0xff;
         // LW test code
         uint8_t *pointer = mem;
-        pointer = add_cmd(pointer, asm_addi(rs1, ZERO, offset0 & 0x0FFF));
-        pointer = add_cmd(pointer, asm_lui(rs1, offset0 >> 12));
-        pointer = add_cmd(pointer, asm_lw(rd, rs1, offset1));
+        int32_t val12 = offset0 & 0x0FFF;
+        int32_t val20 = (offset0 >> 12) + (val12 >> 11 ? 1 : 0);
+        if ((val20 << 12) + sext(val12, 12) != offset0) {
+            printf("Testbench error\n");
+        }
+        int32_t expected;
+        pointer = add_cmd(pointer, asm_lui(rs1, val20));
+        pointer = add_cmd(pointer, asm_addi(rs1, rs1, val12));
+        switch(test_type) {
+            case TEST_LW:
+                pointer = add_cmd(pointer, asm_lw(rd, rs1, offset1));
+                expected = val;
+                break;
+            default:
+                if (verbose) {
+                    printf("Undefined test case %d\n", test_type);
+                    return true;
+                }
+        }
         pointer = add_cmd(pointer, asm_addi(A0, rd, 0));
         pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
 
-        int32_t expected = val;
         RiscvCpu cpu;
-        bool error = cpu.run_cpu(mem, 0, verbose) != 0;
+        error = cpu.run_cpu(mem, 0, verbose) != 0;
         int return_value = cpu.read_register(A0);
         error |= return_value != expected;
         if (verbose) {
-            print_error_message("LW", error, expected, return_value);
+            print_error_message(test_case, error, expected, return_value);
             if (error) {
-                printf("rd: %d, rs1: %d, offset0: %d, offset1: %d, val: %d\n", rd, rs1, offset0, offset1, val);
+                printf("rd: %2d, rs1: %2d, offset0: %08X, offset1: %08X, val: %08X\n", rd, rs1, offset0, offset1, val);
             }
         }
         return error;
@@ -432,18 +453,19 @@ namespace cpu_test {
         for (int i = 0; i < kUnitTestMax && !error; i++) {
             uint32_t rs1 = rand() % 32;
             uint32_t rd = A1;
-            uint32_t offset0 = 0, offset1 = 0;
-            while (offset0 + offset1 < 16 || offset0 + offset1 >= kMemSize - 4) {
+            uint32_t offset0 = 0, offset1 = 0, offset = 0;
+            while (offset < 16 || offset >= kMemSize - 4) {
                 offset0 = rand() % kMemSize;
                 offset1 = rand() & 0x0FFF;
                 if (rs1 == ZERO) {
                     offset0 = 0;
                 }
+                offset = offset0 + sext(offset1, 12);
             }
             uint32_t val = rand() & 0x0FFFFFFFF;
-            bool test_error = test_load(rd, rs1, offset0, offset1, val, false);
+            bool test_error = test_load(TEST_LW, rd, rs1, offset0, offset1, val, false);
             if (test_error && verbose) {
-                test_error = test_load(rd, rs1, offset0, offset1, val, true);
+                test_error = test_load(TEST_LW, rd, rs1, offset0, offset1, val, true);
             }
             error |= test_error;
         }
@@ -540,7 +562,7 @@ int main() {
     error |= cpu_test::test_r_type_loop(verbose);
     error |= cpu_test::test_lui_loop(verbose);
     error |= cpu_test::test_auipc_loop(verbose);
-//    error |= cpu_test::test_load_loop(verbose);
+    error |= cpu_test::test_load_loop(verbose);
     error |= cpu_test::test_sum_quiet(verbose);
     error |= cpu_test::test_sort_quiet(verbose);
 
