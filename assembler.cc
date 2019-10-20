@@ -222,10 +222,50 @@ uint32_t asm_jalr(uint32_t rd, uint32_t rs1, int32_t offset12) {
     return cmd.value();
 }
 
+uint32_t asm_lb(uint32_t rd, uint32_t rs1, int32_t offset12) {
+    i_type cmd;
+    cmd.opcode = OPCODE_LD;
+    cmd.funct3 = FUNC3_LSB;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.imm12 = offset12;
+    return cmd.value();
+}
+
+uint32_t asm_lbu(uint32_t rd, uint32_t rs1, int32_t offset12) {
+    i_type cmd;
+    cmd.opcode = OPCODE_LD;
+    cmd.funct3 = FUNC3_LSBU;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.imm12 = offset12;
+    return cmd.value();
+}
+
+uint32_t asm_lh(uint32_t rd, uint32_t rs1, int32_t offset12) {
+    i_type cmd;
+    cmd.opcode = OPCODE_LD;
+    cmd.funct3 = FUNC3_LSH;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.imm12 = offset12;
+    return cmd.value();
+}
+
+uint32_t asm_lhu(uint32_t rd, uint32_t rs1, int32_t offset12) {
+    i_type cmd;
+    cmd.opcode = OPCODE_LD;
+    cmd.funct3 = FUNC3_LSHU;
+    cmd.rd = rd;
+    cmd.rs1 = rs1;
+    cmd.imm12 = offset12;
+    return cmd.value();
+}
+
 uint32_t asm_lw(uint32_t rd, uint32_t rs1, int32_t offset12) {
     i_type cmd;
     cmd.opcode = OPCODE_LD;
-    cmd.funct3 = FUNC3_LS;
+    cmd.funct3 = FUNC3_LSW;
     cmd.rd = rd;
     cmd.rs1 = rs1;
     cmd.imm12 = offset12;
@@ -286,7 +326,7 @@ uint32_t asm_jal(uint32_t rd, int32_t offset21) {
 uint32_t asm_sw(uint32_t rs1, uint32_t rs2, int32_t offset12) {
     s_type cmd;
     cmd.opcode = OPCODE_S;
-    cmd.funct3 = FUNC3_LS;
+    cmd.funct3 = FUNC3_LSW;
     cmd.rs2 = rs2;
     cmd.rs1 = rs1;
     cmd.imm12 = offset12;

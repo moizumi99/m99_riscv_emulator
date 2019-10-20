@@ -246,7 +246,7 @@ namespace load_assembler_test {
         bool total_error = false;
 
         TEST_LIST test_set[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
-                          TEST_SLTU};
+                                TEST_SLTU};
         for (TEST_LIST testcase : test_set) {
             bool error = false;
             uint32_t base;
@@ -359,6 +359,10 @@ namespace load_assembler_test {
             TEST_SLLI,
             TEST_SRLI,
             TEST_SRAI,
+            TEST_LB,
+            TEST_LBU,
+            TEST_LH,
+            TEST_LHU,
             TEST_LW,
             TEST_JALR,
             TEST_ANDI,
@@ -368,8 +372,8 @@ namespace load_assembler_test {
             TEST_SLTIU
         };
         bool total_error = false;
-        TEST_LIST test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI,
-                          TEST_XORI, TEST_SLTI, TEST_SLTIU};
+        TEST_LIST test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB, TEST_LBU, TEST_LH, TEST_LHU,
+                                TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLTI, TEST_SLTIU};
         for (TEST_LIST test_case : test_set) {
             bool error = false;
             uint32_t base;
@@ -391,7 +395,7 @@ namespace load_assembler_test {
                     base = 0b01000000000000000101000000010011;
                     cmdname = "SRAI";
                     break;
-               case TEST_ANDI:
+                case TEST_ANDI:
                     base = 0b00000000000000000111000000010011;
                     cmdname = "ANDI";
                     break;
@@ -410,6 +414,22 @@ namespace load_assembler_test {
                 case TEST_SLTIU:
                     base = 0b00000000000000000011000000010011;
                     cmdname = "SLTIU";
+                    break;
+                case TEST_LB:
+                    base = 0b00000000000000000000000000000011;
+                    cmdname = "LB";
+                    break;
+                case TEST_LBU:
+                    base = 0b00000000000000000100000000000011;
+                    cmdname = "LBU";
+                    break;
+                case TEST_LH:
+                    base = 0b00000000000000000001000000000011;
+                    cmdname = "LH";
+                    break;
+                case TEST_LHU:
+                    base = 0b00000000000000000101000000000011;
+                    cmdname = "LHU";
                     break;
                 case TEST_LW:
                     base = 0b00000000000000000010000000000011;
@@ -465,6 +485,18 @@ namespace load_assembler_test {
                         break;
                     case TEST_SLTIU:
                         cmd = asm_sltiu(rd, rs1, imm12);
+                        break;
+                    case TEST_LB:
+                        cmd = asm_lb(rd, rs1, imm12);
+                        break;
+                    case TEST_LBU:
+                        cmd = asm_lbu(rd, rs1, imm12);
+                        break;
+                    case TEST_LH:
+                        cmd = asm_lh(rd, rs1, imm12);
+                        break;
+                    case TEST_LHU:
+                        cmd = asm_lhu(rd, rs1, imm12);
                         break;
                     case TEST_LW:
                         cmd = asm_lw(rd, rs1, imm12);

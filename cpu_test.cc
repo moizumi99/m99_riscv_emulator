@@ -397,9 +397,12 @@ namespace cpu_test {
     }
 
 
-    enum LOAD_TEST {TEST_LB, TEST_LW};
+    enum LOAD_TEST {
+        TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW
+    };
 
-    bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0, uint32_t offset1, uint32_t val, bool verbose) {
+    bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0, uint32_t offset1, uint32_t val,
+                   bool verbose) {
         bool error = false;
         string test_case = "";
 
@@ -421,10 +424,26 @@ namespace cpu_test {
         int32_t expected;
         pointer = add_cmd(pointer, asm_lui(rs1, val20));
         pointer = add_cmd(pointer, asm_addi(rs1, rs1, val12));
-        switch(test_type) {
+        switch (test_type) {
             case TEST_LW:
                 pointer = add_cmd(pointer, asm_lw(rd, rs1, offset1));
                 expected = val;
+                break;
+            case TEST_LB:
+                pointer = add_cmd(pointer, asm_lb(rd, rs1, offset1));
+                expected = sext(val & 0xFF, 8);
+                break;
+            case TEST_LBU:
+                pointer = add_cmd(pointer, asm_lbu(rd, rs1, offset1));
+                expected = val & 0xFF;
+                break;
+            case TEST_LH:
+                pointer = add_cmd(pointer, asm_lh(rd, rs1, offset1));
+                expected = sext(val & 0xFFFF, 8);
+                break;
+            case TEST_LHU:
+                pointer = add_cmd(pointer, asm_lhu(rd, rs1, offset1));
+                expected = val & 0xFFFF;
                 break;
             default:
                 if (verbose) {
@@ -448,29 +467,42 @@ namespace cpu_test {
         return error;
     }
 
+    void print_load_instruction_message(LOAD_TEST test_case, bool error, bool verbose = true) {
+        if (!verbose) {
+            return;
+        }
+        map<LOAD_TEST, const string> test_name = {{TEST_LB, "LB"},
+                                                  {TEST_LBU, "LBU"},
+                                                  {TEST_LH, "LH"},
+                                                  {TEST_LHU, "LHU"},
+                                                  {TEST_LW, "LW"},};
+        printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
+    }
+
     bool test_load_loop(bool verbose) {
         bool error = false;
-        for (int i = 0; i < kUnitTestMax && !error; i++) {
-            uint32_t rs1 = rand() % 32;
-            uint32_t rd = A1;
-            uint32_t offset0 = 0, offset1 = 0, offset = 0;
-            while (offset < 16 || offset >= kMemSize - 4) {
-                offset0 = rand() % kMemSize;
-                offset1 = rand() & 0x0FFF;
-                if (rs1 == ZERO) {
-                    offset0 = 0;
+        LOAD_TEST test_sets[] = {TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW};
+        for (auto test_case: test_sets) {
+            for (int i = 0; i < kUnitTestMax && !error; i++) {
+                uint32_t rs1 = rand() % 32;
+                uint32_t rd = A1;
+                uint32_t offset0 = 0, offset1 = 0, offset = 0;
+                while (offset < 16 || offset >= kMemSize - 4) {
+                    offset0 = rand() % kMemSize;
+                    offset1 = rand() & 0x0FFF;
+                    if (rs1 == ZERO) {
+                        offset0 = 0;
+                    }
+                    offset = offset0 + sext(offset1, 12);
                 }
-                offset = offset0 + sext(offset1, 12);
+                uint32_t val = rand() & 0x0FFFFFFFF;
+                bool test_error = test_load(test_case, rd, rs1, offset0, offset1, val, false);
+                if (test_error && verbose) {
+                    test_error = test_load(test_case, rd, rs1, offset0, offset1, val, true);
+                }
+                error |= test_error;
             }
-            uint32_t val = rand() & 0x0FFFFFFFF;
-            bool test_error = test_load(TEST_LW, rd, rs1, offset0, offset1, val, false);
-            if (test_error && verbose) {
-                test_error = test_load(TEST_LW, rd, rs1, offset0, offset1, val, true);
-            }
-            error |= test_error;
-        }
-        if (verbose) {
-            printf("Load test %s", error ? "failed" : "passed");
+            print_load_instruction_message(test_case, error, verbose);
         }
         return error;
     }
