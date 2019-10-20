@@ -277,12 +277,12 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
             }
             break;
         case OPCODE_LD: // LW
-            if (funct3 == FUNC3_LS) {
+            if (funct3 == FUNC3_LSW) {
                 instruction = INST_LW;
             }
             break;
         case OPCODE_S: // SW
-            if (funct3 == FUNC3_LS) {
+            if (funct3 == FUNC3_LSW) {
                 instruction = INST_SW;
             }
             break;
