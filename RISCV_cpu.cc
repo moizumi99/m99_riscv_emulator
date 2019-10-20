@@ -48,11 +48,11 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
     bool end_flag = false;
 
     if (verbose) {
-        printf("   PC    Binary       X0       X1       X2      X3       X3       X4       "
-               "X5       X6       X7       X8      X10      X11      X12      "
-               "X13      X14      X15      X16      X17      X18      X19      "
-               "X20      X21      X22      X23      X24      X25      X26      "
-               "X27      X28      X29      X30      X31\n");
+        printf("   PC       CMD       X0       X1       X2       X3       X4       "
+               "X5       X6       X7       X8       X9      X10      X11      "
+               "X12      X13      X14      X15      X16      X17      X18      "
+               "X19      X20      X21      X22      X23      X24      X25      "
+               "X26      X27      X28      X29      X30      X31\n");
     }
 
     pc = start_pc;
@@ -195,8 +195,7 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 store_wd(mem + address, reg[rs2]);
                 break;
             case INST_LUI:
-                // TODO: Fix this. Lower 12 bit should be zeros.
-                reg[rd] = (reg[rd] & 0x00000FFF) | (imm20 << 12);
+                reg[rd] = imm20 << 12;
                 break;
             case INST_AUIPC:
                 reg[rd] = pc + (imm20 << 12);

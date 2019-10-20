@@ -4,13 +4,15 @@
 #include "load_assembler.h"
 #include "assembler.h"
 #include <map>
+#include <iostream>
 
 using namespace std;
 
 
 namespace cpu_test {
 
-    uint8_t mem[0x010000];
+    constexpr int kMemSize = 0x010000;
+    uint8_t mem[kMemSize];
 
     constexpr int kUnitTestMax = 100;
 
@@ -35,8 +37,18 @@ namespace cpu_test {
         string test_case = "";
 
         uint8_t *pointer = mem;
-        pointer = add_cmd(pointer, asm_addi(rs1, ZERO, value & 0xFFF));
-        pointer = add_cmd(pointer, asm_lui(rs1, value >> 12));
+        uint32_t val20 = value >> 12;
+        uint32_t val12 = value & 0xFFF;
+        if (val12 >> 11) {
+            val20++;
+        }
+        // Check if the two values make the correct final immediate.
+        if ((val20 << 12) + sext(val12, 12) != value) {
+            printf("Test bench error. value = %8X, val20 = %8X, val12 = %8X\n", value, val20, sext(val12, 12));
+            return true;
+        }
+        pointer = add_cmd(pointer, asm_lui(rs1, val20));
+        pointer = add_cmd(pointer, asm_addi(rs1, rs1, val12));
         if (rs1 == 0) {
             value = 0;
         }
@@ -162,10 +174,26 @@ namespace cpu_test {
         string test_case = "";
 
         uint8_t *pointer = mem;
-        pointer = add_cmd(pointer, asm_addi(rs1, ZERO, value1));
-        pointer = add_cmd(pointer, asm_lui(rs1, value1 >> 12));
-        pointer = add_cmd(pointer, asm_addi(rs2, ZERO, value2));
-        pointer = add_cmd(pointer, asm_lui(rs2, value2 >> 12));
+        uint32_t val20 = value1 >> 12;
+        uint32_t val12 = value1 & 0xFFF;
+        if (val12 >> 11) {
+            val20++;
+        }
+        if ((val20 << 12) + sext(val12, 12) != value1) {
+            printf("Test bench error: value1 = %8X, val20 = %8X, val12 = %8X\n", value1, val20, val12);
+        }
+        pointer = add_cmd(pointer, asm_lui(rs1, val20));
+        pointer = add_cmd(pointer, asm_addi(rs1, rs1, val12));
+        val20 = value2 >> 12;
+        val12 = value2 & 0xFFF;
+        if (val12 >> 11) {
+            val20++;
+        }
+        if ((val20 << 12) + sext(val12, 12) != value2) {
+            printf("Test bench error: value2 = %8X, val20 = %8X, val12 = %8X\n", value2, val20, val12);
+        }
+        pointer = add_cmd(pointer, asm_lui(rs2, val20));
+        pointer = add_cmd(pointer, asm_addi(rs2, rs2, val12));
 
         if (rs1 == 0) {
             value1 = 0;
@@ -331,6 +359,7 @@ namespace cpu_test {
         if (verbose) {
             printf("AUIPC test %s.\n", error ? "failed" : "passed");
         }
+        return error;
     }
 
     bool test_lui(int32_t val, bool verbose) {
@@ -363,6 +392,63 @@ namespace cpu_test {
         }
         if (verbose) {
             printf("LUI test %s.\n", error ? "failed" : "passed");
+        }
+        return error;
+    }
+
+    bool test_load(uint32_t rd, uint32_t rs1, uint32_t offset0, uint32_t offset1, uint32_t val, bool verbose) {
+        if (rs1 == ZERO) {
+            offset0 = 0;
+        }
+        uint32_t address = offset0 + offset1;
+        mem[address] = val & 0xff;
+        mem[address + 1] = (val >> 8) & 0xff;
+        mem[address + 2] = (val >> 16) & 0xff;
+        mem[address + 3] = (val >> 24) & 0xff;
+        // LW test code
+        uint8_t *pointer = mem;
+        pointer = add_cmd(pointer, asm_addi(rs1, ZERO, offset0 & 0x0FFF));
+        pointer = add_cmd(pointer, asm_lui(rs1, offset0 >> 12));
+        pointer = add_cmd(pointer, asm_lw(rd, rs1, offset1));
+        pointer = add_cmd(pointer, asm_addi(A0, rd, 0));
+        pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+
+        int32_t expected = val;
+        RiscvCpu cpu;
+        bool error = cpu.run_cpu(mem, 0, verbose) != 0;
+        int return_value = cpu.read_register(A0);
+        error |= return_value != expected;
+        if (verbose) {
+            print_error_message("LW", error, expected, return_value);
+            if (error) {
+                printf("rd: %d, rs1: %d, offset0: %d, offset1: %d, val: %d\n", rd, rs1, offset0, offset1, val);
+            }
+        }
+        return error;
+    }
+
+    bool test_load_loop(bool verbose) {
+        bool error = false;
+        for (int i = 0; i < kUnitTestMax && !error; i++) {
+            uint32_t rs1 = rand() % 32;
+            uint32_t rd = A1;
+            uint32_t offset0 = 0, offset1 = 0;
+            while (offset0 + offset1 < 16 || offset0 + offset1 >= kMemSize - 4) {
+                offset0 = rand() % kMemSize;
+                offset1 = rand() & 0x0FFF;
+                if (rs1 == ZERO) {
+                    offset0 = 0;
+                }
+            }
+            uint32_t val = rand() & 0x0FFFFFFFF;
+            bool test_error = test_load(rd, rs1, offset0, offset1, val, false);
+            if (test_error && verbose) {
+                test_error = test_load(rd, rs1, offset0, offset1, val, true);
+            }
+            error |= test_error;
+        }
+        if (verbose) {
+            printf("Load test %s", error ? "failed" : "passed");
         }
         return error;
     }
@@ -454,13 +540,14 @@ int main() {
     error |= cpu_test::test_r_type_loop(verbose);
     error |= cpu_test::test_lui_loop(verbose);
     error |= cpu_test::test_auipc_loop(verbose);
+//    error |= cpu_test::test_load_loop(verbose);
     error |= cpu_test::test_sum_quiet(verbose);
     error |= cpu_test::test_sort_quiet(verbose);
 
-    if (!error) {
-        printf("All CPU Tests passed.\n");
+    if (error) {
+        printf("\nCPU Test failed.\n");
     } else {
-        printf("CPU Test failed.\n");
+        printf("\nAll CPU Tests passed.\n");
     }
     return error;
 }
