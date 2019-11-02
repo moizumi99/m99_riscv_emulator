@@ -4,7 +4,6 @@
 #include <iostream>
 #include <string>
 
-using namespace std;
 
 namespace load_assembler_test {
 
@@ -22,11 +21,11 @@ namespace load_assembler_test {
         }
     }
 
-    bool check_equal(const string &text, uint32_t value, uint32_t exp,
+    bool check_equal(const std::string &text, uint32_t value, uint32_t exp,
                      bool verbose = false) {
         bool error = value != exp;
         if (verbose) {
-            cout << text;
+            std::cout << text;
             printf(": %d (", value);
             print_binary(value);
             printf(")");
@@ -41,7 +40,7 @@ namespace load_assembler_test {
         return error;
     }
 
-    bool check_equal_quiet(const string &text, uint32_t cmd, uint32_t exp, bool verbose = false) {
+    bool check_equal_quiet(const std::string &text, uint32_t cmd, uint32_t exp, bool verbose = false) {
         bool error = check_equal(text, cmd, exp, false);
         if (error & verbose) {
             error = check_equal(text, cmd, exp, true);
@@ -226,7 +225,7 @@ namespace load_assembler_test {
     }
 
 // Support function for showing error message at the end of a test sequence.
-    void print_error_result(string &cmdname, int num_test, bool error,
+    void print_error_result(std::string &cmdname, int num_test, bool error,
                             bool verbose) {
         if (verbose) {
             printf("Total %d %s random encode & decode test finished. ", num_test,
@@ -250,7 +249,7 @@ namespace load_assembler_test {
         for (TEST_LIST testcase : test_set) {
             bool error = false;
             uint32_t base;
-            string cmdname;
+            std::string cmdname;
             switch (testcase) {
                 case TEST_ADD:
                     base = 0b00000000000000000000000000110011;
@@ -341,8 +340,8 @@ namespace load_assembler_test {
                         break;
                 }
                 uint32_t exp = gen_r_type(base, rd, rs1, rs2);
-                string test_string = cmdname + " " + to_string(rd) + ", " +
-                                     to_string(rs1) + ", " + to_string(rs2);
+                std::string test_string = cmdname + " " + std::to_string(rd) + ", " +
+                                     std::to_string(rs1) + ", " + std::to_string(rs2);
                 error |= check_equal_quiet(test_string, cmd, exp, verbose);
                 error |= test_r_type_decode_quiet(exp, opcode, funct3, funct7, rd, rs1,
                                                   rs2, verbose);
@@ -377,7 +376,7 @@ namespace load_assembler_test {
         for (TEST_LIST test_case : test_set) {
             bool error = false;
             uint32_t base;
-            string cmdname;
+            std::string cmdname;
             switch (test_case) {
                 case TEST_ADDI:
                     base = 0b00000000000000000000000000010011;
@@ -508,8 +507,8 @@ namespace load_assembler_test {
                         break;
                 }
                 uint32_t exp = gen_i_type(base, rd, rs1, imm12);
-                string test_string = cmdname + " " + to_string(rd) + ", " +
-                                     to_string(rs1) + ", " + to_string(imm12);
+                std::string test_string = cmdname + " " + std::to_string(rd) + ", " +
+                                     std::to_string(rs1) + ", " + std::to_string(imm12);
                 error |= check_equal_quiet(test_string, cmd, exp, verbose);
                 error |= test_i_type_decode_quiet(exp, opcode, funct3, rd, rs1, imm12,
                                                   verbose);
@@ -529,7 +528,7 @@ namespace load_assembler_test {
         for (TEST_LIST testcase : {TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE}) {
             bool error = false;
             uint32_t base;
-            string cmdname;
+            std::string cmdname;
             switch (testcase) {
                 case TEST_BEQ:
                     base = 0b00000000000000000000000001100011;
@@ -577,8 +576,8 @@ namespace load_assembler_test {
                         break;
                 }
                 uint32_t exp = gen_b_type(base, rs1, rs2, imm13);
-                string test_string = cmdname + " " + to_string(rs1) + ", " +
-                                     to_string(rs2) + ", " + to_string(imm13);
+                std::string test_string = cmdname + " " + std::to_string(rs1) + ", " +
+                                     std::to_string(rs2) + ", " + std::to_string(imm13);
                 error |= check_equal_quiet(test_string, cmd, exp, verbose);
                 error |= test_b_type_decode_quiet(exp, opcode, funct3, rs1, rs2, imm13,
                                                   verbose);
@@ -598,7 +597,7 @@ namespace load_assembler_test {
         for (TEST_LIST testcase : {TEST_JAL}) {
             bool error = false;
             uint32_t base;
-            string cmdname;
+            std::string cmdname;
             switch (testcase) {
                 case TEST_JAL:
                     base = 0b00000000000000000000000001101111;
@@ -623,8 +622,8 @@ namespace load_assembler_test {
                         break;
                 }
                 uint32_t exp = gen_j_type(base, rd, imm21);
-                string test_string =
-                        cmdname + " " + to_string(rd) + ", " + ", " + to_string(imm21);
+                std::string test_string =
+                        cmdname + " " + std::to_string(rd) + ", " + ", " + std::to_string(imm21);
                 error |= check_equal_quiet(test_string, cmd, exp, verbose);
                 error |= test_j_type_decode_quiet(exp, opcode, rd, imm21, verbose);
             }
@@ -643,7 +642,7 @@ namespace load_assembler_test {
         for (TEST_LIST testcase : {TEST_SW}) {
             bool error = false;
             uint32_t base;
-            string cmdname;
+            std::string cmdname;
             switch (testcase) {
                 case TEST_SW:
                     base = 0b00000000000000000010000000100011;
@@ -670,8 +669,8 @@ namespace load_assembler_test {
                         break;
                 }
                 uint32_t exp = gen_s_type(base, rs1, rs2, imm12);
-                string test_string = cmdname + " " + to_string(rs1) + ", " +
-                                     to_string(rs2) + ", " + ", " + to_string(imm12);
+                std::string test_string = cmdname + " " + std::to_string(rs1) + ", " +
+                                     std::to_string(rs2) + ", " + ", " + std::to_string(imm12);
                 error |= check_equal_quiet(test_string, cmd, exp, verbose);
                 error |= test_s_type_decode_quiet(exp, opcode, funct3, rs1, rs2, imm12,
                                                   verbose);
@@ -724,7 +723,7 @@ namespace load_assembler_test {
         for (TEST_LIST testcase : {TEST_LUI, TEST_AUIPC}) {
             bool error = false;
             uint32_t base;
-            string cmdname;
+            std::string cmdname;
             switch (testcase) {
                 case TEST_LUI:
                     base = 0b00000000000000000000000000110111;
@@ -755,8 +754,8 @@ namespace load_assembler_test {
                         break;
                 }
                 uint32_t exp = gen_u_type(base, rd, imm20);
-                string test_string = cmdname + " " + to_string(rd) + ", "
-                                     + to_string(imm20);
+                std::string test_string = cmdname + " " + std::to_string(rd) + ", "
+                                     + std::to_string(imm20);
                 error |= check_equal_quiet(test_string, cmd, exp, verbose);
                 error |= test_u_type_decode_quiet(exp, opcode, rd, imm20,
                                                   verbose);

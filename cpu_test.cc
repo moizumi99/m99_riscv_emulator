@@ -4,19 +4,17 @@
 #include "load_assembler.h"
 #include "assembler.h"
 #include <map>
-#include <iostream>
-
-using namespace std;
-
 
 namespace cpu_test {
 
     constexpr int kMemSize = 0x010000;
     uint8_t mem[kMemSize];
 
+    // The number of test cases for each command.
     constexpr int kUnitTestMax = 100;
 
-    void print_error_message(const string &text, bool error, int32_t expected, int32_t actual) {
+    // Commonly used helper function for error message.
+    void print_error_message(const std::string &text, bool error, int32_t expected, int32_t actual) {
         if (error) {
             printf("%s test failed.", text.c_str());
         } else {
@@ -27,6 +25,21 @@ namespace cpu_test {
         printf(" Expected %d, Actual %d\n", expected, actual);
     }
 
+    // A helper function to split 32 bit value to 20 bit and singed 12 bit immediates.
+    std::pair<uint32_t, uint32_t > split_immediate(uint32_t value) {
+        uint32_t value20 = value >> 12;
+        uint32_t value12 = value & 0xFFF;
+        if (value12 >> 11) {
+            value20++;
+        }
+        // Double check that the sum of these two equals the input.
+        if ((value20 << 12) + sext(value12, 12) != value) {
+            printf("Test bench error: value1 = %8X, value20 = %8X, value12 = %8X\n", value, value20, value12);
+        }
+        return std::make_pair(value20, value12);
+    }
+
+    // I TYPE test cases starts here.
     enum ITYPE_TEST {
         TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI, TEST_SLTIU
     };
@@ -34,19 +47,11 @@ namespace cpu_test {
     bool test_i_type(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int32_t imm12, bool verbose) {
         bool error = false;
         int32_t expected;
-        string test_case = "";
+        std::string test_case = "";
 
         uint8_t *pointer = mem;
-        uint32_t val20 = value >> 12;
-        uint32_t val12 = value & 0xFFF;
-        if (val12 >> 11) {
-            val20++;
-        }
-        // Check if the two values make the correct final immediate.
-        if ((val20 << 12) + sext(val12, 12) != value) {
-            printf("Test bench error. value = %8X, val20 = %8X, val12 = %8X\n", value, val20, sext(val12, 12));
-            return true;
-        }
+        uint32_t val20, val12;
+        std::tie(val20, val12) = split_immediate(value);
         pointer = add_cmd(pointer, asm_lui(rs1, val20));
         pointer = add_cmd(pointer, asm_addi(rs1, rs1, val12));
         if (rs1 == 0) {
@@ -125,7 +130,7 @@ namespace cpu_test {
     }
 
     void print_i_type_instruction_message(ITYPE_TEST test_case, bool error) {
-        map<ITYPE_TEST, const string> test_name = {{TEST_ADDI,  "ADDI"},
+        std::map<ITYPE_TEST, const std::string> test_name = {{TEST_ADDI,  "ADDI"},
                                                    {TEST_ANDI,  "ANDI"},
                                                    {TEST_ORI,   "ORI"},
                                                    {TEST_XORI,  "XORI"},
@@ -161,7 +166,9 @@ namespace cpu_test {
         }
         return total_error;
     }
+    // I-Type test cases end here.
 
+    // R-Type test cases start here.
     enum R_TYPE_TEST {
         TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU
     };
@@ -171,27 +178,14 @@ namespace cpu_test {
                 bool verbose) {
         bool error = false;
         int32_t expected;
-        string test_case = "";
+        std::string test_case = "";
 
         uint8_t *pointer = mem;
-        uint32_t val20 = value1 >> 12;
-        uint32_t val12 = value1 & 0xFFF;
-        if (val12 >> 11) {
-            val20++;
-        }
-        if ((val20 << 12) + sext(val12, 12) != value1) {
-            printf("Test bench error: value1 = %8X, val20 = %8X, val12 = %8X\n", value1, val20, val12);
-        }
+        uint32_t val20, val12;
+        std::tie(val20, val12) = split_immediate(value1);
         pointer = add_cmd(pointer, asm_lui(rs1, val20));
         pointer = add_cmd(pointer, asm_addi(rs1, rs1, val12));
-        val20 = value2 >> 12;
-        val12 = value2 & 0xFFF;
-        if (val12 >> 11) {
-            val20++;
-        }
-        if ((val20 << 12) + sext(val12, 12) != value2) {
-            printf("Test bench error: value2 = %8X, val20 = %8X, val12 = %8X\n", value2, val20, val12);
-        }
+        std::tie(val20, val12) = split_immediate(value2);
         pointer = add_cmd(pointer, asm_lui(rs2, val20));
         pointer = add_cmd(pointer, asm_addi(rs2, rs2, val12));
 
@@ -282,7 +276,7 @@ namespace cpu_test {
     }
 
     void print_r_type_instruction_message(R_TYPE_TEST test_case, bool error) {
-        map<R_TYPE_TEST, const string> test_name = {{TEST_ADD,  "ADD"},
+        std::map<R_TYPE_TEST, const std::string> test_name = {{TEST_ADD,  "ADD"},
                                                     {TEST_SUB,  "SUB"},
                                                     {TEST_AND,  "AND"},
                                                     {TEST_OR,   "OR"},
@@ -321,7 +315,9 @@ namespace cpu_test {
         }
         return total_error;
     }
+    // R-Type test cases end here.
 
+    // AUIPC has it's own test set, starting here.
     bool test_auipc(int32_t rd, int32_t val, int32_t offset, bool verbose) {
         uint8_t *pointer = mem;
         add_cmd(pointer, asm_jal(ZERO, offset));
@@ -361,7 +357,9 @@ namespace cpu_test {
         }
         return error;
     }
+    // AUIPC test cases end here.
 
+    // LUI has its own test cases, starting here.
     bool test_lui(int32_t val, bool verbose) {
         // LUI test code
         uint8_t *pointer = mem;
@@ -395,8 +393,9 @@ namespace cpu_test {
         }
         return error;
     }
+    // LUI test cases end here.
 
-
+    // LOAD test cases start here.
     enum LOAD_TEST {
         TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW
     };
@@ -404,7 +403,7 @@ namespace cpu_test {
     bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0, uint32_t offset1, uint32_t val,
                    bool verbose) {
         bool error = false;
-        string test_case = "";
+        std::string test_case = "";
 
         if (rs1 == ZERO) {
             offset0 = 0;
@@ -416,11 +415,8 @@ namespace cpu_test {
         mem[address + 3] = (val >> 24) & 0xff;
         // LW test code
         uint8_t *pointer = mem;
-        int32_t val12 = offset0 & 0x0FFF;
-        int32_t val20 = (offset0 >> 12) + (val12 >> 11 ? 1 : 0);
-        if ((val20 << 12) + sext(val12, 12) != offset0) {
-            printf("Testbench error\n");
-        }
+        int32_t val20, val12;
+        std::tie(val20, val12) = split_immediate(offset0);
         int32_t expected;
         pointer = add_cmd(pointer, asm_lui(rs1, val20));
         pointer = add_cmd(pointer, asm_addi(rs1, rs1, val12));
@@ -471,7 +467,7 @@ namespace cpu_test {
         if (!verbose) {
             return;
         }
-        map<LOAD_TEST, const string> test_name = {{TEST_LB,  "LB"},
+        std::map<LOAD_TEST, const std::string> test_name = {{TEST_LB,  "LB"},
                                                   {TEST_LBU, "LBU"},
                                                   {TEST_LH,  "LH"},
                                                   {TEST_LHU, "LHU"},
@@ -505,38 +501,27 @@ namespace cpu_test {
         }
         return error;
     }
+    // LOAD test cases end here.
 
+    // Store test cases start here.
     enum STORE_TEST {
         TEST_SW
     };
 
-    bool
+   bool
     test_store(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, uint32_t offset1, uint32_t value,
                bool verbose) {
         bool error = false;
-        string test_case = "";
+        std::string test_case = "";
 
         // STORE test code
         uint8_t *pointer = mem;
-        uint32_t val20 = value >> 12;
-        uint32_t val12 = value & 0xFFF;
-        if (val12 >> 11) {
-            val20++;
-        }
-        if ((val20 << 12) + sext(val12, 12) != value) {
-            printf("Test bench error: value1 = %8X, val20 = %8X, val12 = %8X\n", value, val20, val12);
-        }
+        uint32_t val20, val12;
+        std::tie(val20, val12) = split_immediate(value);
         pointer = add_cmd(pointer, asm_lui(rs2, val20));
         pointer = add_cmd(pointer, asm_addi(rs2, rs2, val12));
-
-        uint32_t offset20 = offset0 >> 12;
-        uint32_t offset12 = offset0 & 0xFFF;
-        if (offset12 >> 11) {
-            offset20++;
-        }
-        if ((offset20 << 12) + sext(offset12, 12) != offset0) {
-            printf("Test bench error: offset0 = %8X, offset20 = %8X, offset12 = %8X\n", offset0, offset20, offset12);
-        }
+        uint32_t offset20, offset12;
+        std::tie(offset20, offset12) = split_immediate(offset0);
         pointer = add_cmd(pointer, asm_lui(rs1, offset20));
         pointer = add_cmd(pointer, asm_addi(rs1, rs1, offset12));
         pointer = add_cmd(pointer, asm_sw(rs1, rs2, offset1));
@@ -577,7 +562,7 @@ namespace cpu_test {
         if (!verbose) {
             return;
         }
-        map<STORE_TEST, const string> test_name = {{TEST_SW, "SW"}};
+        std::map<STORE_TEST, const std::string> test_name = {{TEST_SW, "SW"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
@@ -611,7 +596,9 @@ namespace cpu_test {
         }
         return error;
     }
+    // Store test cases end here.
 
+    // Summation test starts here.
     bool test_sum(bool verbose) {
         load_assembler_sum(mem);
         constexpr int kExpectedValue = 55;
@@ -632,7 +619,9 @@ namespace cpu_test {
         }
         return error;
     }
+    // Summation test ends here.
 
+    // Sort test starts here.
     bool test_sort(bool verbose) {
         load_assembler_sort(mem);
 
@@ -688,6 +677,7 @@ namespace cpu_test {
         }
         return error;
     }
+    // Sort test ends here.
 
 } // namespace cpu_test
 

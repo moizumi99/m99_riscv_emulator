@@ -2,8 +2,6 @@
 #include "assembler.h"
 #include "bit_tools.h"
 
-using namespace std;
-
 uint8_t *add_cmd(uint8_t *mem, uint32_t cmd) {
     *(mem++) = cmd & 0xFF;
     *(mem++) = (cmd >> 8) & 0xFF;

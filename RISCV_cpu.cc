@@ -4,8 +4,6 @@
 #include <iostream>
 #include <random>
 
-using namespace std;
-
 #define ASSERT(X) if (X) {printf("SRA sign error.\n"); error_flag = true;}
 
 constexpr int kRegNum = 32;
