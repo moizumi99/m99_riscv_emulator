@@ -471,11 +471,11 @@ namespace cpu_test {
         if (!verbose) {
             return;
         }
-        map<LOAD_TEST, const string> test_name = {{TEST_LB, "LB"},
+        map<LOAD_TEST, const string> test_name = {{TEST_LB,  "LB"},
                                                   {TEST_LBU, "LBU"},
-                                                  {TEST_LH, "LH"},
+                                                  {TEST_LH,  "LH"},
                                                   {TEST_LHU, "LHU"},
-                                                  {TEST_LW, "LW"},};
+                                                  {TEST_LW,  "LW"},};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
@@ -488,12 +488,11 @@ namespace cpu_test {
                 uint32_t rd = A1;
                 uint32_t offset0 = 0, offset1 = 0, offset = 0;
                 while (offset < 16 || offset >= kMemSize - 4) {
+                    uint32_t  offset0_effective;
                     offset0 = rand() % kMemSize;
                     offset1 = rand() & 0x0FFF;
-                    if (rs1 == ZERO) {
-                        offset0 = 0;
-                    }
-                    offset = offset0 + sext(offset1, 12);
+                    offset0_effective = (rs1 == ZERO) ? 0 : offset0;
+                    offset = offset0_effective + sext(offset1, 12);
                 }
                 uint32_t val = rand() & 0x0FFFFFFFF;
                 bool test_error = test_load(test_case, rd, rs1, offset0, offset1, val, false);
@@ -503,6 +502,112 @@ namespace cpu_test {
                 error |= test_error;
             }
             print_load_instruction_message(test_case, error, verbose);
+        }
+        return error;
+    }
+
+    enum STORE_TEST {
+        TEST_SW
+    };
+
+    bool
+    test_store(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, uint32_t offset1, uint32_t value,
+               bool verbose) {
+        bool error = false;
+        string test_case = "";
+
+        // STORE test code
+        uint8_t *pointer = mem;
+        uint32_t val20 = value >> 12;
+        uint32_t val12 = value & 0xFFF;
+        if (val12 >> 11) {
+            val20++;
+        }
+        if ((val20 << 12) + sext(val12, 12) != value) {
+            printf("Test bench error: value1 = %8X, val20 = %8X, val12 = %8X\n", value, val20, val12);
+        }
+        pointer = add_cmd(pointer, asm_lui(rs2, val20));
+        pointer = add_cmd(pointer, asm_addi(rs2, rs2, val12));
+
+        uint32_t offset20 = offset0 >> 12;
+        uint32_t offset12 = offset0 & 0xFFF;
+        if (offset12 >> 11) {
+            offset20++;
+        }
+        if ((offset20 << 12) + sext(offset12, 12) != offset0) {
+            printf("Test bench error: offset0 = %8X, offset20 = %8X, offset12 = %8X\n", offset0, offset20, offset12);
+        }
+        pointer = add_cmd(pointer, asm_lui(rs1, offset20));
+        pointer = add_cmd(pointer, asm_addi(rs1, rs1, offset12));
+        pointer = add_cmd(pointer, asm_sw(rs1, rs2, offset1));
+        int32_t expected;
+        switch (test_type) {
+            case TEST_SW:
+                test_case = "SW";
+                pointer = add_cmd(pointer, asm_sw(rs1, rs2, offset1));
+                expected = value;
+                break;
+            default:
+                if (verbose) {
+                    printf("Undefined test case %d\n", test_type);
+                    return true;
+                }
+        }
+        pointer = add_cmd(pointer, asm_addi(A0, ZERO, 0));
+        pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+        expected = (rs2 == ZERO) ? 0 : expected;
+
+        RiscvCpu cpu;
+        error = cpu.run_cpu(mem, 0, verbose) != 0;
+        offset0 = (rs1 == ZERO) ? 0 : offset0;
+        uint32_t address = offset0 + sext(offset1, 12);
+        int32_t result = mem[address] | (mem[address + 1] << 8) | (mem[address + 2] << 16) | (mem[address + 3] << 24);
+        error |= result != expected;
+        if (verbose) {
+            print_error_message(test_case, error, expected, result);
+            if (error) {
+                printf("rs1: %2d, rs2: %2d, offset0: %08X, offset1: %08X, val: %08X\n", rs1, rs2, offset0, offset1,
+                       value);
+            }
+        }
+        return error;
+    }
+
+    void print_store_instruction_message(STORE_TEST test_case, bool error, bool verbose = true) {
+        if (!verbose) {
+            return;
+        }
+        map<STORE_TEST, const string> test_name = {{TEST_SW, "SW"}};
+        printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
+    }
+
+    bool test_store_loop(bool verbose) {
+        bool error = false;
+        STORE_TEST test_sets[] = {TEST_SW};
+        for (auto test_case: test_sets) {
+            for (int i = 0; i < kUnitTestMax && !error; i++) {
+                int32_t rs1 = rand() % 32;
+                int32_t rs2 = rand() % 32;
+                while (rs1 == rs2) {
+                    rs2 = rand() % 32;
+                    // TODO: add a test for rs1 == rs2 case.
+                }
+                uint32_t offset0 = 0, offset1 = 0, offset = 0;
+                while (offset < 16 || offset >= kMemSize - 4) {
+                    int32_t offset0_effective;
+                    offset0 = rand() % kMemSize;
+                    offset1 = rand() & 0x0FFF;
+                    offset0_effective = (rs1 == ZERO) ? 0 : offset0;
+                    offset = offset0_effective + sext(offset1, 12);
+                }
+                int32_t value = rand() & 0xFFFFFFFF;
+                bool test_error = test_store(test_case, rs1, rs2, offset0, offset1, value, false);
+                if (test_error && verbose) {
+                    test_error = test_store(test_case, rs1, rs2, offset0, offset1, value, true);
+                }
+                error |= test_error;
+            }
+            print_store_instruction_message(test_case, error, verbose);
         }
         return error;
     }
@@ -553,7 +658,7 @@ namespace cpu_test {
         bool error_flag = error != 0;
 
         if (error_flag) {
-            printf("CPU exection error\n");
+            printf("CPU execution error\n");
         }
 
         for (int i = 0; i < kArraySize - 1; i++) {
@@ -595,6 +700,7 @@ int main() {
     error |= cpu_test::test_lui_loop(verbose);
     error |= cpu_test::test_auipc_loop(verbose);
     error |= cpu_test::test_load_loop(verbose);
+    error |= cpu_test::test_store_loop(verbose);
     error |= cpu_test::test_sum_quiet(verbose);
     error |= cpu_test::test_sort_quiet(verbose);
 
