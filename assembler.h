@@ -64,6 +64,10 @@ uint32_t asm_lw(uint32_t rd, uint32_t rs1, int32_t offset12);
 
 uint32_t asm_sw(uint32_t rs1, uint32_t rs2, int32_t offset12);
 
+uint32_t asm_sh(uint32_t rs1, uint32_t rs2, int32_t offset12);
+
+uint32_t asm_sb(uint32_t rs1, uint32_t rs2, int32_t offset12);
+
 uint32_t asm_jalr(uint32_t rd, uint32_t rs1, int32_t offset12);
 
 uint32_t asm_lui(uint32_t rd, int32_t imm20);

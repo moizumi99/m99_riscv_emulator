@@ -610,7 +610,7 @@ namespace load_assembler_test {
             }
             uint8_t opcode = base & 0b01111111;
 
-            for (int i = 0; i < TEST_NUM; i++) {
+            for (int i = 0; i < TEST_NUM & !error; i++) {
                 uint32_t cmd;
                 uint8_t rd = rand() % 32;
                 int32_t imm21 = (rand() % (1 << 21)) - (1 << 20);
@@ -635,11 +635,11 @@ namespace load_assembler_test {
 
     bool test_s_type(bool verbose = false) {
         enum TEST_LIST {
-            TEST_SW
+            TEST_SW, TEST_SH, TEST_SB
         };
         bool total_error = false;
 
-        for (TEST_LIST testcase : {TEST_SW}) {
+        for (TEST_LIST testcase : {TEST_SW, TEST_SH, TEST_SB}) {
             bool error = false;
             uint32_t base;
             std::string cmdname;
@@ -648,15 +648,23 @@ namespace load_assembler_test {
                     base = 0b00000000000000000010000000100011;
                     cmdname = "SW";
                     break;
+                case TEST_SH:
+                    base = 0b00000000000000000001000000100011;
+                    cmdname = "SH";
+                    break;
+                case TEST_SB:
+                    base = 0b00000000000000000000000000100011;
+                    cmdname = "SB";
+                    break;
                 default:
-                    printf("Test case is node defined yet\n");
+                    printf("Test case is not defined yet\n");
                     return true;
                     break;
             }
             uint8_t opcode = base & 0b01111111;
             uint8_t funct3 = (base >> 12) & 0b111;
 
-            for (int i = 0; i < TEST_NUM; i++) {
+            for (int i = 0; i < TEST_NUM && !error; i++) {
                 uint32_t cmd;
                 uint8_t rs1 = rand() % 32;
                 uint8_t rs2 = rand() % 32;
@@ -664,6 +672,12 @@ namespace load_assembler_test {
                 switch (testcase) {
                     case TEST_SW:
                         cmd = asm_sw(rs1, rs2, imm12);
+                        break;
+                    case TEST_SH:
+                        cmd = asm_sh(rs1, rs2, imm12);
+                        break;
+                    case TEST_SB:
+                        cmd = asm_sb(rs1, rs2, imm12);
                         break;
                     default:
                         break;

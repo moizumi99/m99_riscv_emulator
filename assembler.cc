@@ -333,6 +333,26 @@ uint32_t asm_sw(uint32_t rs1, uint32_t rs2, int32_t offset12) {
     return cmd.value();
 }
 
+uint32_t asm_sh(uint32_t rs1, uint32_t rs2, int32_t offset12) {
+    s_type cmd;
+    cmd.opcode = OPCODE_S;
+    cmd.funct3 = FUNC3_LSH;
+    cmd.rs2 = rs2;
+    cmd.rs1 = rs1;
+    cmd.imm12 = offset12;
+    return cmd.value();
+}
+
+uint32_t asm_sb(uint32_t rs1, uint32_t rs2, int32_t offset12) {
+    s_type cmd;
+    cmd.opcode = OPCODE_S;
+    cmd.funct3 = FUNC3_LSB;
+    cmd.rs2 = rs2;
+    cmd.rs1 = rs1;
+    cmd.imm12 = offset12;
+    return cmd.value();
+}
+
 // U TYPE
 uint32_t asm_lui(uint32_t rd, int32_t imm20) {
     u_type cmd;
