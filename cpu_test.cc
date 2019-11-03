@@ -11,30 +11,13 @@ namespace cpu_test {
     constexpr int kMemSize = 0x010000;
     uint8_t mem[kMemSize];
 
-    class RandomNumbers {
-    public:
-        RandomNumbers() {
-            generator = new std::mt19937(rd());
-            distribution = new std::uniform_int_distribution<uint32_t>(0, UINT32_MAX);
-        }
 
-        ~RandomNumbers() {
-        }
+    std::mt19937 rnd;
 
-        uint32_t GetRandomValue() {
-            return (*distribution)(*generator);
-        }
+    constexpr int kSeed = 155719;
 
-    private:
-        std::random_device rd;
-        std::mt19937 *generator;
-        std::uniform_int_distribution<uint32_t> *distribution;
-    };
-
-    RandomNumbers *rn;
-
-    uint32_t rand32() {
-        return rn->GetRandomValue();
+    void init_random() {
+        rnd.seed(kSeed);
     }
 
     // The number of test cases for each command.
@@ -682,7 +665,7 @@ namespace cpu_test {
         error |= return_value != expected;
         if (error & verbose) {
             printf("RS1: %d, RS2: %d, value1: %d(%08x), value2: %d(%08x), offset: %d(%03x)\n",
-                    rs1, rs2, value1, value1, value2, value2, offset, offset);
+                   rs1, rs2, value1, value1, value2, value2, offset, offset);
         }
 
         if (verbose) {
@@ -702,17 +685,17 @@ namespace cpu_test {
                 uint32_t pass = rand() % 2;
                 uint32_t rs1 = rand() % 32;
                 uint32_t rs2 = rand() % 32;
-                uint32_t value1 = rand32();
+                uint32_t value1 = rnd();
                 uint32_t value2;
                 if (pass) {
                     value2 == value1;
                 } else {
-                    value2 == rand32();
+                    value2 == rnd();
                 }
                 int32_t offset = 0;
                 while (-64 < offset && offset < 64) {
                     constexpr int kRange = 1 << 12;
-                    offset = 2 * ((rand32() % kRange) - kRange / 2);
+                    offset = 2 * ((rnd() % kRange) - kRange / 2);
                 }
                 bool test_error = test_b_type(test_case, rs1, rs2, value1, value2, offset, false);
                 if (test_error) {
@@ -815,10 +798,6 @@ namespace cpu_test {
         return error;
     }
     // Sort test ends here.
-
-    void init_random() {
-        rn = new RandomNumbers();
-    }
 
 } // namespace cpu_test
 
