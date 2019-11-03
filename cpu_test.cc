@@ -26,7 +26,7 @@ namespace cpu_test {
     }
 
     // A helper function to split 32 bit value to 20 bit and singed 12 bit immediates.
-    std::pair<uint32_t, uint32_t > split_immediate(uint32_t value) {
+    std::pair<uint32_t, uint32_t> split_immediate(uint32_t value) {
         uint32_t value20 = value >> 12;
         uint32_t value12 = value & 0xFFF;
         if (value12 >> 11) {
@@ -131,14 +131,14 @@ namespace cpu_test {
 
     void print_i_type_instruction_message(ITYPE_TEST test_case, bool error) {
         std::map<ITYPE_TEST, const std::string> test_name = {{TEST_ADDI,  "ADDI"},
-                                                   {TEST_ANDI,  "ANDI"},
-                                                   {TEST_ORI,   "ORI"},
-                                                   {TEST_XORI,  "XORI"},
-                                                   {TEST_SLLI,  "SLLI"},
-                                                   {TEST_SRLI,  "SRLI"},
-                                                   {TEST_SRAI,  "SRAI"},
-                                                   {TEST_SLTI,  "SLTI"},
-                                                   {TEST_SLTIU, "SLTIU"}};
+                                                             {TEST_ANDI,  "ANDI"},
+                                                             {TEST_ORI,   "ORI"},
+                                                             {TEST_XORI,  "XORI"},
+                                                             {TEST_SLLI,  "SLLI"},
+                                                             {TEST_SRLI,  "SRLI"},
+                                                             {TEST_SRAI,  "SRAI"},
+                                                             {TEST_SLTI,  "SLTI"},
+                                                             {TEST_SLTIU, "SLTIU"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
@@ -277,15 +277,15 @@ namespace cpu_test {
 
     void print_r_type_instruction_message(R_TYPE_TEST test_case, bool error) {
         std::map<R_TYPE_TEST, const std::string> test_name = {{TEST_ADD,  "ADD"},
-                                                    {TEST_SUB,  "SUB"},
-                                                    {TEST_AND,  "AND"},
-                                                    {TEST_OR,   "OR"},
-                                                    {TEST_XOR,  "XOR"},
-                                                    {TEST_SLL,  "SLL"},
-                                                    {TEST_SRL,  "SRL"},
-                                                    {TEST_SRA,  "SRA"},
-                                                    {TEST_SLT,  "SLT"},
-                                                    {TEST_SLTU, "SLTU"}};
+                                                              {TEST_SUB,  "SUB"},
+                                                              {TEST_AND,  "AND"},
+                                                              {TEST_OR,   "OR"},
+                                                              {TEST_XOR,  "XOR"},
+                                                              {TEST_SLL,  "SLL"},
+                                                              {TEST_SRL,  "SRL"},
+                                                              {TEST_SRA,  "SRA"},
+                                                              {TEST_SLT,  "SLT"},
+                                                              {TEST_SLTU, "SLTU"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
@@ -468,10 +468,10 @@ namespace cpu_test {
             return;
         }
         std::map<LOAD_TEST, const std::string> test_name = {{TEST_LB,  "LB"},
-                                                  {TEST_LBU, "LBU"},
-                                                  {TEST_LH,  "LH"},
-                                                  {TEST_LHU, "LHU"},
-                                                  {TEST_LW,  "LW"},};
+                                                            {TEST_LBU, "LBU"},
+                                                            {TEST_LH,  "LH"},
+                                                            {TEST_LHU, "LHU"},
+                                                            {TEST_LW,  "LW"},};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
@@ -484,7 +484,7 @@ namespace cpu_test {
                 uint32_t rd = A1;
                 uint32_t offset0 = 0, offset1 = 0, offset = 0;
                 while (offset < 16 || offset >= kMemSize - 4) {
-                    uint32_t  offset0_effective;
+                    uint32_t offset0_effective;
                     offset0 = rand() % kMemSize;
                     offset1 = rand() & 0x0FFF;
                     offset0_effective = (rs1 == ZERO) ? 0 : offset0;
@@ -505,10 +505,10 @@ namespace cpu_test {
 
     // Store test cases start here.
     enum STORE_TEST {
-        TEST_SW
+        TEST_SW, TEST_SH, TEST_SB
     };
 
-   bool
+    bool
     test_store(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, uint32_t offset1, uint32_t value,
                bool verbose) {
         bool error = false;
@@ -532,6 +532,16 @@ namespace cpu_test {
                 pointer = add_cmd(pointer, asm_sw(rs1, rs2, offset1));
                 expected = value;
                 break;
+            case TEST_SH:
+                test_case = "SH";
+                pointer = add_cmd(pointer, asm_sh(rs1, rs2, offset1));
+                expected = value & 0x0000FFFF;
+                break;
+            case TEST_SB:
+                test_case = "SB";
+                pointer = add_cmd(pointer, asm_sb(rs1, rs2, offset1));
+                expected = value & 0x000000FF;
+                break;
             default:
                 if (verbose) {
                     printf("Undefined test case %d\n", test_type);
@@ -546,7 +556,9 @@ namespace cpu_test {
         error = cpu.run_cpu(mem, 0, verbose) != 0;
         offset0 = (rs1 == ZERO) ? 0 : offset0;
         uint32_t address = offset0 + sext(offset1, 12);
-        int32_t result = mem[address] | (mem[address + 1] << 8) | (mem[address + 2] << 16) | (mem[address + 3] << 24);
+        int32_t result = mem[address];
+        result |= (test_type == TEST_SH || test_type == TEST_SW) ? (mem[address + 1] << 8) : 0;
+        result |= (test_type == TEST_SW) ? (mem[address + 2] << 16) | (mem[address + 3] << 24) : 0;
         error |= result != expected;
         if (verbose) {
             print_error_message(test_case, error, expected, result);
@@ -562,13 +574,15 @@ namespace cpu_test {
         if (!verbose) {
             return;
         }
-        std::map<STORE_TEST, const std::string> test_name = {{TEST_SW, "SW"}};
+        std::map<STORE_TEST, const std::string> test_name = {{TEST_SW, "SW"},
+                                                             {TEST_SH, "SH"},
+                                                             {TEST_SB, "SB"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
     bool test_store_loop(bool verbose) {
         bool error = false;
-        STORE_TEST test_sets[] = {TEST_SW};
+        STORE_TEST test_sets[] = {TEST_SW, TEST_SH, TEST_SB};
         for (auto test_case: test_sets) {
             for (int i = 0; i < kUnitTestMax && !error; i++) {
                 int32_t rs1 = rand() % 32;

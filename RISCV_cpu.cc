@@ -208,6 +208,14 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 address = reg[rs1] + imm12_stype;
                 store_wd(mem + address, reg[rs2]);
                 break;
+            case INST_SH:
+                address = reg[rs1] + imm12_stype;
+                store_wd(mem + address, reg[rs2], 16);
+                break;
+            case INST_SB:
+                address = reg[rs1] + imm12_stype;
+                store_wd(mem + address, reg[rs2], 16);
+                break;
             case INST_LUI:
                 reg[rd] = imm20 << 12;
                 break;
@@ -306,6 +314,10 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
         case OPCODE_S: // SW
             if (funct3 == FUNC3_LSW) {
                 instruction = INST_SW;
+            } else if (funct3 == FUNC3_LSH) {
+                instruction = INST_SH;
+            } else if (funct3 == FUNC3_LSB) {
+                instruction = INST_SB;
             }
             break;
         case OPCODE_LUI: // LUI

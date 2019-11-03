@@ -149,6 +149,8 @@ enum instruction {
     INST_LHU,
     INST_LW,
     INST_SW,
+    INST_SH,
+    INST_SB,
     INST_LUI,
     INST_AUIPC
 };
