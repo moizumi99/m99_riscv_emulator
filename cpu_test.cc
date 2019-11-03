@@ -611,6 +611,88 @@ namespace cpu_test {
     }
     // Store test cases end here.
 
+    // B-Type tests start here
+    enum B_TYPE_TEST { TEST_BEQ};
+
+    void print_b_type_instruction_message(B_TYPE_TEST test_case, bool error) {
+        std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ, "BEQ"}};
+        printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
+    }
+
+    bool test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, uint32_t value2, int32_t offset, bool verbose = true) {
+        bool error = false;
+        std::string test_case = "BEQ";
+
+        uint8_t *pointer = mem;
+        uint32_t value20, value12;
+        std::tie(value20, value12) = split_immediate(value1);
+        pointer = add_cmd(pointer, asm_lui(rs1, value20));
+        pointer = add_cmd(pointer, asm_addi(rs1, rs1, value12));
+        std::tie(value20, value12) = split_immediate(value2);
+        pointer = add_cmd(pointer, asm_lui(rs2, value20));
+        pointer = add_cmd(pointer, asm_addi(rs2, rs2, value12));
+        uint8_t *next_pos = pointer + sext(offset & 0xFFF, 12);
+        pointer = add_cmd(pointer, asm_beq(rs1, rs2, offset));
+        pointer = add_cmd(pointer, asm_addi(A0, ZERO, 0));
+        add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+        pointer = next_pos;
+        pointer = add_cmd(pointer, asm_addi(A0, ZERO, 1));
+        add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+
+        value1 = (rs1 == ZERO) ? 0 : value1;
+        value2 = (rs2 == ZERO) ? 0 : value2;
+        value1 = (rs1 == rs2) ? value2 : value1;
+        uint32_t expected = (value1 == value2) ? 1 : 0;
+
+        RiscvCpu cpu;
+        error = cpu.run_cpu(mem, 0, verbose) != 0;
+        int return_value = cpu.read_register(A0);
+        error |= return_value != expected;
+        if (error & verbose) {
+            printf("RS1: %d, RS2: %d, value1: %d(%08x), value2: %d(%08x), offset: %d(%03x)\n", rs1, rs2, value1, value1, value2, value2, offset, offset);
+        }
+
+        if (verbose) {
+            print_error_message(test_case, error, expected, return_value);
+        }
+
+        return error;
+    }
+
+    bool test_b_type_loop(bool verbose = true) {
+        bool total_error = false;
+        B_TYPE_TEST test_sets[] = {TEST_BEQ};
+
+        for (B_TYPE_TEST test_case: test_sets) {
+            bool error = false;
+            for (int i = 0; i < kUnitTestMax && !error; i++) {
+                uint32_t pass = rand() % 2;
+                uint32_t rs1 = rand() % 32;
+                uint32_t rs2 = rand() % 32;
+                uint32_t value1 = rand() & 0xFFFFFFFF;
+                uint32_t value2;
+                if (pass) {
+                    value2 == value1;
+                } else {
+                    value2 == rand() & 0xFFFFFFFF;
+                }
+                uint32_t offset = 16;
+                bool test_error = test_b_type(test_case, rs1, rs2, value1, value2, offset, false);
+                if (test_error) {
+                    test_error = test_b_type(test_case, rs1, rs2, value1, value2, offset, true);
+                }
+                error |= test_error;
+            }
+            total_error |= error;
+            if (verbose) {
+                print_b_type_instruction_message(test_case, error);
+            }
+        }
+       return total_error;
+    }
+
+    // B-Type tests end here.
+
     // Summation test starts here.
     bool test_sum(bool verbose) {
         load_assembler_sum(mem);
@@ -629,6 +711,9 @@ namespace cpu_test {
         bool error = test_sum(false);
         if (error & verbose) {
             error = test_sum(true);
+        }
+        if (verbose) {
+            printf("SUM test %s.\n", error ? "failed" : "passed");
         }
         return error;
     }
@@ -676,7 +761,6 @@ namespace cpu_test {
             }
         }
 
-        printf("\n");
         if (error_flag) {
             printf("Sort test failed\n");
         }
@@ -687,6 +771,9 @@ namespace cpu_test {
         bool error = test_sort(false);
         if (error & verbose) {
             error = test_sort(true);
+        }
+        if (verbose) {
+            printf("Sort test %s.\n", error ? "failed" : "passed");
         }
         return error;
     }
@@ -704,6 +791,7 @@ int main() {
     error |= cpu_test::test_auipc_loop(verbose);
     error |= cpu_test::test_load_loop(verbose);
     error |= cpu_test::test_store_loop(verbose);
+    error |= cpu_test::test_b_type_loop(verbose);
     error |= cpu_test::test_sum_quiet(verbose);
     error |= cpu_test::test_sort_quiet(verbose);
 
