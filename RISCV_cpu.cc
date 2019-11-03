@@ -153,7 +153,7 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 break;
             case INST_BEQ:
                 if (reg[rs1] == reg[rs2]) {
-                    next_pc = pc + imm13;
+                    next_pc = pc + sext(imm13, 13);
                 }
                 break;
             case INST_BGE:

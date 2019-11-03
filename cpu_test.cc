@@ -4,11 +4,38 @@
 #include "load_assembler.h"
 #include "assembler.h"
 #include <map>
+#include <random>
 
 namespace cpu_test {
 
     constexpr int kMemSize = 0x010000;
     uint8_t mem[kMemSize];
+
+    class RandomNumbers {
+    public:
+        RandomNumbers() {
+            generator = new std::mt19937(rd());
+            distribution = new std::uniform_int_distribution<uint32_t>(0, UINT32_MAX);
+        }
+
+        ~RandomNumbers() {
+        }
+
+        uint32_t GetRandomValue() {
+            return (*distribution)(*generator);
+        }
+
+    private:
+        std::random_device rd;
+        std::mt19937 *generator;
+        std::uniform_int_distribution<uint32_t> *distribution;
+    };
+
+    RandomNumbers *rn;
+
+    uint32_t rand32() {
+        return rn->GetRandomValue();
+    }
 
     // The number of test cases for each command.
     constexpr int kUnitTestMax = 100;
@@ -612,18 +639,23 @@ namespace cpu_test {
     // Store test cases end here.
 
     // B-Type tests start here
-    enum B_TYPE_TEST { TEST_BEQ};
+    enum B_TYPE_TEST {
+        TEST_BEQ
+    };
 
     void print_b_type_instruction_message(B_TYPE_TEST test_case, bool error) {
         std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ, "BEQ"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
-    bool test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, uint32_t value2, int32_t offset, bool verbose = true) {
+    bool
+    test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, uint32_t value2, int32_t offset,
+                bool verbose = true) {
         bool error = false;
         std::string test_case = "BEQ";
 
-        uint8_t *pointer = mem;
+        uint32_t start_point = kMemSize / 2;
+        uint8_t *pointer = mem + start_point;
         uint32_t value20, value12;
         std::tie(value20, value12) = split_immediate(value1);
         pointer = add_cmd(pointer, asm_lui(rs1, value20));
@@ -631,7 +663,7 @@ namespace cpu_test {
         std::tie(value20, value12) = split_immediate(value2);
         pointer = add_cmd(pointer, asm_lui(rs2, value20));
         pointer = add_cmd(pointer, asm_addi(rs2, rs2, value12));
-        uint8_t *next_pos = pointer + sext(offset & 0xFFF, 12);
+        uint8_t *next_pos = pointer + offset;
         pointer = add_cmd(pointer, asm_beq(rs1, rs2, offset));
         pointer = add_cmd(pointer, asm_addi(A0, ZERO, 0));
         add_cmd(pointer, asm_jalr(ZERO, RA, 0));
@@ -645,11 +677,12 @@ namespace cpu_test {
         uint32_t expected = (value1 == value2) ? 1 : 0;
 
         RiscvCpu cpu;
-        error = cpu.run_cpu(mem, 0, verbose) != 0;
+        error = cpu.run_cpu(mem, start_point, verbose) != 0;
         int return_value = cpu.read_register(A0);
         error |= return_value != expected;
         if (error & verbose) {
-            printf("RS1: %d, RS2: %d, value1: %d(%08x), value2: %d(%08x), offset: %d(%03x)\n", rs1, rs2, value1, value1, value2, value2, offset, offset);
+            printf("RS1: %d, RS2: %d, value1: %d(%08x), value2: %d(%08x), offset: %d(%03x)\n",
+                    rs1, rs2, value1, value1, value2, value2, offset, offset);
         }
 
         if (verbose) {
@@ -669,14 +702,18 @@ namespace cpu_test {
                 uint32_t pass = rand() % 2;
                 uint32_t rs1 = rand() % 32;
                 uint32_t rs2 = rand() % 32;
-                uint32_t value1 = rand() & 0xFFFFFFFF;
+                uint32_t value1 = rand32();
                 uint32_t value2;
                 if (pass) {
                     value2 == value1;
                 } else {
-                    value2 == rand() & 0xFFFFFFFF;
+                    value2 == rand32();
                 }
-                uint32_t offset = 16;
+                int32_t offset = 0;
+                while (-64 < offset && offset < 64) {
+                    constexpr int kRange = 1 << 12;
+                    offset = 2 * ((rand32() % kRange) - kRange / 2);
+                }
                 bool test_error = test_b_type(test_case, rs1, rs2, value1, value2, offset, false);
                 if (test_error) {
                     test_error = test_b_type(test_case, rs1, rs2, value1, value2, offset, true);
@@ -688,7 +725,7 @@ namespace cpu_test {
                 print_b_type_instruction_message(test_case, error);
             }
         }
-       return total_error;
+        return total_error;
     }
 
     // B-Type tests end here.
@@ -779,12 +816,18 @@ namespace cpu_test {
     }
     // Sort test ends here.
 
+    void init_random() {
+        rn = new RandomNumbers();
+    }
+
 } // namespace cpu_test
 
 int main() {
     bool verbose = true;
 
     bool error = false;
+    cpu_test::init_random();
+
     error |= cpu_test::test_i_type_loop(verbose);
     error |= cpu_test::test_r_type_loop(verbose);
     error |= cpu_test::test_lui_loop(verbose);
