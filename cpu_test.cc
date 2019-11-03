@@ -587,10 +587,6 @@ namespace cpu_test {
             for (int i = 0; i < kUnitTestMax && !error; i++) {
                 int32_t rs1 = rand() % 32;
                 int32_t rs2 = rand() % 32;
-                while (rs1 == rs2) {
-                    rs2 = rand() % 32;
-                    // TODO: add a test for rs1 == rs2 case.
-                }
                 uint32_t offset0 = 0, offset1 = 0, offset = 0;
                 while (offset < 16 || offset >= kMemSize - 4) {
                     int32_t offset0_effective;
@@ -600,6 +596,9 @@ namespace cpu_test {
                     offset = offset0_effective + sext(offset1, 12);
                 }
                 int32_t value = rand() & 0xFFFFFFFF;
+                if (rs1 == rs2) {
+                    value = offset0;
+                }
                 bool test_error = test_store(test_case, rs1, rs2, offset0, offset1, value, false);
                 if (test_error && verbose) {
                     test_error = test_store(test_case, rs1, rs2, offset0, offset1, value, true);
