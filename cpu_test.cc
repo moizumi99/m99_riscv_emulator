@@ -13,9 +13,7 @@ namespace cpu_test {
 
 
     std::mt19937 rnd;
-
     constexpr int kSeed = 155719;
-
     void init_random() {
         rnd.seed(kSeed);
     }
@@ -97,7 +95,7 @@ namespace cpu_test {
             case TEST_SRLI:
                 imm12 = imm12 & 0b0011111;
                 pointer = add_cmd(pointer, asm_srli(rd, rs1, imm12));
-                expected = value >> imm12;
+                expected = static_cast<uint32_t>(value) >> imm12;
                 test_case = "SRLI";
                 break;
             case TEST_SRAI:
@@ -159,10 +157,10 @@ namespace cpu_test {
         for (ITYPE_TEST test_case: test_set) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
-                uint32_t rd = rand() & 0x1F;
-                uint32_t rs1 = rand() & 0x1F;
-                int32_t value = rand();
-                int32_t imm12 = sext(rand() & 0x0FFF, 12);
+                uint32_t rd = rnd() & 0x1F;
+                uint32_t rs1 = rnd() & 0x1F;
+                int32_t value = rnd();
+                int32_t imm12 = sext(rnd() & 0x0FFF, 12);
                 bool test_error = test_i_type(test_case, rd, rs1, value, imm12, false);
                 if (test_error) {
                     test_error |= test_i_type(test_case, rd, rs1, value, imm12, true);
@@ -307,11 +305,11 @@ namespace cpu_test {
         for (R_TYPE_TEST test_case: test_sets) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
-                int32_t rd = rand() & 0x1F;
-                int32_t rs1 = rand() & 0x1F;
-                int32_t rs2 = rand() & 0x1F;
-                int32_t value1 = static_cast<int32_t>(rand());
-                int32_t value2 = static_cast<int32_t>(rand());
+                int32_t rd = rnd() & 0x1F;
+                int32_t rs1 = rnd() & 0x1F;
+                int32_t rs2 = rnd() & 0x1F;
+                int32_t value1 = static_cast<int32_t>(rnd());
+                int32_t value2 = static_cast<int32_t>(rnd());
                 bool test_error = test_r_type(test_case, rd, rs1, rs2, value1, value2, false);
                 if (test_error && verbose) {
                     test_error = test_r_type(test_case, rd, rs1, rs2, value1, value2, true);
@@ -353,12 +351,12 @@ namespace cpu_test {
     bool test_auipc_loop(bool verbose) {
         bool error = false;
         for (int i = 0; i < kUnitTestMax && !error; i++) {
-            int32_t value = static_cast<int32_t>(rand()) & 0x0FFFFF;
-            int32_t offset = static_cast<uint32_t>(rand()) & 0x0FFF0;
-            int32_t rd = rand() % 32;
-            bool test_error = test_auipc(A1, 0, 16, false);
+            int32_t value = static_cast<int32_t>(rnd()) & 0x0FFFFF;
+            int32_t offset = static_cast<uint32_t>(rnd()) & 0x0FFF0;
+            int32_t rd = rnd() % 32;
+            bool test_error = test_auipc(rd, value, offset, false);
             if (test_error && verbose) {
-                test_error |= test_auipc(A1, 0, 16, true);
+                test_error |= test_auipc(rd, value, offset, true);
             }
             error |= test_error;
         }
@@ -391,7 +389,7 @@ namespace cpu_test {
     bool test_lui_loop(bool verbose) {
         bool error = false;
         for (int i = 0; i < kUnitTestMax && !error; i++) {
-            int32_t value = static_cast<int32_t>(rand());
+            int32_t value = static_cast<int32_t>(rnd());
             bool test_error = test_lui(value, false);
             if (test_error && verbose) {
                 test_error = test_lui(value, true);
@@ -459,6 +457,7 @@ namespace cpu_test {
         }
         pointer = add_cmd(pointer, asm_addi(A0, rd, 0));
         pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+        expected = (rd == ZERO) ? 0 : expected;
 
         RiscvCpu cpu;
         error = cpu.run_cpu(mem, 0, verbose) != 0;
@@ -490,17 +489,18 @@ namespace cpu_test {
         LOAD_TEST test_sets[] = {TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW};
         for (auto test_case: test_sets) {
             for (int i = 0; i < kUnitTestMax && !error; i++) {
-                uint32_t rs1 = rand() % 32;
-                uint32_t rd = A1;
-                uint32_t offset0 = 0, offset1 = 0, offset = 0;
-                while (offset < 16 || offset >= kMemSize - 4) {
+                uint32_t rs1 = rnd() % 32;
+                uint32_t rd = rnd() % 32;
+                uint32_t offset0 = 0;
+                int32_t offset1 = 0, offset = 0;
+                while (offset < 32 || offset >= kMemSize - 4) {
                     uint32_t offset0_effective;
-                    offset0 = rand() % kMemSize;
-                    offset1 = rand() & 0x0FFF;
+                    offset0 = rnd() % kMemSize;
+                    offset1 = rnd() & 0x0FFF;
                     offset0_effective = (rs1 == ZERO) ? 0 : offset0;
                     offset = offset0_effective + sext(offset1, 12);
                 }
-                uint32_t val = rand() & 0x0FFFFFFFF;
+                uint32_t val = rnd() & 0x0FFFFFFFF;
                 bool test_error = test_load(test_case, rd, rs1, offset0, offset1, val, false);
                 if (test_error && verbose) {
                     test_error = test_load(test_case, rd, rs1, offset0, offset1, val, true);
@@ -595,17 +595,17 @@ namespace cpu_test {
         STORE_TEST test_sets[] = {TEST_SW, TEST_SH, TEST_SB};
         for (auto test_case: test_sets) {
             for (int i = 0; i < kUnitTestMax && !error; i++) {
-                int32_t rs1 = rand() % 32;
-                int32_t rs2 = rand() % 32;
+                int32_t rs1 = rnd() % 32;
+                int32_t rs2 = rnd() % 32;
                 uint32_t offset0 = 0, offset1 = 0, offset = 0;
                 while (offset < 16 || offset >= kMemSize - 4) {
                     int32_t offset0_effective;
-                    offset0 = rand() % kMemSize;
-                    offset1 = rand() & 0x0FFF;
+                    offset0 = rnd() % kMemSize;
+                    offset1 = rnd() & 0x0FFF;
                     offset0_effective = (rs1 == ZERO) ? 0 : offset0;
                     offset = offset0_effective + sext(offset1, 12);
                 }
-                int32_t value = rand() & 0xFFFFFFFF;
+                int32_t value = rnd() & 0xFFFFFFFF;
                 if (rs1 == rs2) {
                     value = offset0;
                 }
@@ -682,9 +682,9 @@ namespace cpu_test {
         for (B_TYPE_TEST test_case: test_sets) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
-                uint32_t pass = rand() % 2;
-                uint32_t rs1 = rand() % 32;
-                uint32_t rs2 = rand() % 32;
+                uint32_t pass = rnd() % 2;
+                uint32_t rs1 = rnd() % 32;
+                uint32_t rs2 = rnd() % 32;
                 uint32_t value1 = rnd();
                 uint32_t value2;
                 if (pass) {
@@ -746,7 +746,7 @@ namespace cpu_test {
         constexpr int kArraySize = 100;
         constexpr int kArrayAddress = 512;
         for (int i = 0; i < kArraySize; i++) {
-            int value = rand() % 1000;
+            int value = rnd() % 1000;
             store_wd(mem + kArrayAddress + i * 4, value);
         }
 

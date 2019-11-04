@@ -3,11 +3,19 @@
 #include "bit_tools.h"
 #include <iostream>
 #include <string>
+#include <random>
 
 
 namespace load_assembler_test {
 
     constexpr int TEST_NUM = 1000;
+
+    std::mt19937 rnd;
+    constexpr int kSeed = 155719;
+    void init_random() {
+        rnd.seed(kSeed);
+    }
+
 
 // Print binary bit by bit.
     template<class T>
@@ -302,9 +310,9 @@ namespace load_assembler_test {
 
             for (int i = 0; i < TEST_NUM && !error; i++) {
                 uint32_t cmd;
-                uint8_t rd = rand() % 32;
-                uint8_t rs1 = rand() % 32;
-                uint8_t rs2 = rand() % 32;
+                uint8_t rd = rnd() % 32;
+                uint8_t rs1 = rnd() % 32;
+                uint8_t rs2 = rnd() % 32;
                 switch (testcase) {
                     case TEST_ADD:
                         cmd = asm_add(rd, rs1, rs2);
@@ -448,9 +456,9 @@ namespace load_assembler_test {
 
             for (int i = 0; i < TEST_NUM && !error; i++) {
                 uint32_t cmd;
-                uint8_t rd = rand() % 32;
-                uint8_t rs1 = rand() % 32;
-                int16_t imm12 = (rand() % (1 << 12)) - (1 << 11);
+                uint8_t rd = rnd() % 32;
+                uint8_t rs1 = rnd() % 32;
+                int16_t imm12 = (rnd() % (1 << 12)) - (1 << 11);
                 switch (test_case) {
                     case TEST_ADDI:
                         cmd = asm_addi(rd, rs1, imm12);
@@ -556,9 +564,9 @@ namespace load_assembler_test {
 
             for (int i = 0; i < TEST_NUM && !error; i++) {
                 uint32_t cmd;
-                uint8_t rs1 = rand() % 32;
-                uint8_t rs2 = rand() % 32;
-                int16_t imm13 = (rand() % (1 << 13)) - (1 << 12);
+                uint8_t rs1 = rnd() % 32;
+                uint8_t rs2 = rnd() % 32;
+                int16_t imm13 = (rnd() % (1 << 13)) - (1 << 12);
                 switch (testcase) {
                     case TEST_BEQ:
                         cmd = asm_beq(rs1, rs2, imm13);
@@ -612,8 +620,8 @@ namespace load_assembler_test {
 
             for (int i = 0; i < TEST_NUM & !error; i++) {
                 uint32_t cmd;
-                uint8_t rd = rand() % 32;
-                int32_t imm21 = (rand() % (1 << 21)) - (1 << 20);
+                uint8_t rd = rnd() % 32;
+                int32_t imm21 = (rnd() % (1 << 21)) - (1 << 20);
                 switch (testcase) {
                     case TEST_JAL:
                         cmd = asm_jal(rd, imm21);
@@ -666,9 +674,9 @@ namespace load_assembler_test {
 
             for (int i = 0; i < TEST_NUM && !error; i++) {
                 uint32_t cmd;
-                uint8_t rs1 = rand() % 32;
-                uint8_t rs2 = rand() % 32;
-                int32_t imm12 = (rand() % (1 << 12)) - (1 << 11);
+                uint8_t rs1 = rnd() % 32;
+                uint8_t rs2 = rnd() % 32;
+                int32_t imm12 = (rnd() % (1 << 12)) - (1 << 11);
                 switch (testcase) {
                     case TEST_SW:
                         cmd = asm_sw(rs1, rs2, imm12);
@@ -756,8 +764,8 @@ namespace load_assembler_test {
 
             for (int i = 0; i < TEST_NUM && !error; i++) {
                 uint32_t cmd;
-                uint8_t rd = rand() % 32;
-                int32_t imm20 = (rand() % (1 << 20)) - (1 << 19);
+                uint8_t rd = rnd() % 32;
+                int32_t imm20 = (rnd() % (1 << 20)) - (1 << 19);
                 switch (testcase) {
                     case TEST_LUI:
                         cmd = asm_lui(rd, imm20);
@@ -781,8 +789,7 @@ namespace load_assembler_test {
     }
 
     bool run_all_test() {
-        constexpr int SEED = 0;
-        srand(SEED);
+        init_random();
         bool verbose = true;
         bool error = false;
         error |= test_r_type(verbose);

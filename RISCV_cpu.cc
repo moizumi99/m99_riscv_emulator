@@ -116,7 +116,7 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 ASSERT((reg[rs1] & 0x1F <= 0) || (reg[rs1] & 0x80000000 == 0));
                 break;
             case INST_SLT:
-                reg[rd] = (static_cast<int32_t>(reg[rs1] < static_cast<int32_t>(reg[rs2]))) ? 1 : 0;
+                reg[rd] = (static_cast<int32_t>(reg[rs1]) < static_cast<int32_t>(reg[rs2])) ? 1 : 0;
                 break;
             case INST_SLTU:
                 reg[rd] = (reg[rs1] < reg[rs2]) ? 1 : 0;
