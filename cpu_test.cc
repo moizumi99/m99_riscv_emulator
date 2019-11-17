@@ -852,6 +852,7 @@ namespace cpu_test {
         bool error = false;
         init_random();
 
+        mem_init();
         error |= test_i_type_loop(verbose);
         error |= test_r_type_loop(verbose);
         error |= test_lui_loop(verbose);
@@ -873,31 +874,5 @@ namespace cpu_test {
 } // namespace cpu_test
 
 int main() {
-<<<<<<< HEAD
-    bool verbose = true;
-
-    bool error = false;
-    cpu_test::init_random();
-
-    cpu_test::mem_init();
-    error |= cpu_test::test_i_type_loop(verbose);
-    error |= cpu_test::test_r_type_loop(verbose);
-    error |= cpu_test::test_lui_loop(verbose);
-    error |= cpu_test::test_auipc_loop(verbose);
-    error |= cpu_test::test_load_loop(verbose);
-    error |= cpu_test::test_store_loop(verbose);
-    error |= cpu_test::test_b_type_loop(verbose);
-    error |= cpu_test::test_sum_quiet(verbose);
-    error |= cpu_test::test_sort_quiet(verbose);
-
-    if (error) {
-        printf("\nCPU Test failed.\n");
-    } else {
-        printf("\nAll CPU Tests passed.\n");
-    }
-    return error;
+   return cpu_test::run_test();
 }
-=======
-    return cpu_test::run_test();
-}
->>>>>>> local
