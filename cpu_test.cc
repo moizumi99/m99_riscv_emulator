@@ -14,6 +14,7 @@ namespace cpu_test {
 
     std::mt19937 rnd;
     constexpr int kSeed = 155719;
+
     void init_random() {
         rnd.seed(kSeed);
     }
@@ -555,8 +556,8 @@ namespace cpu_test {
             default:
                 if (verbose) {
                     printf("Undefined test case %d\n", test_type);
-                    return true;
                 }
+                return true;
         }
         pointer = add_cmd(pointer, asm_addi(A0, ZERO, 0));
         pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
@@ -623,11 +624,13 @@ namespace cpu_test {
 
     // B-Type tests start here
     enum B_TYPE_TEST {
-        TEST_BEQ
+        TEST_BEQ, TEST_BGE
     };
 
+    std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ, "BEQ"},
+                                                          {TEST_BGE, "BGE"}};
+
     void print_b_type_instruction_message(B_TYPE_TEST test_case, bool error) {
-        std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ, "BEQ"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
@@ -635,11 +638,16 @@ namespace cpu_test {
     test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, uint32_t value2, int32_t offset,
                 bool verbose = true) {
         bool error = false;
-        std::string test_case = "BEQ";
+        std::string test_case = test_name[test_type];
+
+        value1 = (rs1 == ZERO) ? 0 : value1;
+        value2 = (rs2 == ZERO) ? 0 : value2;
+        value1 = (rs1 == rs2) ? value2 : value1;
 
         uint32_t start_point = kMemSize / 2;
         uint8_t *pointer = mem + start_point;
         uint32_t value20, value12;
+        uint32_t expected;
         std::tie(value20, value12) = split_immediate(value1);
         pointer = add_cmd(pointer, asm_lui(rs1, value20));
         pointer = add_cmd(pointer, asm_addi(rs1, rs1, value12));
@@ -647,17 +655,19 @@ namespace cpu_test {
         pointer = add_cmd(pointer, asm_lui(rs2, value20));
         pointer = add_cmd(pointer, asm_addi(rs2, rs2, value12));
         uint8_t *next_pos = pointer + offset;
-        pointer = add_cmd(pointer, asm_beq(rs1, rs2, offset));
+        if (test_type == TEST_BEQ) {
+            pointer = add_cmd(pointer, asm_beq(rs1, rs2, offset));
+            expected = (value1 == value2) ? 1 : 0;
+        } else {
+            pointer = add_cmd(pointer, asm_bge(rs1, rs2, offset));
+            expected = (static_cast<int32_t>(value1) >= static_cast<int32_t>(value2)) ? 1 : 0;
+        }
         pointer = add_cmd(pointer, asm_addi(A0, ZERO, 0));
         add_cmd(pointer, asm_jalr(ZERO, RA, 0));
         pointer = next_pos;
         pointer = add_cmd(pointer, asm_addi(A0, ZERO, 1));
         add_cmd(pointer, asm_jalr(ZERO, RA, 0));
 
-        value1 = (rs1 == ZERO) ? 0 : value1;
-        value2 = (rs2 == ZERO) ? 0 : value2;
-        value1 = (rs1 == rs2) ? value2 : value1;
-        uint32_t expected = (value1 == value2) ? 1 : 0;
 
         RiscvCpu cpu;
         error = cpu.run_cpu(mem, start_point, verbose) != 0;
@@ -677,7 +687,7 @@ namespace cpu_test {
 
     bool test_b_type_loop(bool verbose = true) {
         bool total_error = false;
-        B_TYPE_TEST test_sets[] = {TEST_BEQ};
+        B_TYPE_TEST test_sets[] = {TEST_BEQ, TEST_BGE};
 
         for (B_TYPE_TEST test_case: test_sets) {
             bool error = false;
@@ -685,12 +695,22 @@ namespace cpu_test {
                 uint32_t pass = rnd() % 2;
                 uint32_t rs1 = rnd() % 32;
                 uint32_t rs2 = rnd() % 32;
-                uint32_t value1 = rnd();
+                uint32_t value1;
                 uint32_t value2;
-                if (pass) {
-                    value2 == value1;
-                } else {
-                    value2 == rnd();
+                switch (test_case) {
+                    case TEST_BEQ:
+                        value1 = rnd();
+                        value2 = pass ? value1 : rnd();
+                        break;
+                    case TEST_BGE:
+                        value1 = static_cast<uint32_t>(rnd());
+                        value2 = static_cast<uint32_t>(rnd());
+                        break;
+//                    default:
+//                        if (verbose) {
+//                            printf("Undefined test case %d\n", test_case);
+//                        }
+//                        return true;
                 }
                 int32_t offset = 0;
                 while (-64 < offset && offset < 64) {
