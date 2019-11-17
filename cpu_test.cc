@@ -624,11 +624,13 @@ namespace cpu_test {
 
     // B-Type tests start here
     enum B_TYPE_TEST {
-        TEST_BEQ, TEST_BGE
+        TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE
     };
 
-    std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ, "BEQ"},
-                                                          {TEST_BGE, "BGE"}};
+    std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ,  "BEQ"},
+                                                          {TEST_BGE,  "BGE"},
+                                                          {TEST_BLTU, "BLTU"},
+                                                          {TEST_BNE,  "BNE"}};
 
     void print_b_type_instruction_message(B_TYPE_TEST test_case, bool error) {
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
@@ -658,9 +660,15 @@ namespace cpu_test {
         if (test_type == TEST_BEQ) {
             pointer = add_cmd(pointer, asm_beq(rs1, rs2, offset));
             expected = (value1 == value2) ? 1 : 0;
-        } else {
+        } else if (test_type == TEST_BGE) {
             pointer = add_cmd(pointer, asm_bge(rs1, rs2, offset));
             expected = (static_cast<int32_t>(value1) >= static_cast<int32_t>(value2)) ? 1 : 0;
+        } else if (test_type == TEST_BLTU) {
+            pointer = add_cmd(pointer, asm_bltu(rs1, rs2, offset));
+            expected = value1 < value2 ? 1 : 0;
+        } else if (test_type == TEST_BNE) {
+            pointer = add_cmd(pointer, asm_bne(rs1, rs2, offset));
+            expected = value1 != value2 ? 1 : 0;
         }
         pointer = add_cmd(pointer, asm_addi(A0, ZERO, 0));
         add_cmd(pointer, asm_jalr(ZERO, RA, 0));
@@ -687,22 +695,25 @@ namespace cpu_test {
 
     bool test_b_type_loop(bool verbose = true) {
         bool total_error = false;
-        B_TYPE_TEST test_sets[] = {TEST_BEQ, TEST_BGE};
+        B_TYPE_TEST test_sets[] = {TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE};
 
         for (B_TYPE_TEST test_case: test_sets) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
-                uint32_t pass = rnd() % 2;
                 uint32_t rs1 = rnd() % 32;
                 uint32_t rs2 = rnd() % 32;
                 uint32_t value1;
                 uint32_t value2;
+                uint32_t equal = rnd() % 2;
                 switch (test_case) {
                     case TEST_BEQ:
+                    case TEST_BNE:
                         value1 = rnd();
-                        value2 = pass ? value1 : rnd();
+                        // You can ignore the corner case new random value equals to value1.
+                        value2 = equal ? value1 : rnd();
                         break;
                     case TEST_BGE:
+                    case TEST_BLTU:
                         value1 = static_cast<uint32_t>(rnd());
                         value2 = static_cast<uint32_t>(rnd());
                         break;
