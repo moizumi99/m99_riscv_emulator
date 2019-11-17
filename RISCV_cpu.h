@@ -106,6 +106,8 @@ enum op_funct3 {
     FUNC3_SLTU = 0b011,
     FUNC3_BEQ = 0b000,
     FUNC3_BGE = 0b101,
+    FUNC3_BGEU = 0b111,
+    FUNC3_BLT = 0b100,
     FUNC3_BLTU = 0b110,
     FUNC3_BNE = 0b001,
     FUNC3_LSB = 0b000,

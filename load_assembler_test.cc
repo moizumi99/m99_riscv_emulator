@@ -529,11 +529,11 @@ namespace load_assembler_test {
 
     bool test_b_type(bool verbose = false) {
         enum TEST_LIST {
-            TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE
+            TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU, TEST_BNE
         };
         bool total_error = false;
 
-        for (TEST_LIST testcase : {TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE}) {
+        for (TEST_LIST testcase : {TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU, TEST_BNE}) {
             bool error = false;
             uint32_t base;
             std::string cmdname;
@@ -546,6 +546,14 @@ namespace load_assembler_test {
                     base = 0b00000000000000000101000001100011;
                     cmdname = "BGE";
                     break;
+                case TEST_BGEU:
+                    base = 0b00000000000000000111000001100011;
+                    cmdname = "BGEU";
+                    break;
+                case TEST_BLT:
+                    base = 0b00000000000000000100000001100011;
+                    cmdname = "BLT";
+                    break;
                 case TEST_BLTU:
                     base = 0b00000000000000000110000001100011;
                     cmdname = "BLTU";
@@ -555,7 +563,7 @@ namespace load_assembler_test {
                     cmdname = "BNE";
                     break;
                 default:
-                    printf("Test case is node defined yet\n");
+                    printf("Test case #%d is node defined yet\n", testcase);
                     return true;
                     break;
             }
@@ -573,6 +581,12 @@ namespace load_assembler_test {
                         break;
                     case TEST_BGE:
                         cmd = asm_bge(rs1, rs2, imm13);
+                        break;
+                    case TEST_BGEU:
+                        cmd = asm_bgeu(rs1, rs2, imm13);
+                        break;
+                    case TEST_BLT:
+                        cmd = asm_blt(rs1, rs2, imm13);
                         break;
                     case TEST_BLTU:
                         cmd = asm_bltu(rs1, rs2, imm13);

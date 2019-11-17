@@ -46,6 +46,10 @@ uint32_t asm_beq(uint32_t rs1, uint32_t rs2, int32_t offset13);
 
 uint32_t asm_bge(uint32_t rs1, uint32_t rs2, int32_t offset13);
 
+uint32_t asm_bgeu(uint32_t rs1, uint32_t rs2, int32_t offset13);
+
+uint32_t asm_blt(uint32_t rs1, uint32_t rs2, int32_t offset13);
+
 uint32_t asm_bltu(uint32_t rs1, uint32_t rs2, int32_t offset13);
 
 uint32_t asm_bne(uint32_t rs1, uint32_t rs2, int32_t offset13);

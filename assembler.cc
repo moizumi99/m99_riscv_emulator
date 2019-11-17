@@ -293,6 +293,26 @@ uint32_t asm_bge(uint32_t rs1, uint32_t rs2, int32_t offset13) {
     return cmd.value();
 }
 
+uint32_t asm_bgeu(uint32_t rs1, uint32_t rs2, int32_t offset13) {
+    b_type cmd;
+    cmd.opcode = OPCODE_B;
+    cmd.funct3 = FUNC3_BGEU;
+    cmd.rs2 = rs2;
+    cmd.rs1 = rs1;
+    cmd.imm13 = offset13;
+    return cmd.value();
+}
+
+uint32_t asm_blt(uint32_t rs1, uint32_t rs2, int32_t offset13) {
+    b_type cmd;
+    cmd.opcode = OPCODE_B;
+    cmd.funct3 = FUNC3_BLT;
+    cmd.rs2 = rs2;
+    cmd.rs1 = rs1;
+    cmd.imm13 = offset13;
+    return cmd.value();
+}
+
 uint32_t asm_bltu(uint32_t rs1, uint32_t rs2, int32_t offset13) {
     b_type cmd;
     cmd.opcode = OPCODE_B;
