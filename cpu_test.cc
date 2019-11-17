@@ -8,8 +8,8 @@
 
 namespace cpu_test {
 
-    constexpr int kMemSize = 0x010000;
-    uint8_t mem[kMemSize];
+    constexpr int kMemSize = 0x0200000;
+    uint8_t *mem;
 
 
     std::mt19937 rnd;
@@ -21,6 +21,11 @@ namespace cpu_test {
 
     // The number of test cases for each command.
     constexpr int kUnitTestMax = 100;
+
+    //  memory initialization
+    void mem_init() {
+        mem = new uint8_t[kMemSize];
+    }
 
     // Commonly used helper function for error message.
     void print_error_message(const std::string &text, bool error, int32_t expected, int32_t actual) {
@@ -848,6 +853,7 @@ int main() {
     bool error = false;
     cpu_test::init_random();
 
+    cpu_test::mem_init();
     error |= cpu_test::test_i_type_loop(verbose);
     error |= cpu_test::test_r_type_loop(verbose);
     error |= cpu_test::test_lui_loop(verbose);

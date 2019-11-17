@@ -239,7 +239,7 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
         }
         reg[ZERO] = 0;
 
-        pc = next_pc & 0xFFFF;
+        pc = next_pc & 0xFFFFFFFF;
     } while (!error_flag && !end_flag);
 
     return error_flag;
