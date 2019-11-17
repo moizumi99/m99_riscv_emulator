@@ -624,11 +624,13 @@ namespace cpu_test {
 
     // B-Type tests start here
     enum B_TYPE_TEST {
-        TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE
+        TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU, TEST_BNE
     };
 
     std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ,  "BEQ"},
                                                           {TEST_BGE,  "BGE"},
+                                                          {TEST_BGEU, "BGEU"},
+                                                          {TEST_BLT, "BLT"},
                                                           {TEST_BLTU, "BLTU"},
                                                           {TEST_BNE,  "BNE"}};
 
@@ -663,6 +665,12 @@ namespace cpu_test {
         } else if (test_type == TEST_BGE) {
             pointer = add_cmd(pointer, asm_bge(rs1, rs2, offset));
             expected = (static_cast<int32_t>(value1) >= static_cast<int32_t>(value2)) ? 1 : 0;
+        } else if (test_type == TEST_BGEU) {
+            pointer = add_cmd(pointer, asm_bgeu(rs1, rs2, offset));
+            expected = value1 >= value2 ? 1 : 0;
+        } else if (test_type == TEST_BLT) {
+            pointer = add_cmd(pointer, asm_blt(rs1, rs2, offset));
+            expected = static_cast<int32_t>(value1) < static_cast<int32_t>(value2) ? 1 : 0;
         } else if (test_type == TEST_BLTU) {
             pointer = add_cmd(pointer, asm_bltu(rs1, rs2, offset));
             expected = value1 < value2 ? 1 : 0;
@@ -695,7 +703,7 @@ namespace cpu_test {
 
     bool test_b_type_loop(bool verbose = true) {
         bool total_error = false;
-        B_TYPE_TEST test_sets[] = {TEST_BEQ, TEST_BGE, TEST_BLTU, TEST_BNE};
+        B_TYPE_TEST test_sets[] = {TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU, TEST_BNE};
 
         for (B_TYPE_TEST test_case: test_sets) {
             bool error = false;
@@ -713,6 +721,8 @@ namespace cpu_test {
                         value2 = equal ? value1 : rnd();
                         break;
                     case TEST_BGE:
+                    case TEST_BGEU:
+                    case TEST_BLT:
                     case TEST_BLTU:
                         value1 = static_cast<uint32_t>(rnd());
                         value2 = static_cast<uint32_t>(rnd());

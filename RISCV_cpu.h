@@ -141,6 +141,8 @@ enum instruction {
     INST_SLTIU,
     INST_BEQ,
     INST_BGE,
+    INST_BGEU,
+    INST_BLT,
     INST_BLTU,
     INST_BNE,
     INST_JAL,

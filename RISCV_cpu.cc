@@ -163,6 +163,16 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                     next_pc = pc + imm13;
                 }
                 break;
+            case INST_BGEU:
+                if (reg[rs1] >= reg[rs2]) {
+                    next_pc = pc + imm13;
+                }
+                break;
+            case INST_BLT:
+                if (static_cast<int32_t>(reg[rs1]) < static_cast<int32_t>(reg[rs2])) {
+                    next_pc = pc + imm13;
+                }
+                break;
             case INST_BLTU:
                 if (reg[rs1] < reg[rs2]) {
                     next_pc = pc + imm13;
@@ -282,10 +292,14 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
         case OPCODE_B: // beq, bltu, bge, bne
             if (funct3 == FUNC3_BEQ) {
                 instruction = INST_BEQ;
+            } else if (funct3 == FUNC3_BLT) {
+                instruction = INST_BLT;
             } else if (funct3 == FUNC3_BLTU) {
                 instruction = INST_BLTU;
             } else if (funct3 == FUNC3_BGE) {
                 instruction = INST_BGE;
+            } else if (funct3 == FUNC3_BGEU) {
+                instruction = INST_BGEU;
             } else if (funct3 == FUNC3_BNE) {
                 instruction = INST_BNE;
             }
@@ -308,7 +322,7 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
             } else if (funct3 == FUNC3_LSHU) {
                 instruction = INST_LHU;
             } else if (funct3 == FUNC3_LSW) {
-                    instruction = INST_LW;
+                instruction = INST_LW;
             }
             break;
         case OPCODE_S: // SW
