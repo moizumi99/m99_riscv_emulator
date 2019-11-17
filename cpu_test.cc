@@ -635,7 +635,7 @@ namespace cpu_test {
     std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ,  "BEQ"},
                                                           {TEST_BGE,  "BGE"},
                                                           {TEST_BGEU, "BGEU"},
-                                                          {TEST_BLT, "BLT"},
+                                                          {TEST_BLT,  "BLT"},
                                                           {TEST_BLTU, "BLTU"},
                                                           {TEST_BNE,  "BNE"}};
 
@@ -845,9 +845,35 @@ namespace cpu_test {
     }
     // Sort test ends here.
 
+    bool run_test() {
+
+        bool verbose = true;
+
+        bool error = false;
+        init_random();
+
+        error |= test_i_type_loop(verbose);
+        error |= test_r_type_loop(verbose);
+        error |= test_lui_loop(verbose);
+        error |= test_auipc_loop(verbose);
+        error |= test_load_loop(verbose);
+        error |= test_store_loop(verbose);
+        error |= test_b_type_loop(verbose);
+        error |= test_sum_quiet(verbose);
+        error |= test_sort_quiet(verbose);
+
+        if (error) {
+            printf("\nCPU Test failed.\n");
+        } else {
+            printf("\nAll CPU Tests passed.\n");
+        }
+        return error;
+    }
+
 } // namespace cpu_test
 
 int main() {
+<<<<<<< HEAD
     bool verbose = true;
 
     bool error = false;
@@ -871,3 +897,7 @@ int main() {
     }
     return error;
 }
+=======
+    return cpu_test::run_test();
+}
+>>>>>>> local

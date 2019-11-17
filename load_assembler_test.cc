@@ -824,5 +824,5 @@ namespace load_assembler_test {
 } // namespace load_assembler_test
 
 int main() {
-    load_assembler_test::run_all_test();
+    return load_assembler_test::run_all_test();
 }
