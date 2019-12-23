@@ -82,6 +82,12 @@ Elf32_Shdr *get_shdr(std::vector<uint8_t > &program, int index) {
   return shdr;
 }
 
+char *get_section_name(std::vector<uint8_t> &program, Elf32_Shdr *shdr) {
+  Elf32_Ehdr *ehdr = get_ehdr(program);
+  Elf32_Shdr *nhdr = get_shdr(program, ehdr->e_shstrndx);
+  return reinterpret_cast<char *>(program.data()) + nhdr->sh_offset + shdr->sh_name;
+}
+
 Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, std::string name) {
   Elf32_Ehdr *ehdr = get_ehdr(program);
 
@@ -89,10 +95,26 @@ Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, std::string name) {
   Elf32_Shdr *nhdr = get_shdr(program, ehdr->e_shstrndx);
   for(int i = 0; i < ehdr->e_shnum; i++) {
     Elf32_Shdr *shdr = get_shdr(program, i);
-    char *section_name = reinterpret_cast<char *>(program.data()) + nhdr->sh_offset + shdr->sh_name;
+    char *section_name = get_section_name(program, shdr);
+//    char *section_name = reinterpret_cast<char *>(program.data()) + nhdr->sh_offset + shdr->sh_name;
     if (!std::strcmp(section_name, name.c_str())) {
-      std::cerr << "Section " << name << " found at " << std::hex
-      << nhdr->sh_offset + shdr->sh_name << "." << std::endl;
+      std::cerr << "Section " << name << " found at 0x0" << std::hex
+                << shdr->sh_offset << "." << std::endl;
+      return shdr;
+    }
+  }
+}
+
+Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, int type) {
+  Elf32_Ehdr *ehdr = get_ehdr(program);
+
+  // Find the last section header that has the name information.
+  for(int i = 0; i < ehdr->e_shnum; i++) {
+    Elf32_Shdr *shdr = get_shdr(program, i);
+    if (shdr->sh_type == type) {
+      char *section_name = get_section_name(program, shdr);
+      std::cerr << "Section " << section_name << "(" << shdr->sh_type << ") found at 0x0" << std::hex
+      << shdr->sh_offset << "." << std::endl;
       return shdr;
     }
   }
@@ -145,6 +167,44 @@ void loadElfFile(std::vector<uint8_t> &program, std::vector<uint8_t> &memory) {
   }
 }
 
+Elf32_Sym *find_symbol(std::vector<uint8_t> &program, std::string target_name) {
+  // Find the symbol table.
+  Elf32_Shdr *shdr = search_shdr(program, SHT_SYMTAB);
+  if (!shdr) {
+    std::cerr << "Symbol table not found." << std::endl;
+    return NULL;
+  }
+
+  int number = shdr->sh_size / sizeof(Elf32_Sym);
+  std::cerr << "Number of symbols = " << std::dec << number << ", (" << shdr->sh_size << " bytes)" << std::endl;
+
+  Elf32_Shdr *strtab_shdr = search_shdr(program, ".strtab");
+  if (!strtab_shdr) {
+    std::cerr << ".strtab not found." << std::endl;
+    return NULL;
+  }
+
+  for (int i = 0; i < number; i++) {
+    Elf32_Sym *symbol = (Elf32_Sym *)(program.data() + shdr->sh_offset + i * sizeof(Elf32_Sym));
+//    std::cerr << "Symbol name offset = " << symbol->st_name << "." << std::endl;
+    char *symbol_name = (char *)(program.data()) + strtab_shdr->sh_offset + symbol->st_name;
+//    std::cerr << "Symbol: " << symbol_name << " found. Size =" << symbol->st_size << std::endl;
+    if (!strcmp(symbol_name, target_name.c_str())) {
+      std::cerr << "Symbol \"" << target_name << "\" found at index "  << i << "." << std::endl;
+      return symbol;
+    }
+  }
+  return NULL;
+}
+
+int get_global_pointer(std::vector<uint8_t> &program) {
+  std::string target_name = "__global_pointer$";
+  Elf32_Sym *symbol = find_symbol(program, target_name);
+  std::cerr << "Global Pointer Value = 0x" << std::hex
+            << symbol->st_value << std::dec << "." << std::endl;
+  return symbol->st_value;
+}
+
 int get_entry_point(std::vector<uint8_t> &program) {
   Elf32_Ehdr *ehdr = get_ehdr(program);
  return ehdr->e_entry;
@@ -160,24 +220,26 @@ int main(int argc, char *argv[]) {
   std::vector<uint8_t> memory(kInitialSize);
   loadElfFile(program, memory);
   int entry_point = get_entry_point(program);
-  std::cerr << "Entry point is 0x" << std::hex << entry_point << std::endl;
+  std::cerr << "Entry point is 0x" << std::hex << entry_point << std::dec << std::endl;
+
+  int global_pointer = get_global_pointer(program);
 
   extend_mem_size(memory, memory.size() + kStackSize);
-  int sp = memory.size() - 4;
+  int sp_value = memory.size() - 4;
 
-  uint8_t mem[4096];
-  // Generate very primitive assembly code
-  load_assembler_sum(mem);
-  printf("Assembler set.\n");
+  uint8_t *mem = new uint8_t(memory.size());
+  memcpy(mem, memory.data(), memory.size());
 
   // Run CPU emulator
-  printf("Execution start\n");
+  std::cerr << "Execution start" << std::endl;
 
   RiscvCpu cpu;
-  int error = cpu.run_cpu(mem, 0, false);
-  if (error) {
-    printf("CPU execution fail.\n");
-  }
+  cpu.set_register(SP, sp_value);
+
+//  int error = cpu.run_cpu(mem, entry_point, false);
+//  if (error) {
+//    printf("CPU execution fail.\n");
+//  }
   int return_value = cpu.read_register(A0);
 
   printf("Return value: %d\n", return_value);
