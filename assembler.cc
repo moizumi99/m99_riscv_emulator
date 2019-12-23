@@ -222,6 +222,16 @@ uint32_t asm_jalr(uint32_t rd, uint32_t rs1, int32_t offset12) {
     return cmd.value();
 }
 
+uint32_t asm_ebreak() {
+    i_type cmd;
+    cmd.opcode = OPCODE_EBREAK;
+    cmd.funct3 = FUNC3_EBREAK;
+    cmd.rd = 0;
+    cmd.rs1 = 0;
+    cmd.imm12 = 0;
+    return cmd.value();
+}
+
 uint32_t asm_lb(uint32_t rd, uint32_t rs1, int32_t offset12) {
     i_type cmd;
     cmd.opcode = OPCODE_LD;

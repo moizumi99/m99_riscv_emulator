@@ -376,11 +376,12 @@ namespace load_assembler_test {
             TEST_ORI,
             TEST_XORI,
             TEST_SLTI,
-            TEST_SLTIU
+            TEST_SLTIU,
+            TEST_EBREAK,
         };
         bool total_error = false;
         TEST_LIST test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB, TEST_LBU, TEST_LH, TEST_LHU,
-                                TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLTI, TEST_SLTIU};
+                                TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLTI, TEST_SLTIU, TEST_EBREAK};
         for (TEST_LIST test_case : test_set) {
             bool error = false;
             uint32_t base;
@@ -446,6 +447,10 @@ namespace load_assembler_test {
                     base = 0b00000000000000000000000001100111;
                     cmdname = "JALR";
                     break;
+                case TEST_EBREAK:
+                    base = 0b00000000000000000000000001110011;
+                    cmdname = "EBREAK";
+                    break;
                 default:
                     printf("Test case is node defined yet\n");
                     return true;
@@ -510,6 +515,12 @@ namespace load_assembler_test {
                         break;
                     case TEST_JALR:
                         cmd = asm_jalr(rd, rs1, imm12);
+                        break;
+                    case TEST_EBREAK:
+                        cmd = asm_ebreak();
+                        rd = 0;
+                        rs1 = 0;
+                        imm12 = 0;
                         break;
                     default:
                         break;

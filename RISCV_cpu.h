@@ -87,7 +87,8 @@ enum op_label {
     OPCODE_S = 0b00100011,
     OPCODE_JALR = 0b01100111,
     OPCODE_LUI = 0b00110111,
-    OPCODE_AUIPC = 0b00010111
+    OPCODE_AUIPC = 0b00010111,
+    OPCODE_EBREAK = 0b01110011
 };
 
 enum op_funct {
@@ -116,6 +117,7 @@ enum op_funct3 {
     FUNC3_LSHU = 0b101,
     FUNC3_LSW = 0b010,
     FUNC3_JALR = 0b000,
+    FUNC3_EBREAK = 0b000,
 };
 
 enum instruction {
@@ -156,7 +158,8 @@ enum instruction {
     INST_SH,
     INST_SB,
     INST_LUI,
-    INST_AUIPC
+    INST_AUIPC,
+    INST_EBREAK
 };
 
 

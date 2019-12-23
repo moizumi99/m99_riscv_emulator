@@ -232,6 +232,9 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
             case INST_AUIPC:
                 reg[rd] = pc + (imm20 << 12);
                 break;
+            case INST_EBREAK:
+                // Debug function is not implemented yet.
+                break;
             case INST_ERROR:
             default:
                 error_flag = true;
@@ -339,6 +342,9 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
             break;
         case OPCODE_AUIPC: // AUIPC
             instruction = INST_AUIPC;
+            break;
+        case OPCODE_EBREAK: // EBREAK
+            instruction = INST_EBREAK;
             break;
         default:
             instruction = INST_ERROR;

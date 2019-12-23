@@ -27,7 +27,7 @@ namespace cpu_test {
         mem = new uint8_t[kMemSize];
     }
 
-    // Commonly used helper function for error message.
+   // Commonly used helper function for error message.
     void print_error_message(const std::string &text, bool error, int32_t expected, int32_t actual) {
         if (error) {
             printf("%s test failed.", text.c_str());
@@ -55,13 +55,16 @@ namespace cpu_test {
 
     // I TYPE test cases starts here.
     enum ITYPE_TEST {
-        TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI, TEST_SLTIU
+        TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI, TEST_SLTIU, TEST_EBREAK
     };
 
     bool test_i_type(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int32_t imm12, bool verbose) {
         bool error = false;
         int32_t expected;
         std::string test_case = "";
+
+        // CPU is instantiated here because some tests need access to cpu register.
+        RiscvCpu cpu;
 
         uint8_t *pointer = mem;
         uint32_t val20, val12;
@@ -120,6 +123,14 @@ namespace cpu_test {
                 expected = static_cast<uint32_t>(value) < static_cast<uint32_t >(imm12) ? 1 : 0;
                 test_case = "SLTIU";
                 break;
+            case TEST_EBREAK:
+                pointer = add_cmd(pointer, asm_ebreak());
+                expected = cpu.read_register(rd);
+                if (rs1 == rd) {
+                    expected = value;
+                }
+                test_case = "EBREAK";
+                break;
             default:
                 printf("I TYPE Test case undefined.\n");
                 return true;
@@ -130,7 +141,7 @@ namespace cpu_test {
         if (rd == 0) {
             expected = 0;
         }
-        RiscvCpu cpu;
+
         error = cpu.run_cpu(mem, 0, verbose) != 0;
         int return_value = cpu.read_register(A0);
         error |= return_value != expected;
@@ -152,14 +163,15 @@ namespace cpu_test {
                                                              {TEST_SRLI,  "SRLI"},
                                                              {TEST_SRAI,  "SRAI"},
                                                              {TEST_SLTI,  "SLTI"},
-                                                             {TEST_SLTIU, "SLTIU"}};
+                                                             {TEST_SLTIU, "SLTIU"},
+                                                             {TEST_EBREAK, "EBREAK"}};
         printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
     }
 
     bool test_i_type_loop(bool verbose) {
         bool total_error = false;
         ITYPE_TEST test_set[] = {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI,
-                                 TEST_SLTIU};
+                                 TEST_SLTIU, TEST_EBREAK};
         for (ITYPE_TEST test_case: test_set) {
             bool error = false;
             for (int i = 0; i < kUnitTestMax && !error; i++) {
