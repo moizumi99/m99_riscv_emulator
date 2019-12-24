@@ -3,6 +3,7 @@
 #include "instruction_encdec.h"
 #include <iostream>
 #include <random>
+#include <tuple>
 
 #define ASSERT(X) if (X) {printf("SRA sign error.\n"); error_flag = true;}
 
@@ -40,6 +41,18 @@ void RiscvCpu::randomize_registers() {
     reg[0] = 0;
 }
 
+std::pair<bool, bool> RiscvCpu::systemCall() {
+  bool end_flag = false;
+  bool error_flag = false;
+  if (reg[A7] == 93) {
+    // Exit system call.
+    end_flag = true;
+  } else if (reg[A7] == 63) {
+    // Write system call.
+    // TODO: implement write call.
+  }
+  return std::make_pair(error_flag, end_flag);
+}
 
 int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
     bool error_flag = false;
@@ -186,9 +199,12 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
             case INST_JAL:
                 reg[rd] = pc + 4;
                 next_pc = pc + imm21;
+                if (next_pc == pc) {
+                  error_flag = true;
+                }
                 break;
             case INST_JALR:
-                next_pc = (pc + reg[rs1] + imm12) & ~1;
+                next_pc = (reg[rs1] + imm12) & ~1;
                 reg[rd] = pc + 4;
                 if (rd == ZERO && rs1 == RA && reg[rs1]==0 && imm12 == 0) {
                     end_flag = true;
@@ -233,7 +249,16 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 reg[rd] = pc + (imm20 << 12);
                 break;
             case INST_SYSTEM:
-                // Debug function is not implemented yet.
+                if (imm12 == 0) {
+                  // ECALL
+                  std::tie(error_flag, end_flag) = systemCall();
+                } else if (imm12 == 1) {
+                  // EBREAK
+                  // Debug function is not implemented yet.
+                } else {
+                  // not defined.
+                  error_flag = true;
+                }
                 break;
             case INST_ERROR:
             default:
@@ -343,7 +368,7 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
         case OPCODE_AUIPC: // AUIPC
             instruction = INST_AUIPC;
             break;
-        case OPCODE_EBREAK: // EBREAK
+        case OPCODE_SYSTEM: // EBREAK
             instruction = INST_SYSTEM;
             break;
         default:

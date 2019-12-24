@@ -795,12 +795,11 @@ namespace cpu_test {
       std::tie(value20, value12) = split_immediate(value);
       pointer = add_cmd(pointer, asm_lui(rs1, value20));
       pointer = add_cmd(pointer, asm_addi(rs1, rs1, value12));
-      uint8_t *next_pc = pointer;
       pointer = add_cmd(pointer, asm_jalr(rd, rs1, offset));
       pointer = add_cmd(pointer, asm_addi(A0, ZERO, 1));
       pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
       add_cmd(pointer, asm_jalr(ZERO, RA, 0));
-      pointer = next_pc + ((value + sext(offset, 12)) & ~1);
+      pointer = mem + ((value + sext(offset, 12)) & ~1);
       pointer = add_cmd(pointer, asm_addi(A0, ZERO, 2));
       pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
       add_cmd(pointer, asm_jalr(ZERO, RA, 0));
@@ -839,7 +838,7 @@ namespace cpu_test {
         if (rs1 == 0) {
           offset &= 0x7FF;
         }
-        uint32_t value = kMemSize / 4 + (rnd() % (kMemSize / 4));
+        uint32_t value = kMemSize / 2 + (rnd() % (kMemSize / 4));
         bool test_error = test_jalr_type(rd, rs1, offset, value, false);
         if (test_error) {
           test_error = test_jalr_type(rd, rs1, offset, value, true);

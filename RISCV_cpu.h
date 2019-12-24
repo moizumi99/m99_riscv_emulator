@@ -2,6 +2,7 @@
 #define RISCV_CPU_H
 
 #include <cstdint>
+#include <utility>
 #include "bit_tools.h"
 
 class RiscvCpu {
@@ -22,7 +23,7 @@ public:
 private:
     uint32_t load_cmd(uint8_t *mem, uint32_t pc);
     uint32_t get_code(uint32_t ir);
-
+    std::pair<bool, bool> systemCall();
 };
 
 enum Registers {
@@ -88,7 +89,7 @@ enum op_label {
     OPCODE_JALR = 0b01100111,
     OPCODE_LUI = 0b00110111,
     OPCODE_AUIPC = 0b00010111,
-    OPCODE_EBREAK = 0b01110011
+    OPCODE_SYSTEM = 0b01110011
 };
 
 enum op_funct {

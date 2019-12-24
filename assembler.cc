@@ -224,7 +224,7 @@ uint32_t asm_jalr(uint32_t rd, uint32_t rs1, int32_t offset12) {
 
 uint32_t asm_ebreak() {
   i_type cmd;
-  cmd.opcode = OPCODE_EBREAK;
+  cmd.opcode = OPCODE_SYSTEM;
   cmd.funct3 = FUNC3_SYSTEM;
   cmd.rd = 0;
   cmd.rs1 = 0;
@@ -234,7 +234,7 @@ uint32_t asm_ebreak() {
 
 uint32_t asm_ecall() {
   i_type cmd;
-  cmd.opcode = OPCODE_EBREAK;
+  cmd.opcode = OPCODE_SYSTEM;
   cmd.funct3 = FUNC3_SYSTEM;
   cmd.rd = 0;
   cmd.rs1 = 0;
