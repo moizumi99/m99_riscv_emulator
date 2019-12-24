@@ -19,41 +19,41 @@ uint32_t sign_mask[] = {0xFFFFFFFE, 0xFFFFFFFC, 0xFFFFFFF8,
 };
 
 uint32_t bitshift(uint32_t val, int width, int offset, int distpos) {
-    val >>= offset;
-    val &= mask[width];
-    val <<= distpos;
-    return val;
+  val >>= offset;
+  val &= mask[width];
+  val <<= distpos;
+  return val;
 }
 
 uint32_t bitcrop(uint32_t val, int width, int offset) {
-    val >>= offset;
-    val &= mask[width];
-    return val;
+  val >>= offset;
+  val &= mask[width];
+  return val;
 }
 
 uint32_t load_wd(uint8_t *address) {
-    return *address | (*(address + 1) << 8) | (*(address + 2) << 16) | (*(address + 3) << 24);
+  return *address | (*(address + 1) << 8) | (*(address + 2) << 16) | (*(address + 3) << 24);
 }
 
 void store_wd(uint8_t *address, uint32_t data, int width) {
-    switch(width) {
-        case 32:
-            *(address + 2) = (data >> 16) & 0xFF;
-            *(address + 3) = (data >> 24) & 0xFF;
-       case 16:
-            *(address + 1) = (data >> 8) & 0xFF;
-        case 8:
-            *address = data & 0xFF;
-            break;
-        default:
-            throw std::invalid_argument("Store width is not 8, 16, or 32.");
-    }
+  switch(width) {
+    case 32:
+      *(address + 2) = (data >> 16) & 0xFF;
+      *(address + 3) = (data >> 24) & 0xFF;
+    case 16:
+      *(address + 1) = (data >> 8) & 0xFF;
+    case 8:
+      *address = data & 0xFF;
+      break;
+    default:
+      throw std::invalid_argument("Store width is not 8, 16, or 32.");
+  }
 }
 
 int32_t sext(uint32_t value, int width) {
-    if (value & (1 << (width - 1))) {
-        value |= sign_mask[width - 1];
-    }
-    return value;
+  if (value & (1 << (width - 1))) {
+    value |= sign_mask[width - 1];
+  }
+  return value;
 }
 
