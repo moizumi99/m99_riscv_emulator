@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <utility>
+#include <vector>
 #include "bit_tools.h"
 
 class RiscvCpu {
@@ -16,14 +17,18 @@ public:
 
   uint32_t read_register(uint32_t num);
 
-  int run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose = true);
+  void set_memory(std::vector<uint8_t> &memory);
+
+  int run_cpu(uint32_t start_pc, bool verbose = true);
 
   void randomize_registers();
 
 private:
+  std::vector<uint8_t> *memory;
+  uint8_t *mem;
   uint32_t load_cmd(uint8_t *mem, uint32_t pc);
   uint32_t get_code(uint32_t ir);
-  std::pair<bool, bool> systemCall(uint8_t *mem);
+  std::pair<bool, bool> systemCall();
 };
 
 enum Registers {

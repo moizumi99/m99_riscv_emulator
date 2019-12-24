@@ -9,6 +9,7 @@
 namespace cpu_test {
 
 constexpr int kMemSize = 0x0200000;
+std::vector<uint8_t > memory;
 uint8_t *mem;
 
 
@@ -24,7 +25,8 @@ constexpr int kUnitTestMax = 100;
 
 //  memory initialization
 void mem_init() {
-  mem = new uint8_t[kMemSize];
+  memory.resize(kMemSize);
+  mem = memory.data();
 }
 
 // Commonly used helper function for error message.
@@ -142,8 +144,8 @@ bool test_i_type(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, i
   if (rd == 0) {
     expected = 0;
   }
-
-  error = cpu.run_cpu(mem, 0, verbose) != 0;
+  cpu.set_memory(memory);
+  error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
   error |= return_value != expected;
   if (error & verbose) {
@@ -290,7 +292,8 @@ test_r_type(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t
     expected = 0;
   }
   RiscvCpu cpu;
-  error = cpu.run_cpu(mem, 0, verbose) != 0;
+  cpu.set_memory(memory);
+  error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
   error |= return_value != expected;
   if (error & verbose) {
@@ -360,7 +363,8 @@ bool test_auipc(int32_t rd, int32_t val, int32_t offset, bool verbose) {
     expected = 0;
   }
   RiscvCpu cpu;
-  bool error = cpu.run_cpu(mem, 0, verbose) != 0;
+  cpu.set_memory(memory);
+  bool error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
   error |= return_value != expected;
   if (verbose) {
@@ -399,7 +403,8 @@ bool test_lui(int32_t val, bool verbose) {
 
   int32_t expected = val & 0xFFFFF000;
   RiscvCpu cpu;
-  bool error = cpu.run_cpu(mem, 0, verbose) != 0;
+  cpu.set_memory(memory);
+  bool error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
   error |= return_value != expected;
   if (verbose) {
@@ -483,7 +488,8 @@ bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
   expected = (rd == ZERO) ? 0 : expected;
 
   RiscvCpu cpu;
-  error = cpu.run_cpu(mem, 0, verbose) != 0;
+  cpu.set_memory(memory);
+  error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
   error |= return_value != expected;
   if (verbose) {
@@ -587,7 +593,8 @@ test_store(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, u
   expected = (rs2 == ZERO) ? 0 : expected;
 
   RiscvCpu cpu;
-  error = cpu.run_cpu(mem, 0, verbose) != 0;
+  cpu.set_memory(memory);
+  error = cpu.run_cpu(0, verbose) != 0;
   offset0 = (rs1 == ZERO) ? 0 : offset0;
   uint32_t address = offset0 + sext(offset1, 12);
   int32_t result = mem[address];
@@ -711,7 +718,8 @@ test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, 
 
 
   RiscvCpu cpu;
-  error = cpu.run_cpu(mem, start_point, verbose) != 0;
+  cpu.set_memory(memory);
+  error = cpu.run_cpu(start_point, verbose) != 0;
   int return_value = cpu.read_register(A0);
   error |= return_value != expected;
   if (error & verbose) {
@@ -805,7 +813,8 @@ bool test_jalr_type(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, 
   add_cmd(pointer, asm_jalr(ZERO, RA, 0));
   uint32_t expected = 2;
   RiscvCpu cpu;
-  bool error = cpu.run_cpu(mem, start_point, verbose) != 0;
+  cpu.set_memory(memory);
+  bool error = cpu.run_cpu(start_point, verbose) != 0;
   int return_value = cpu.read_register(A0);
   error |= return_value != expected;
   if (rd != 0 && rd != RA && rd!= A0) {
@@ -856,7 +865,8 @@ bool test_sum(bool verbose) {
   load_assembler_sum(mem);
   constexpr int kExpectedValue = 55;
   RiscvCpu cpu;
-  bool error = cpu.run_cpu(mem, 0, verbose) != 0;
+  cpu.set_memory(memory);
+  bool error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
   error |= return_value != kExpectedValue;
   if (verbose) {
@@ -900,7 +910,8 @@ bool test_sort(bool verbose) {
   cpu.set_register(A0, kArrayAddress);
   cpu.set_register(A1, kArraySize);
   cpu.set_register(RA, 0);
-  int error = cpu.run_cpu(mem, 0, verbose);
+  cpu.set_memory(memory);
+  int error = cpu.run_cpu(0, verbose);
   bool error_flag = error != 0;
 
   if (error_flag) {

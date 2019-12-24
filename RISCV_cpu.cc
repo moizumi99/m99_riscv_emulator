@@ -21,12 +21,15 @@ RiscvCpu::RiscvCpu(bool randomize) {
 
 void RiscvCpu::set_register(uint32_t num, uint32_t value) { reg[num] = value; }
 
+void RiscvCpu::set_memory(std::vector<uint8_t> &memory) {
+  this->memory = &memory;
+}
+
 uint32_t RiscvCpu::load_cmd(uint8_t *mem, uint32_t pc) {
   uint8_t *address = mem + pc;
   return *address | (*(address + 1) << 8) | (*(address + 2) << 16) |
          (*(address + 3) << 24);
 }
-
 
 uint32_t RiscvCpu::read_register(uint32_t num) {
   return reg[num];
@@ -45,7 +48,7 @@ void RiscvCpu::randomize_registers() {
  * riscv-gnu-toolchain/linux-headers/include/asm-generic/unistd.h
  */
 
-std::pair<bool, bool> RiscvCpu::systemCall(uint8_t *mem) {
+std::pair<bool, bool> RiscvCpu::systemCall() {
   bool end_flag = false;
   bool error_flag = false;
   if (reg[A7] == 93) {
@@ -61,7 +64,7 @@ std::pair<bool, bool> RiscvCpu::systemCall(uint8_t *mem) {
   return std::make_pair(error_flag, end_flag);
 }
 
-int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
+int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
   bool error_flag = false;
   bool end_flag = false;
 
@@ -73,6 +76,7 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
            "X26      X27      X28      X29      X30      X31\n");
   }
 
+  mem = this->memory->data();
   pc = start_pc;
   do {
     uint32_t next_pc;
@@ -258,7 +262,7 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
       case INST_SYSTEM:
         if (imm12 == 0) {
           // ECALL
-          std::tie(error_flag, end_flag) = systemCall(mem);
+          std::tie(error_flag, end_flag) = systemCall();
         } else if (imm12 == 1) {
           // EBREAK
           // Debug function is not implemented yet.
@@ -387,3 +391,5 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
   }
   return instruction;
 }
+
+

@@ -226,9 +226,6 @@ int main(int argc, char *argv[]) {
 
   extend_mem_size(memory, memory.size() + kStackSize);
   int sp_value = (memory.size() - 4) & ~0x0F;
-  // TODO: cpu should be able to run from vector<uint8_t>.
-  uint8_t *mem = new uint8_t[memory.size()];
-  memcpy(mem, memory.data(), memory.size());
 
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
@@ -237,9 +234,10 @@ int main(int argc, char *argv[]) {
   RiscvCpu cpu(kNoRandomization);
   cpu.set_register(SP, sp_value);
   cpu.set_register(GP, global_pointer);
+  cpu.set_memory(memory);
 
   constexpr bool kNoVerbose = false;
-  int error = cpu.run_cpu(mem, entry_point, kNoVerbose);
+  int error = cpu.run_cpu(entry_point, kNoVerbose);
   if (error) {
     printf("CPU execution fail.\n");
   }
