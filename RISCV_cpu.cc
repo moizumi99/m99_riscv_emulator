@@ -41,15 +41,22 @@ void RiscvCpu::randomize_registers() {
     reg[0] = 0;
 }
 
-std::pair<bool, bool> RiscvCpu::systemCall() {
+/* The definition of the Linux system call can be found in
+ * riscv-gnu-toolchain/linux-headers/include/asm-generic/unistd.h
+ */
+
+std::pair<bool, bool> RiscvCpu::systemCall(uint8_t *mem) {
   bool end_flag = false;
   bool error_flag = false;
   if (reg[A7] == 93) {
     // Exit system call.
     end_flag = true;
-  } else if (reg[A7] == 63) {
+  } else if (reg[A7] == 64) {
     // Write system call.
-    // TODO: implement write call.
+    char *str = reinterpret_cast<char *>(mem) + reg[A1];
+    for (int i = 0; i < reg[A2]; i++) {
+      putchar(str[i]);
+    }
   }
   return std::make_pair(error_flag, end_flag);
 }
@@ -251,7 +258,7 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
             case INST_SYSTEM:
                 if (imm12 == 0) {
                   // ECALL
-                  std::tie(error_flag, end_flag) = systemCall();
+                  std::tie(error_flag, end_flag) = systemCall(mem);
                 } else if (imm12 == 1) {
                   // EBREAK
                   // Debug function is not implemented yet.

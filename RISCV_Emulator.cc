@@ -233,17 +233,19 @@ int main(int argc, char *argv[]) {
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
 
-  RiscvCpu cpu(false);
+  constexpr bool kNoRandomization = false;
+  RiscvCpu cpu(kNoRandomization);
   cpu.set_register(SP, sp_value);
   cpu.set_register(GP, global_pointer);
 
-  int error = cpu.run_cpu(mem, entry_point, true);
+  constexpr bool kNoVerbose = false;
+  int error = cpu.run_cpu(mem, entry_point, kNoVerbose);
   if (error) {
     printf("CPU execution fail.\n");
   }
   int return_value = cpu.read_register(A0);
 
-  printf("Return value: %d\n", return_value);
+  std::cerr << "Return value: " << return_value << "." << std::endl;
 
   return return_value;
 }
