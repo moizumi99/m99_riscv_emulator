@@ -148,7 +148,7 @@ void loadElfFile(std::vector<uint8_t> &program, std::vector<uint8_t> &memory) {
         total_new_size = phdr->p_vaddr + phdr->p_filesz;
         extend_mem_size(program, total_new_size);
         for (int i = 0; i < phdr->p_filesz; i++) {
-          memory[phdr->p_vaddr + i] = program[phdr->p_offset];
+          memory[phdr->p_vaddr + i] = program[phdr->p_offset + i];
         }
         std::cerr << "Loaded" << std::endl;
         break;
@@ -225,21 +225,22 @@ int main(int argc, char *argv[]) {
   int global_pointer = get_global_pointer(program);
 
   extend_mem_size(memory, memory.size() + kStackSize);
-  int sp_value = memory.size() - 4;
-
-  uint8_t *mem = new uint8_t(memory.size());
+  int sp_value = (memory.size() - 4) & ~0x0F;
+  // TODO: cpu should be able to run from vector<uint8_t>.
+  uint8_t *mem = new uint8_t[memory.size()];
   memcpy(mem, memory.data(), memory.size());
 
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
 
-  RiscvCpu cpu;
+  RiscvCpu cpu(false);
   cpu.set_register(SP, sp_value);
+  cpu.set_register(GP, global_pointer);
 
-//  int error = cpu.run_cpu(mem, entry_point, false);
-//  if (error) {
-//    printf("CPU execution fail.\n");
-//  }
+  int error = cpu.run_cpu(mem, entry_point, true);
+  if (error) {
+    printf("CPU execution fail.\n");
+  }
   int return_value = cpu.read_register(A0);
 
   printf("Return value: %d\n", return_value);

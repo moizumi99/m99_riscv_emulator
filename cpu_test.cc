@@ -136,6 +136,7 @@ namespace cpu_test {
                 return true;
         }
         pointer = add_cmd(pointer, asm_addi(A0, rd, 0));
+        pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
         pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
 
         if (rd == 0) {
@@ -282,6 +283,7 @@ namespace cpu_test {
                 return true;
         }
         pointer = add_cmd(pointer, asm_addi(A0, rd, 0));
+        pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
         add_cmd(pointer, asm_jalr(ZERO, RA, 0));
 
         if (rd == 0) {
@@ -350,6 +352,7 @@ namespace cpu_test {
         pointer = mem + offset;
         pointer = add_cmd(pointer, asm_auipc(rd, val));
         pointer = add_cmd(pointer, asm_addi(A0, rd, 0));
+        pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
         pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
 
         int32_t expected = offset + (val << 12);
@@ -391,6 +394,7 @@ namespace cpu_test {
         uint8_t *pointer = mem;
         pointer = add_cmd(pointer, asm_add(A0, ZERO, 0));
         pointer = add_cmd(pointer, asm_lui(A0, val >> 12));
+        pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
         pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
 
         int32_t expected = val & 0xFFFFF000;
@@ -474,6 +478,7 @@ namespace cpu_test {
                 }
         }
         pointer = add_cmd(pointer, asm_addi(A0, rd, 0));
+        pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
         pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
         expected = (rd == ZERO) ? 0 : expected;
 
@@ -577,6 +582,7 @@ namespace cpu_test {
                 return true;
         }
         pointer = add_cmd(pointer, asm_addi(A0, ZERO, 0));
+        pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
         pointer = add_cmd(pointer, asm_jalr(ZERO, RA, 0));
         expected = (rs2 == ZERO) ? 0 : expected;
 
@@ -696,9 +702,11 @@ namespace cpu_test {
             expected = value1 != value2 ? 1 : 0;
         }
         pointer = add_cmd(pointer, asm_addi(A0, ZERO, 0));
+        pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
         add_cmd(pointer, asm_jalr(ZERO, RA, 0));
         pointer = next_pos;
         pointer = add_cmd(pointer, asm_addi(A0, ZERO, 1));
+        pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
         add_cmd(pointer, asm_jalr(ZERO, RA, 0));
 
 
@@ -768,8 +776,81 @@ namespace cpu_test {
         }
         return total_error;
     }
-
     // B-Type tests end here.
+
+  void print_jalr_type_instruction_message(bool error) {
+    printf("%s test %s.\n", "JALR", error ? "failed" : "passed");
+  }
+
+  bool test_jalr_type(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, bool verbose) {
+      std::string test_case = "JALR";
+
+      if (rs1 == 0) {
+        value = 0;
+      }
+      uint32_t start_point = kMemSize / 4;
+      uint8_t *pointer = mem + start_point;
+
+      uint32_t value20, value12;
+      std::tie(value20, value12) = split_immediate(value);
+      pointer = add_cmd(pointer, asm_lui(rs1, value20));
+      pointer = add_cmd(pointer, asm_addi(rs1, rs1, value12));
+      uint8_t *next_pc = pointer;
+      pointer = add_cmd(pointer, asm_jalr(rd, rs1, offset));
+      pointer = add_cmd(pointer, asm_addi(A0, ZERO, 1));
+      pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
+      add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+      pointer = next_pc + ((value + sext(offset, 12)) & ~1);
+      pointer = add_cmd(pointer, asm_addi(A0, ZERO, 2));
+      pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
+      add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+      uint32_t expected = 2;
+      RiscvCpu cpu;
+      bool error = cpu.run_cpu(mem, start_point, verbose) != 0;
+      int return_value = cpu.read_register(A0);
+      error |= return_value != expected;
+      if (rd != 0 && rd != RA && rd!= A0) {
+        uint32_t expect = start_point + 12;
+        uint32_t actual = cpu.read_register(rd);
+        error |= actual != expect;
+        if (actual != expect) {
+          printf("reg[rd] = %d(%08x), expected = %d(%08x)\n", actual, actual, expect, expect);
+        }
+      }
+      if (error & verbose) {
+        printf("RS1: %d, RD: %d, value: %d(%08x), offset: %d(%03x)\n",
+               rs1, rd, value, value, offset, offset);
+      }
+
+      if (verbose) {
+        print_error_message(test_case, error, expected, return_value);
+      }
+
+      return error;
+    }
+
+    bool test_jalr_type_loop(bool verbose = true) {
+      bool error = false;
+      for (int i = 0; i < kUnitTestMax && !error; i++) {
+        uint32_t rs1 = rnd() % 32;
+        uint32_t rd = rnd() % 32;
+        uint32_t offset = rnd() % 0x1000;
+        // if rs1 == 0, the offset is from address=0. Only positive values are valid.
+        if (rs1 == 0) {
+          offset &= 0x7FF;
+        }
+        uint32_t value = kMemSize / 4 + (rnd() % (kMemSize / 4));
+        bool test_error = test_jalr_type(rd, rs1, offset, value, false);
+        if (test_error) {
+          test_error = test_jalr_type(rd, rs1, offset, value, true);
+        }
+        error |= test_error;
+      }
+      if (verbose) {
+        print_jalr_type_instruction_message(error);
+      }
+      return error;
+    }
 
     // Summation test starts here.
     bool test_sum(bool verbose) {
@@ -819,6 +900,7 @@ namespace cpu_test {
         RiscvCpu cpu;
         cpu.set_register(A0, kArrayAddress);
         cpu.set_register(A1, kArraySize);
+        cpu.set_register(RA, 0);
         int error = cpu.run_cpu(mem, 0, verbose);
         bool error_flag = error != 0;
 
@@ -872,6 +954,7 @@ namespace cpu_test {
         error |= test_load_loop(verbose);
         error |= test_store_loop(verbose);
         error |= test_b_type_loop(verbose);
+        error |= test_jalr_type_loop(verbose);
         error |= test_sum_quiet(verbose);
         error |= test_sort_quiet(verbose);
 

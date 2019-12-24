@@ -19,6 +19,7 @@ uint8_t *load_assembler_sum(uint8_t *mem) {
     mem = add_cmd(mem, asm_beq(T0, T2, 8));
     mem = add_cmd(mem, asm_jal(ZERO, -16));
     mem = add_cmd(mem, asm_add(A0, T1, ZERO));
+    mem = add_cmd(mem, asm_xor(RA, RA, RA));
     mem = add_cmd(mem, asm_jalr(ZERO, RA, 0));
 
     return mem;

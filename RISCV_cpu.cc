@@ -188,9 +188,9 @@ int RiscvCpu::run_cpu(uint8_t *mem, uint32_t start_pc, bool verbose) {
                 next_pc = pc + imm21;
                 break;
             case INST_JALR:
-                next_pc = pc + reg[rs1] + imm12;
+                next_pc = (pc + reg[rs1] + imm12) & ~1;
                 reg[rd] = pc + 4;
-                if (rd == ZERO && rs1 == RA && imm12 == 0) {
+                if (rd == ZERO && rs1 == RA && reg[rs1]==0 && imm12 == 0) {
                     end_flag = true;
                 }
                 break;
