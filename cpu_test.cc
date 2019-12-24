@@ -29,6 +29,16 @@ void mem_init() {
   mem = memory.data();
 }
 
+void randomize_registers(RiscvCpu &cpu) {
+  std::mt19937_64 gen(std::random_device{}());
+
+  constexpr int kRegNumber = 32;
+  for (int i = 1; i < kRegNumber; i++) {
+    uint32_t reg = gen() & 0xFFFFFFFF;
+    cpu.set_register(i, reg);
+  }
+}
+
 // Commonly used helper function for error message.
 void print_error_message(const std::string &text, bool error, int32_t expected, int32_t actual) {
   if (error) {
@@ -67,7 +77,7 @@ bool test_i_type(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, i
 
   // CPU is instantiated here because some tests need access to cpu register.
   RiscvCpu cpu;
-
+  randomize_registers(cpu);
   uint8_t *pointer = mem;
   uint32_t val20, val12;
   std::tie(val20, val12) = split_immediate(value);
@@ -292,6 +302,7 @@ test_r_type(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t
     expected = 0;
   }
   RiscvCpu cpu;
+  randomize_registers(cpu);
   cpu.set_memory(memory);
   error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
@@ -363,6 +374,7 @@ bool test_auipc(int32_t rd, int32_t val, int32_t offset, bool verbose) {
     expected = 0;
   }
   RiscvCpu cpu;
+  randomize_registers(cpu);
   cpu.set_memory(memory);
   bool error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
@@ -403,6 +415,7 @@ bool test_lui(int32_t val, bool verbose) {
 
   int32_t expected = val & 0xFFFFF000;
   RiscvCpu cpu;
+  randomize_registers(cpu);
   cpu.set_memory(memory);
   bool error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
@@ -488,6 +501,7 @@ bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
   expected = (rd == ZERO) ? 0 : expected;
 
   RiscvCpu cpu;
+  randomize_registers(cpu);
   cpu.set_memory(memory);
   error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
@@ -593,6 +607,7 @@ test_store(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, u
   expected = (rs2 == ZERO) ? 0 : expected;
 
   RiscvCpu cpu;
+  randomize_registers(cpu);
   cpu.set_memory(memory);
   error = cpu.run_cpu(0, verbose) != 0;
   offset0 = (rs1 == ZERO) ? 0 : offset0;
@@ -718,6 +733,7 @@ test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, 
 
 
   RiscvCpu cpu;
+  randomize_registers(cpu);
   cpu.set_memory(memory);
   error = cpu.run_cpu(start_point, verbose) != 0;
   int return_value = cpu.read_register(A0);
@@ -813,6 +829,7 @@ bool test_jalr_type(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, 
   add_cmd(pointer, asm_jalr(ZERO, RA, 0));
   uint32_t expected = 2;
   RiscvCpu cpu;
+  randomize_registers(cpu);
   cpu.set_memory(memory);
   bool error = cpu.run_cpu(start_point, verbose) != 0;
   int return_value = cpu.read_register(A0);
@@ -865,6 +882,7 @@ bool test_sum(bool verbose) {
   load_assembler_sum(mem);
   constexpr int kExpectedValue = 55;
   RiscvCpu cpu;
+  randomize_registers(cpu);
   cpu.set_memory(memory);
   bool error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
@@ -907,6 +925,7 @@ bool test_sort(bool verbose) {
   }
 
   RiscvCpu cpu;
+  randomize_registers(cpu);
   cpu.set_register(A0, kArrayAddress);
   cpu.set_register(A1, kArraySize);
   cpu.set_register(RA, 0);

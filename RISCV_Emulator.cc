@@ -230,8 +230,7 @@ int main(int argc, char *argv[]) {
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
 
-  constexpr bool kNoRandomization = false;
-  RiscvCpu cpu(kNoRandomization);
+  RiscvCpu cpu;
   cpu.set_register(SP, sp_value);
   cpu.set_register(GP, global_pointer);
   cpu.set_memory(memory);

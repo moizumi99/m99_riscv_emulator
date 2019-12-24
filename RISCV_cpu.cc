@@ -5,17 +5,13 @@
 #include <random>
 #include <tuple>
 
-#define ASSERT(X) if (X) {printf("SRA sign error.\n"); error_flag = true;}
+#define ASSERT(X) {if (X) {std::cerr << "SRA sign error." << std::endl; error_flag = true;}}
 
 constexpr int kRegNum = 32;
 
-RiscvCpu::RiscvCpu(bool randomize) {
-  if (randomize) {
-    randomize_registers();
-  } else {
-    for (int i = 0; i < kRegNum; i++) {
-      reg[i] = 0;
-    }
+RiscvCpu::RiscvCpu() {
+  for (int i = 0; i < kRegNum; i++) {
+    reg[i] = 0;
   }
 }
 
@@ -25,7 +21,7 @@ void RiscvCpu::set_memory(std::vector<uint8_t> &memory) {
   this->memory = &memory;
 }
 
-uint32_t RiscvCpu::load_cmd(uint8_t *mem, uint32_t pc) {
+uint32_t RiscvCpu::load_cmd(uint32_t pc) {
   uint8_t *address = mem + pc;
   return *address | (*(address + 1) << 8) | (*(address + 2) << 16) |
          (*(address + 3) << 24);
@@ -33,15 +29,6 @@ uint32_t RiscvCpu::load_cmd(uint8_t *mem, uint32_t pc) {
 
 uint32_t RiscvCpu::read_register(uint32_t num) {
   return reg[num];
-}
-
-void RiscvCpu::randomize_registers() {
-  std::mt19937_64 gen(std::random_device{}());
-
-  for (int i = 1; i < 32; i++) {
-    reg[i] = gen() & 0xFFFFFFFF;
-  }
-  reg[0] = 0;
 }
 
 /* The definition of the Linux system call can be found in
@@ -69,11 +56,11 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
   bool end_flag = false;
 
   if (verbose) {
-    printf("   PC       CMD       X0       X1       X2       X3       X4       "
+    std::cout << "   PC       CMD       X0       X1       X2       X3       X4       "
            "X5       X6       X7       X8       X9      X10      X11      "
            "X12      X13      X14      X15      X16      X17      X18      "
            "X19      X20      X21      X22      X23      X24      X25      "
-           "X26      X27      X28      X29      X30      X31\n");
+           "X26      X27      X28      X29      X30      X31\n";
   }
 
   mem = this->memory->data();
@@ -82,7 +69,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
     uint32_t next_pc;
     uint32_t ir;
 
-    ir = load_cmd(mem, pc);
+    ir = load_cmd(pc);
     if (verbose) {
       printf(" %4x  %08x %08x %08x %08x %08x %08x %08x %08x %08x "
              "%08x %08x %08x %08x %08x %08x %08x %08x "

@@ -8,10 +8,8 @@
 
 class RiscvCpu {
 public:
-  RiscvCpu(bool randomize=true);
+  RiscvCpu();
   ~RiscvCpu() {};
-  uint32_t reg[32];
-  uint32_t pc;
 
   void set_register(uint32_t num, uint32_t value);
 
@@ -21,12 +19,12 @@ public:
 
   int run_cpu(uint32_t start_pc, bool verbose = true);
 
-  void randomize_registers();
-
 private:
+  uint32_t reg[32];
+  uint32_t pc;
   std::vector<uint8_t> *memory;
   uint8_t *mem;
-  uint32_t load_cmd(uint8_t *mem, uint32_t pc);
+  uint32_t load_cmd(uint32_t pc);
   uint32_t get_code(uint32_t ir);
   std::pair<bool, bool> systemCall();
 };
