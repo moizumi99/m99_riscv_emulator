@@ -76,6 +76,8 @@ uint32_t asm_jalr(uint32_t rd, uint32_t rs1, int32_t offset12);
 
 uint32_t asm_ebreak();
 
+uint32_t asm_ecall();
+
 uint32_t asm_lui(uint32_t rd, int32_t imm20);
 
 uint32_t  asm_auipc(uint32_t rd, int32_t imm20);

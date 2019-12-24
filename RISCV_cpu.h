@@ -117,7 +117,7 @@ enum op_funct3 {
     FUNC3_LSHU = 0b101,
     FUNC3_LSW = 0b010,
     FUNC3_JALR = 0b000,
-    FUNC3_EBREAK = 0b000,
+    FUNC3_SYSTEM = 0b000,
 };
 
 enum instruction {
@@ -159,7 +159,7 @@ enum instruction {
     INST_SB,
     INST_LUI,
     INST_AUIPC,
-    INST_EBREAK
+    INST_SYSTEM
 };
 
 
