@@ -363,28 +363,16 @@ bool test_r_type(bool verbose = false) {
 
 bool test_i_type(bool verbose = false) {
   enum TEST_LIST {
-    TEST_ADDI,
-    TEST_SLLI,
-    TEST_SRLI,
-    TEST_SRAI,
-    TEST_LB,
-    TEST_LBU,
-    TEST_LH,
-    TEST_LHU,
-    TEST_LW,
-    TEST_JALR,
-    TEST_ANDI,
-    TEST_ORI,
-    TEST_XORI,
-    TEST_SLTI,
-    TEST_SLTIU,
-    TEST_EBREAK,
-    TEST_ECALL,
+    TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW,
+    TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLTI, TEST_SLTIU, TEST_EBREAK, TEST_ECALL,
+    TEST_CSRRC, TEST_CSRRCI, TEST_CSRRS, TEST_CSRRSI, TEST_CSRRW, TEST_CSRRWI,
   };
   bool total_error = false;
   TEST_LIST test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB, TEST_LBU, TEST_LH, TEST_LHU,
                           TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLTI, TEST_SLTIU,
-                          TEST_EBREAK, TEST_ECALL};
+                          TEST_EBREAK, TEST_ECALL,
+                          TEST_CSRRC, TEST_CSRRCI, TEST_CSRRS, TEST_CSRRSI, TEST_CSRRW, TEST_CSRRWI,
+                          };
   for (TEST_LIST test_case : test_set) {
     bool error = false;
     uint32_t base;
@@ -455,11 +443,35 @@ bool test_i_type(bool verbose = false) {
         cmdname = "EBREAK";
         break;
       case TEST_ECALL:
-        base = 0b00000000000000000000000001110011;
         cmdname = "ECALL";
+        base = 0b00000000000000000000000001110011;
+        break;
+      case TEST_CSRRC:
+        cmdname = "CSRRC";
+        base = 0b00000000000000000011000001110011;
+        break;
+      case TEST_CSRRCI:
+        cmdname = "CSRRCI";
+        base = 0b00000000000000000111000001110011;
+        break;
+      case TEST_CSRRS:
+        cmdname = "CSRRS";
+        base = 0b00000000000000000010000001110011;
+        break;
+      case TEST_CSRRSI:
+        cmdname = "CSRRSI";
+        base = 0b00000000000000000110000001110011;
+        break;
+      case TEST_CSRRW:
+        cmdname = "CSRRW";
+        base = 0b00000000000000000001000001110011;
+        break;
+      case TEST_CSRRWI:
+        cmdname = "CSRRWI";
+        base = 0b00000000000000000101000001110011;
         break;
       default:
-        printf("Test case is node defined yet\n");
+        printf("Test case %D is node defined yet\n", test_case);
         return true;
         break;
     }
@@ -534,6 +546,24 @@ bool test_i_type(bool verbose = false) {
           rd = 0;
           rs1 = 0;
           imm12 = 0;
+          break;
+        case TEST_CSRRC:
+          cmd = asm_csrrc(rd, rs1, imm12);
+          break;
+        case TEST_CSRRCI:
+          cmd = asm_csrrci(rd, rs1, imm12);
+          break;
+        case TEST_CSRRS:
+          cmd = asm_csrrs(rd, rs1, imm12);
+          break;
+        case TEST_CSRRSI:
+          cmd = asm_csrrsi(rd, rs1, imm12);
+          break;
+        case TEST_CSRRW:
+          cmd = asm_csrrw(rd, rs1, imm12);
+          break;
+        case TEST_CSRRWI:
+          cmd = asm_csrrwi(rd, rs1, imm12);
           break;
         default:
           break;

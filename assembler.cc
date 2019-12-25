@@ -242,6 +242,66 @@ uint32_t asm_ecall() {
   return cmd.value();
 }
 
+uint32_t asm_csrrc(uint32_t rd, uint32_t rs1, int32_t offset12) {
+  i_type cmd;
+  cmd.opcode = OPCODE_SYSTEM;
+  cmd.funct3 = FUNC3_CSRRC;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.imm12 = offset12;
+  return cmd.value();
+}
+
+uint32_t asm_csrrci(uint32_t rd, uint32_t zimm, int32_t offset12) {
+  i_type cmd;
+  cmd.opcode = OPCODE_SYSTEM;
+  cmd.funct3 = FUNC3_CSRRCI;
+  cmd.rd = rd;
+  cmd.rs1 = zimm;
+  cmd.imm12 = offset12;
+  return cmd.value();
+}
+uint32_t asm_csrrs(uint32_t rd, uint32_t rs1, int32_t offset12) {
+  i_type cmd;
+  cmd.opcode = OPCODE_SYSTEM;
+  cmd.funct3 = FUNC3_CSRRS;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.imm12 = offset12;
+  return cmd.value();
+}
+
+uint32_t asm_csrrsi(uint32_t rd, uint32_t zimm, int32_t offset12) {
+  i_type cmd;
+  cmd.opcode = OPCODE_SYSTEM;
+  cmd.funct3 = FUNC3_CSRRSI;
+  cmd.rd = rd;
+  cmd.rs1 = zimm;
+  cmd.imm12 = offset12;
+  return cmd.value();
+}
+
+
+uint32_t asm_csrrw(uint32_t rd, uint32_t rs1, int32_t offset12) {
+  i_type cmd;
+  cmd.opcode = OPCODE_SYSTEM;
+  cmd.funct3 = FUNC3_CSRRW;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.imm12 = offset12;
+  return cmd.value();
+}
+
+uint32_t asm_csrrwi(uint32_t rd, uint32_t zimm, int32_t offset12) {
+  i_type cmd;
+  cmd.opcode = OPCODE_SYSTEM;
+  cmd.funct3 = FUNC3_CSRRWI;
+  cmd.rd = rd;
+  cmd.rs1 = zimm;
+  cmd.imm12 = offset12;
+  return cmd.value();
+}
+
 uint32_t asm_lb(uint32_t rd, uint32_t rs1, int32_t offset12) {
   i_type cmd;
   cmd.opcode = OPCODE_LD;

@@ -122,6 +122,12 @@ enum op_funct3 {
   FUNC3_LSW = 0b010,
   FUNC3_JALR = 0b000,
   FUNC3_SYSTEM = 0b000,
+  FUNC3_CSRRC = 0b011,
+  FUNC3_CSRRCI = 0b111,
+  FUNC3_CSRRS = 0b010,
+  FUNC3_CSRRSI = 0b110,
+  FUNC3_CSRRW = 0b001,
+  FUNC3_CSRRWI = 0b101,
 };
 
 enum instruction {
