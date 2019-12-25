@@ -26,7 +26,7 @@ private:
   uint8_t *mem;
   uint32_t load_cmd(uint32_t pc);
   uint32_t get_code(uint32_t ir);
-  std::pair<bool, bool> systemCall();
+  std::pair<bool, bool> system_call();
 };
 
 enum Registers {

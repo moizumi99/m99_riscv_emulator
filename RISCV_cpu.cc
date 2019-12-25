@@ -2,7 +2,6 @@
 #include "bit_tools.h"
 #include "instruction_encdec.h"
 #include <iostream>
-#include <random>
 #include <tuple>
 
 #define ASSERT(X) {if (X) {std::cerr << "SRA sign error." << std::endl; error_flag = true;}}
@@ -35,7 +34,7 @@ uint32_t RiscvCpu::read_register(uint32_t num) {
  * riscv-gnu-toolchain/linux-headers/include/asm-generic/unistd.h
  */
 
-std::pair<bool, bool> RiscvCpu::systemCall() {
+std::pair<bool, bool> RiscvCpu::system_call() {
   bool end_flag = false;
   bool error_flag = false;
   if (reg[A7] == 93) {
@@ -249,7 +248,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
       case INST_SYSTEM:
         if (imm12 == 0) {
           // ECALL
-          std::tie(error_flag, end_flag) = systemCall();
+          std::tie(error_flag, end_flag) = system_call();
         } else if (imm12 == 1) {
           // EBREAK
           // Debug function is not implemented yet.
