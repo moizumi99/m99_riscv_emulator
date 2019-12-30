@@ -250,12 +250,16 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         reg[rd] = pc + (imm20 << 12);
         break;
       case INST_SYSTEM:
-        if (imm12 == 0) {
+        if (imm12 == 0b000000000000) {
           // ECALL
           std::tie(error_flag, end_flag) = system_call();
-        } else if (imm12 == 1) {
+        } else if (imm12 == 0b000000000001) {
           // EBREAK
           // Debug function is not implemented yet.
+        } else if (imm12 == 0b001100000010) {
+          // MRET
+          next_pc = csrs[kMepc];
+          // TODO: Implement privilege mode change.
         } else {
           // not defined.
           error_flag = true;
@@ -291,6 +295,10 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         csrs[csr] = rs1;
         reg[rd] = t;
         break;
+      case INST_FENCE:
+      case INST_FENCEI:
+        // Do nothing for now.
+        break;
       case INST_ERROR:
       default:
         error_flag = true;
@@ -308,7 +316,7 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
   uint16_t opcode = bitcrop(ir, 7, 0);
   uint8_t funct3 = bitcrop(ir, 3, 12);
   uint8_t funct7 = bitcrop(ir, 7, 25);
-  uint32_t instruction = 0;
+  uint32_t instruction = INST_ERROR;
   switch (opcode) {
     case OPCODE_ARITHLOG: // ADD, SUB
       if (funct3 == FUNC3_ADDSUB) {
@@ -416,8 +424,14 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
         instruction = INST_CSRRWI;
       }
       break;
+    case OPCODE_FENCE:
+      if (funct3 == FUNC3_FENCE) {
+        instruction = INST_FENCE;
+      } else if (funct3 == FUNC3_FENCEI) {
+        instruction == INST_FENCEI;
+      }
+      break;
     default:
-      instruction = INST_ERROR;
       break;
   }
   if (instruction == INST_ERROR) {

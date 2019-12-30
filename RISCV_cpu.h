@@ -32,6 +32,12 @@ private:
   std::pair<bool, bool> system_call();
 };
 
+enum CsrsAddresses {
+  kMepc = 0x341,
+  // TDOD: add other CSR addresses.
+  // https://people.eecs.berkeley.edu/~krste/papers/riscv-privileged-v1.9.1.pdf
+};
+
 enum Registers {
   ZERO = 0,
   X0 = 0,
@@ -95,7 +101,8 @@ enum op_label {
   OPCODE_JALR = 0b01100111,
   OPCODE_LUI = 0b00110111,
   OPCODE_AUIPC = 0b00010111,
-  OPCODE_SYSTEM = 0b01110011
+  OPCODE_SYSTEM = 0b01110011,
+  OPCODE_FENCE = 0b0001111,
 };
 
 enum op_funct {
@@ -132,6 +139,8 @@ enum op_funct3 {
   FUNC3_CSRRSI = 0b110,
   FUNC3_CSRRW = 0b001,
   FUNC3_CSRRWI = 0b101,
+  FUNC3_FENCE = 0b000,
+  FUNC3_FENCEI = 0b001,
 };
 
 enum instruction {
@@ -180,6 +189,8 @@ enum instruction {
   INST_CSRRSI,
   INST_CSRRW,
   INST_CSRRWI,
+  INST_FENCE,
+  INST_FENCEI
 };
 
 

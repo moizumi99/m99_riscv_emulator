@@ -6,6 +6,7 @@
 #include <fstream>
 #include <elf.h>
 #include <cstring>
+#include <tuple>
 
 constexpr int kUnitSize = 1024 * 1024; // 1 MB
 constexpr int kInitialSize = 4 * kUnitSize; // 1 MB
@@ -217,7 +218,9 @@ int get_entry_point(std::vector<uint8_t> &program) {
  return ehdr->e_entry;
 }
 
+
 int main(int argc, char *argv[]) {
+
   if (argc < 2) {
     std::cerr << "Uasge: "  << argv[0] << " elf_file" << std::endl;
     return -1;
@@ -242,7 +245,7 @@ int main(int argc, char *argv[]) {
   cpu.set_register(GP, global_pointer);
   cpu.set_memory(memory);
 
-  constexpr bool kVerboseFlag = true;
+  constexpr bool kVerboseFlag = false;
   int error = cpu.run_cpu(entry_point, kVerboseFlag);
   if (error) {
     printf("CPU execution fail.\n");

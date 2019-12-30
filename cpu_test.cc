@@ -209,7 +209,7 @@ bool test_i_type_loop(bool verbose) {
 
 // R-Type test cases start here.
 enum R_TYPE_TEST {
-  TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU
+  TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU,
 };
 
 bool
@@ -334,8 +334,7 @@ void print_r_type_instruction_message(R_TYPE_TEST test_case, bool error) {
 bool test_r_type_loop(bool verbose = true) {
   bool total_error = false;
   R_TYPE_TEST test_sets[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA,
-                             TEST_SLT,
-                             TEST_SLTU};
+                             TEST_SLT, TEST_SLTU};
   for (R_TYPE_TEST test_case: test_sets) {
     bool error = false;
     for (int i = 0; i < kUnitTestMax && !error; i++) {
@@ -986,6 +985,7 @@ bool run_test() {
   error |= test_jalr_type_loop(verbose);
   error |= test_sum_quiet(verbose);
   error |= test_sort_quiet(verbose);
+  // Add test for MRET
 
   if (error) {
     printf("\nCPU Test failed.\n");

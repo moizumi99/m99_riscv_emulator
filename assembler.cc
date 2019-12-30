@@ -2,6 +2,7 @@
 #include "RISCV_cpu.h"
 #include "instruction_encdec.h"
 #include <cstdint>
+#include <cassert>
 
 // R_TYPE
 uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2) {
@@ -310,6 +311,29 @@ uint32_t asm_csrrwi(uint32_t rd, uint32_t zimm, int32_t offset12) {
   cmd.rd = rd;
   cmd.rs1 = zimm;
   cmd.imm12 = offset12;
+  return cmd.value();
+}
+
+uint32_t asm_fence(uint32_t pred, uint32_t succ) {
+  i_type cmd;
+  assert((pred & ~0xF) == 0);
+  assert((succ & ~0xF) == 0);
+  uint32_t imm12 = (pred << 4) | succ;
+  cmd.opcode = OPCODE_FENCE;
+  cmd.funct3 = FUNC3_FENCE;
+  cmd.imm12 = imm12;
+  cmd.rd = 0;
+  cmd.rs1 = 0;
+  return cmd.value();
+}
+
+uint32_t asm_fencei() {
+  i_type cmd;
+  cmd.opcode = OPCODE_FENCE;
+  cmd.funct3 = FUNC3_FENCEI;
+  cmd.imm12 = 0;
+  cmd.rd = 0;
+  cmd.rs1 = 0;
   return cmd.value();
 }
 

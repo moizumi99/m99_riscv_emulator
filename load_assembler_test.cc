@@ -374,13 +374,14 @@ bool test_i_type(bool verbose = false) {
   enum TEST_LIST {
     TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW,
     TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLTI, TEST_SLTIU, TEST_EBREAK, TEST_ECALL,
-    TEST_CSRRC, TEST_CSRRCI, TEST_CSRRS, TEST_CSRRSI, TEST_CSRRW, TEST_CSRRWI,
+    TEST_CSRRC, TEST_CSRRCI, TEST_CSRRS, TEST_CSRRSI, TEST_CSRRW, TEST_CSRRWI, TEST_FENCE, TEST_FENCEI,
   };
   bool total_error = false;
   TEST_LIST test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB, TEST_LBU, TEST_LH, TEST_LHU,
                           TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLTI, TEST_SLTIU,
                           TEST_EBREAK, TEST_ECALL,
                           TEST_CSRRC, TEST_CSRRCI, TEST_CSRRS, TEST_CSRRSI, TEST_CSRRW, TEST_CSRRWI,
+                          TEST_FENCE, TEST_FENCEI,
                           };
   for (TEST_LIST test_case : test_set) {
     bool error = false;
@@ -479,8 +480,16 @@ bool test_i_type(bool verbose = false) {
         cmdname = "CSRRWI";
         base = 0b00000000000000000101000001110011;
         break;
+      case TEST_FENCE:
+        cmdname = "FENCE";
+        base = 0b00000000000000000000000000001111;
+        break;
+      case TEST_FENCEI:
+        cmdname = "FENCE.I";
+        base = 0b00000000000000000001000000001111;
+        break;
       default:
-        printf("Test case %D is node defined yet\n", test_case);
+        printf("Test case %d is not defined yet\n", test_case);
         return true;
         break;
     }
@@ -574,6 +583,18 @@ bool test_i_type(bool verbose = false) {
         case TEST_CSRRWI:
           cmd = asm_csrrwi(rd, rs1, imm12);
           break;
+        case TEST_FENCE: {
+          uint32_t pred = (imm12 >> 4) & 0x0F;
+          uint32_t succ = imm12 & 0x0F;
+          imm12 &= 0x0FF;
+          cmd = asm_fence(pred, succ);
+          rd = rs1 = 0;
+        }
+          break;
+        case TEST_FENCEI:
+          rd = rs1 = imm12 = 0;
+          cmd = asm_fencei();
+          break;
         default:
           break;
       }
@@ -626,7 +647,7 @@ bool test_b_type(bool verbose = false) {
         cmdname = "BNE";
         break;
       default:
-        printf("Test case #%d is node defined yet\n", testcase);
+        printf("Test case #%d is not defined yet\n", testcase);
         return true;
         break;
     }
@@ -689,7 +710,7 @@ bool test_j_type(bool verbose = false) {
         cmdname = "JAL";
         break;
       default:
-        printf("Test case is node defined yet\n");
+        printf("Test case is not defined yet\n");
         return true;
         break;
     }
@@ -833,7 +854,7 @@ bool test_u_type(bool verbose = false) {
         cmdname = "AUIPC";
         break;
       default:
-        printf("Test case is node defined yet\n");
+        printf("Test case is not defined yet\n");
         return true;
         break;
     }

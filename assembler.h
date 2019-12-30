@@ -92,6 +92,10 @@ uint32_t asm_csrrw(uint32_t rd, uint32_t rs1, int32_t offset12);
 
 uint32_t asm_csrrwi(uint32_t rd, uint32_t zimm, int32_t offset12);
 
+uint32_t asm_fence(uint32_t pred, uint32_t succ);
+
+uint32_t asm_fencei();
+
 uint32_t asm_lui(uint32_t rd, int32_t imm20);
 
 uint32_t  asm_auipc(uint32_t rd, int32_t imm20);
