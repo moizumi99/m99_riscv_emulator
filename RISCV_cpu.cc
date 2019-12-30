@@ -221,7 +221,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         break;
       case INST_LH:
         address = reg[rs1] + imm12;
-        reg[rd] = sext(load_wd(mem + address) & 0xFFFF, 8);
+        reg[rd] = sext(load_wd(mem + address) & 0xFFFF, 16);
         break;
       case INST_LHU:
         address = reg[rs1] + imm12;
@@ -428,12 +428,12 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
       }
       break;
     case OPCODE_FENCE:
-      if (funct3 == FUNC3_FENCE) {
+      if (funct3 == FUNC3_FENCEI) {
+        instruction = INST_FENCEI;
+      } else if (funct3 == FUNC3_FENCE) {
         instruction = INST_FENCE;
-      } else if (funct3 == FUNC3_FENCEI) {
-        instruction == INST_FENCEI;
       }
-      break;
+     break;
     default:
       break;
   }

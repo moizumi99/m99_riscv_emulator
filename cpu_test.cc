@@ -482,7 +482,7 @@ bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
       break;
     case TEST_LH:
       pointer = add_cmd(pointer, asm_lh(rd, rs1, offset1));
-      expected = sext(val & 0xFFFF, 8);
+      expected = sext(val & 0xFFFF, 16);
       break;
     case TEST_LHU:
       pointer = add_cmd(pointer, asm_lhu(rd, rs1, offset1));
