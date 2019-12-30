@@ -218,14 +218,49 @@ int get_entry_point(std::vector<uint8_t> &program) {
  return ehdr->e_entry;
 }
 
+std::tuple<bool, std::string, bool>parse_cmd(int argc, char *(*argv[])) {
+  bool error = false;
+  bool verbose = false;
+  std::string filename = "";
+  if (argc < 2) {
+    error = true;
+  } else {
+    for(int i = 1; i < argc; i++) {
+      if ((*argv)[i][0] == '-') {
+        if ((*argv)[i][1] == 'v') {
+          verbose = true;
+        }
+      } else {
+        if (filename == "") {
+          filename = std::string((*argv)[i]);
+        } else {
+          error = true;
+        }
+      }
+    }
+  }
+  return std::make_tuple(error, filename, verbose);
+}
+
 
 int main(int argc, char *argv[]) {
+  bool cmdline_error, verbose;
+  std::string filename;
 
-  if (argc < 2) {
-    std::cerr << "Uasge: "  << argv[0] << " elf_file" << std::endl;
+  std::tie(cmdline_error, filename, verbose) = parse_cmd(argc, &argv);
+
+  if (cmdline_error) {
+    std::cerr << "Uasge: "  << argv[0] << " elf_file" << "[-v]" << std::endl;
+    std::cerr << "-v: Verbose" << std::endl;
     return -1;
   }
-  std::vector<uint8_t> program = readFile(argv[1]);
+
+  std::cerr << "Elf file name: " << filename << std::endl;
+  if (verbose) {
+    std::cerr << "Verbose mode." << std::endl;
+  }
+
+  std::vector<uint8_t> program = readFile(filename);
 
   std::vector<uint8_t> memory(kInitialSize);
   loadElfFile(program, memory);
@@ -245,8 +280,7 @@ int main(int argc, char *argv[]) {
   cpu.set_register(GP, global_pointer);
   cpu.set_memory(memory);
 
-  constexpr bool kVerboseFlag = false;
-  int error = cpu.run_cpu(entry_point, kVerboseFlag);
+  int error = cpu.run_cpu(entry_point, verbose);
   if (error) {
     printf("CPU execution fail.\n");
   }

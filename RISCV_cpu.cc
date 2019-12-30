@@ -305,7 +305,10 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         break;
     }
     reg[ZERO] = 0;
-
+    if (pc == next_pc) {
+      std::cerr << "Infinite loop detected." << std::endl;
+      error_flag = true;
+    }
     pc = next_pc & 0xFFFFFFFF;
   } while (!error_flag && !end_flag);
 
