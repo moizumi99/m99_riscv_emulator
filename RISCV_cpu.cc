@@ -12,6 +12,7 @@ RiscvCpu::RiscvCpu() {
   for (int i = 0; i < kRegNum; i++) {
     reg[i] = 0;
   }
+  csrs.resize(kCsrSize);
 }
 
 void RiscvCpu::set_register(uint32_t num, uint32_t value) { reg[num] = value; }
@@ -59,7 +60,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
            "X5       X6       X7       X8       X9      X10      X11      "
            "X12      X13      X14      X15      X16      X17      X18      "
            "X19      X20      X21      X22      X23      X24      X25      "
-           "X26      X27      X28      X29      X30      X31\n";
+           "X26      X27      X28      X29      X30      X31" << std::endl;
   }
 
   mem = this->memory->data();
@@ -73,7 +74,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
       printf(" %4x  %08x %08x %08x %08x %08x %08x %08x %08x %08x "
              "%08x %08x %08x %08x %08x %08x %08x %08x "
              "%08x %08x %08x %08x %08x %08x %08x %08x "
-             "%08x %08x %08x %08x %08x %08x %08x %08x \n",
+             "%08x %08x %08x %08x %08x %08x %08x %08x",
              pc, ir, reg[0], reg[1], reg[2], reg[3], reg[4], reg[5],
              reg[6], reg[7], reg[8], reg[9], reg[10], reg[11],
              reg[12], reg[13], reg[14], reg[15], reg[16], reg[17],
@@ -81,6 +82,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
              reg[24], reg[25], reg[26], reg[27], reg[28], reg[29],
              reg[30], reg[31]
       );
+      std::cout << std::endl;
     }
 
     next_pc = pc + 4;
@@ -91,6 +93,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
     uint8_t rs1 = get_rs1(ir);
     uint8_t rs2 = get_rs2(ir);
     int16_t imm12 = get_imm12(ir);
+    int16_t csr = get_csr(ir);
     uint8_t shamt = get_shamt(ir);
     int16_t imm13 = get_imm13(ir);
     int32_t imm21 = get_imm21(ir);
@@ -100,6 +103,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
     int32_t sreg_rs1, sreg_rs2;
 
     switch (instruction) {
+      uint32_t t;
       case INST_ADD:
         reg[rd] = reg[rs1] + reg[rs2];
         break;
@@ -257,6 +261,36 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
           error_flag = true;
         }
         break;
+      case INST_CSRRC:
+        t = csrs[csr];
+        csrs[csr] &= ~reg[rs1];
+        reg[rd] = t;
+        break;
+      case INST_CSRRCI:
+        t = csrs[csr];
+        csrs[csr] &= ~rs1;
+        reg[rd] = t;
+        break;
+      case INST_CSRRS:
+        t = csrs[csr];
+        csrs[csr] |= reg[rs1];
+        reg[rd] = t;
+        break;
+      case INST_CSRRSI:
+        t = csrs[csr];
+        csrs[csr] |= rs1;
+        reg[rd] = t;
+        break;
+      case INST_CSRRW:
+        t = csrs[csr];
+        csrs[csr] = reg[rs1];
+        reg[rd] = t;
+        break;
+      case INST_CSRRWI:
+        t = csrs[csr];
+        csrs[csr] = rs1;
+        reg[rd] = t;
+        break;
       case INST_ERROR:
       default:
         error_flag = true;
@@ -366,7 +400,21 @@ uint32_t RiscvCpu::get_code(uint32_t ir) {
       instruction = INST_AUIPC;
       break;
     case OPCODE_SYSTEM: // EBREAK
-      instruction = INST_SYSTEM;
+      if (funct3 == FUNC3_SYSTEM) {
+        instruction = INST_SYSTEM;
+      } else if (funct3 == FUNC3_CSRRC) {
+        instruction = INST_CSRRC;
+      } else if (funct3 == FUNC3_CSRRCI) {
+        instruction = INST_CSRRCI;
+      } else if (funct3 == FUNC3_CSRRS) {
+        instruction = INST_CSRRS;
+      } else if (funct3 == FUNC3_CSRRSI) {
+        instruction = INST_CSRRSI;
+      } else if (funct3 == FUNC3_CSRRW) {
+        instruction = INST_CSRRW;
+      } else if (funct3 == FUNC3_CSRRWI) {
+        instruction = INST_CSRRWI;
+      }
       break;
     default:
       instruction = INST_ERROR;

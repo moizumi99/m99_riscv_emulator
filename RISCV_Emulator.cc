@@ -103,6 +103,7 @@ Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, std::string name) {
       return shdr;
     }
   }
+  return NULL;
 }
 
 Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, int type) {
@@ -164,6 +165,8 @@ void loadElfFile(std::vector<uint8_t> &program, std::vector<uint8_t> &memory) {
     std::cerr << "Secure BSS." << std::endl;
     int total_new_size = shdr->sh_addr + shdr->sh_size;
     extend_mem_size(program, total_new_size);
+  } else {
+    std::cerr << "No BSS found." << std::endl;
   }
 }
 
@@ -200,9 +203,13 @@ Elf32_Sym *find_symbol(std::vector<uint8_t> &program, std::string target_name) {
 int get_global_pointer(std::vector<uint8_t> &program) {
   std::string target_name = "__global_pointer$";
   Elf32_Sym *symbol = find_symbol(program, target_name);
-  std::cerr << "Global Pointer Value = 0x" << std::hex
-            << symbol->st_value << std::dec << "." << std::endl;
-  return symbol->st_value;
+  if (symbol) {
+    std::cerr << "Global Pointer Value = 0x" << std::hex
+              << symbol->st_value << std::dec << "." << std::endl;
+    return symbol->st_value;
+  }
+  std::cerr << "Global Pointer Value not defined. Set to zero." << std::endl;
+  return 0;
 }
 
 int get_entry_point(std::vector<uint8_t> &program) {
@@ -235,8 +242,8 @@ int main(int argc, char *argv[]) {
   cpu.set_register(GP, global_pointer);
   cpu.set_memory(memory);
 
-  constexpr bool kNoVerbose = false;
-  int error = cpu.run_cpu(entry_point, kNoVerbose);
+  constexpr bool kVerboseFlag = true;
+  int error = cpu.run_cpu(entry_point, kVerboseFlag);
   if (error) {
     printf("CPU execution fail.\n");
   }

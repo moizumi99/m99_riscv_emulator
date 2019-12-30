@@ -114,6 +114,17 @@ uint32_t asm_sltu(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   return cmd.value();
 }
 
+uint32_t asm_mret() {
+  r_type cmd;
+  cmd.funct7 = FUNC_MRET;
+  cmd.opcode = OPCODE_SYSTEM;
+  cmd.rs2 = 0b00010; // fixed for MRET
+  cmd.rs1 = 0;
+  cmd.rd = 0;
+  cmd.funct3 = FUNC3_SYSTEM;
+  return cmd.value();
+}
+
 // I_TYPE
 uint32_t asm_addi(uint32_t rd, uint32_t rs1, int32_t imm12) {
   i_type cmd;

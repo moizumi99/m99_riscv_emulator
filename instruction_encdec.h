@@ -62,6 +62,7 @@ uint32_t get_rd(uint32_t ir);
 uint32_t get_rs1(uint32_t ir);
 uint32_t get_rs2(uint32_t ir);
 int32_t get_imm12(uint32_t ir);
+int32_t get_csr(uint32_t ir);
 int32_t get_imm13(uint32_t ir);
 int32_t get_imm21(uint32_t ir);
 uint32_t get_imm20(uint32_t ir);

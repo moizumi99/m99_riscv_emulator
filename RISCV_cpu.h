@@ -7,6 +7,8 @@
 #include "bit_tools.h"
 
 class RiscvCpu {
+  static constexpr int kCsrSize = 4096;
+  static constexpr int kRegSize = 32;
 public:
   RiscvCpu();
   ~RiscvCpu() {};
@@ -20,10 +22,11 @@ public:
   int run_cpu(uint32_t start_pc, bool verbose = true);
 
 private:
-  uint32_t reg[32];
+  uint32_t reg[kRegSize];
   uint32_t pc;
   std::vector<uint8_t> *memory;
   uint8_t *mem;
+  std::vector<uint32_t> csrs;
   uint32_t load_cmd(uint32_t pc);
   uint32_t get_code(uint32_t ir);
   std::pair<bool, bool> system_call();
@@ -98,6 +101,7 @@ enum op_label {
 enum op_funct {
   FUNC_NORM = 0b0000000,
   FUNC_ALT = 0b0100000,
+  FUNC_MRET = 0b0011000,
 };
 
 enum op_funct3 {
@@ -169,7 +173,13 @@ enum instruction {
   INST_SB,
   INST_LUI,
   INST_AUIPC,
-  INST_SYSTEM
+  INST_SYSTEM,
+  INST_CSRRC,
+  INST_CSRRCI,
+  INST_CSRRS,
+  INST_CSRRSI,
+  INST_CSRRW,
+  INST_CSRRWI,
 };
 
 

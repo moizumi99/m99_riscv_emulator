@@ -119,6 +119,11 @@ int32_t get_imm12(uint32_t ir) {
   return imm12;
 }
 
+int32_t get_csr(uint32_t ir) {
+  int32_t csr = bitcrop(ir, 12, 20);
+  return csr;
+}
+
 int32_t get_imm13(uint32_t ir) {
   int32_t imm13 = 0;
   imm13 |= bitshift(ir, 1, 31, 12) | bitshift(ir, 6, 25, 5);

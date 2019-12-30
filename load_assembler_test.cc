@@ -249,12 +249,12 @@ void print_error_result(std::string &cmdname, int num_test, bool error,
 
 bool test_r_type(bool verbose = false) {
   enum TEST_LIST {
-    TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU
+    TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU, TEST_MRET,
   };
   bool total_error = false;
 
   TEST_LIST test_set[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
-                          TEST_SLTU};
+                          TEST_SLTU, TEST_MRET};
   for (TEST_LIST testcase : test_set) {
     bool error = false;
     uint32_t base;
@@ -300,8 +300,12 @@ bool test_r_type(bool verbose = false) {
         base = 0b00000000000000000011000000110011;
         cmdname = "SLTU";
         break;
+      case TEST_MRET:
+        base = 0b00110000001000000000000001110011;
+        cmdname = "MRET";
+        break;
       default:
-        printf("Test case is node defined yet\n");
+        printf("Test case is not defined yet\n");
         return true;
         break;
     }
@@ -344,6 +348,11 @@ bool test_r_type(bool verbose = false) {
           break;
         case TEST_SLTU:
           cmd = asm_sltu(rd, rs1, rs2);
+          break;
+        case TEST_MRET:
+          cmd = asm_mret();
+          rd = rs1 = 0;
+          rs2 = 0b00010;
           break;
         default:
           break;
