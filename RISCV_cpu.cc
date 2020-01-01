@@ -43,11 +43,15 @@ std::pair<bool, bool> RiscvCpu::system_call() {
     end_flag = true;
   } else if (reg[A7] == 64) {
     // Write system call.
+    // Ignore fd. Always output to stdout.
     char *str = reinterpret_cast<char *>(mem) + reg[A1];
     for (int i = 0; i < reg[A2]; i++) {
       putchar(str[i]);
     }
+    reg[A0] = reg[A2];
   }
+  // TOOD: Implement close (57), fstat(80), lseek(62), brk(214)
+
   return std::make_pair(error_flag, end_flag);
 }
 
