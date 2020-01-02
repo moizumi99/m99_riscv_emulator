@@ -149,6 +149,10 @@ void loadElfFile(std::vector<uint8_t> &program, std::vector<uint8_t> &memory) {
         << ", size " << static_cast<int>(phdr->p_filesz) << ". ";
         total_new_size = phdr->p_vaddr + phdr->p_filesz;
         extend_mem_size(program, total_new_size);
+
+		ehdr = get_ehdr(program);
+		phdr = (Elf32_Phdr *)(program.data() + ehdr->e_phoff + ehdr->e_phentsize * i);
+
         for (int i = 0; i < phdr->p_filesz; i++) {
           memory[phdr->p_vaddr + i] = program[phdr->p_offset + i];
         }
