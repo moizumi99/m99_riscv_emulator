@@ -4,21 +4,20 @@
 #include <cstdint>
 #include <utility>
 #include <vector>
+#include <memory>
 #include "bit_tools.h"
 
 class RiscvCpu {
   static constexpr int kCsrSize = 4096;
   static constexpr int kRegSize = 32;
+  static constexpr int kRegNum = 32;
 public:
   RiscvCpu();
   ~RiscvCpu() {};
 
   void set_register(uint32_t num, uint32_t value);
-
   uint32_t read_register(uint32_t num);
-
-  void set_memory(std::vector<uint8_t> &memory);
-
+  void set_memory(std::shared_ptr<std::vector<uint8_t>> memory);
   int run_cpu(uint32_t start_pc, bool verbose = true);
 
 protected:
@@ -27,7 +26,7 @@ protected:
 private:
   uint32_t reg[kRegSize];
   uint32_t pc;
-  std::vector<uint8_t> *memory;
+  std::shared_ptr<std::vector<uint8_t>> memory;
   uint8_t *mem;
   std::vector<uint32_t> csrs;
   uint32_t load_cmd(uint32_t pc);

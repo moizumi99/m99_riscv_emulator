@@ -9,7 +9,8 @@
 namespace cpu_test {
 
 constexpr int kMemSize = 0x0200000;
-std::vector<uint8_t > memory;
+// std::vector<uint8_t > memory;
+std::shared_ptr<std::vector<uint8_t>> memory;
 uint8_t *mem;
 
 
@@ -25,8 +26,9 @@ constexpr int kUnitTestMax = 100;
 
 //  memory initialization
 void mem_init() {
-  memory.resize(kMemSize);
-  mem = memory.data();
+  memory = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>());
+  memory->resize(kMemSize);
+  mem = memory->data();
 }
 
 void randomize_registers(RiscvCpu &cpu) {

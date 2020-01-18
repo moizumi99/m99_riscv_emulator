@@ -4,7 +4,6 @@
 #include <iostream>
 #include <tuple>
 
-constexpr int kRegNum = 32;
 
 RiscvCpu::RiscvCpu() {
   for (int i = 0; i < kRegNum; i++) {
@@ -23,8 +22,8 @@ bool RiscvCpu::check(bool x) {
 
 void RiscvCpu::set_register(uint32_t num, uint32_t value) { reg[num] = value; }
 
-void RiscvCpu::set_memory(std::vector<uint8_t> &memory) {
-  this->memory = &memory;
+void RiscvCpu::set_memory(std::shared_ptr<std::vector<uint8_t>> memory) {
+  this->memory = memory;
 }
 
 uint32_t RiscvCpu::load_cmd(uint32_t pc) {

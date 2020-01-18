@@ -122,10 +122,10 @@ Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, int type) {
   }
 }
 
-void extend_mem_size(std::vector<uint8_t> &program, int new_size) {
-  if (program.size() < new_size) {
+void extend_mem_size(std::vector<uint8_t> &memory, int new_size) {
+  if (memory.size() < new_size) {
     new_size = (new_size + kUnitSize - 1) / kUnitSize * kUnitSize;
-    program.resize(new_size);
+    memory.resize(new_size);
     std::cerr << "\nMemory size extended to " << std::hex << new_size << std::endl;
   }
 }
@@ -262,15 +262,15 @@ int main(int argc, char *argv[]) {
 
   std::vector<uint8_t> program = readFile(filename);
 
-  std::vector<uint8_t> memory(kInitialSize);
-  loadElfFile(program, memory);
+  auto memory = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>(kInitialSize));
+  loadElfFile(program, *memory);
   int entry_point = get_entry_point(program);
   std::cerr << "Entry point is 0x" << std::hex << entry_point << std::dec << std::endl;
 
   int global_pointer = get_global_pointer(program);
 
-  extend_mem_size(memory, memory.size() + kStackSize);
-  int sp_value = (memory.size() - 4) & ~0x0F;
+  extend_mem_size(*memory, memory->size() + kStackSize);
+  int sp_value = (memory->size() - 4) & ~0x0F;
 
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
