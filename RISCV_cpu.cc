@@ -4,8 +4,6 @@
 #include <iostream>
 #include <tuple>
 
-#define ASSERT(X) {if (X) {std::cerr << "SRA sign error." << std::endl; error_flag = true;}}
-
 constexpr int kRegNum = 32;
 
 RiscvCpu::RiscvCpu() {
@@ -13,6 +11,14 @@ RiscvCpu::RiscvCpu() {
     reg[i] = 0;
   }
   csrs.resize(kCsrSize);
+}
+
+bool RiscvCpu::check(bool x) {
+  if (x) {
+    std::cerr << "SRA sign error." << std::endl;
+    return true;
+  }
+  return false;
 }
 
 void RiscvCpu::set_register(uint32_t num, uint32_t value) { reg[num] = value; }
@@ -131,7 +137,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         break;
       case INST_SRA:
         reg[rd] = static_cast<int32_t>(reg[rs1]) >> (reg[rs2] & 0x1F);
-        ASSERT((reg[rs1] & 0x1F <= 0) || (reg[rs1] & 0x80000000 == 0));
+        check((reg[rs1] & 0x1F <= 0) || (reg[rs1] & 0x80000000 == 0));
         break;
       case INST_SLT:
         reg[rd] = (static_cast<int32_t>(reg[rs1]) < static_cast<int32_t>(reg[rs2])) ? 1 : 0;
@@ -153,15 +159,15 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         break;
       case INST_SLLI:
         reg[rd] = reg[rs1] << shamt;
-        ASSERT(shamt >> 5 & 1 == 0);
+        check(shamt >> 5 & 1 == 0);
         break;
       case INST_SRLI:
         reg[rd] = reg[rs1] >> shamt;
-        ASSERT(shamt >> 5 & 1 == 0);
+        check(shamt >> 5 & 1 == 0);
         break;
       case INST_SRAI:
         reg[rd] = static_cast<int32_t>(reg[rs1]) >> shamt;
-        ASSERT(shamt >> 5 & 1 == 0);
+        check(shamt >> 5 & 1 == 0);
         break;
       case INST_SLTI:
         reg[rd] = static_cast<int32_t>(reg[rs1]) < imm12 ? 1 : 0;

@@ -21,6 +21,9 @@ public:
 
   int run_cpu(uint32_t start_pc, bool verbose = true);
 
+protected:
+  inline bool check(bool x);
+
 private:
   uint32_t reg[kRegSize];
   uint32_t pc;
