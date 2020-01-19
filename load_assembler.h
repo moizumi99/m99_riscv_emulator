@@ -2,8 +2,9 @@
 #define LOAD_ASSEMBLER_H
 
 #include <cstdint>
+#include <vector>
 
-uint8_t *load_assembler_sum(uint8_t *rom);
-uint8_t *load_assembler_sort(uint8_t *mem);
+std::vector<uint8_t>::iterator load_assembler_sum(std::vector<uint8_t>::iterator &mem);
+std::vector<uint8_t>::iterator load_assembler_sort(std::vector<uint8_t>::iterator &mem);
 
 #endif // LOAD_ASSEMBLER_H

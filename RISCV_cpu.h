@@ -27,11 +27,12 @@ private:
   uint32_t reg[kRegSize];
   uint32_t pc;
   std::shared_ptr<std::vector<uint8_t>> memory;
-  uint8_t *mem;
   std::vector<uint32_t> csrs;
   uint32_t load_cmd(uint32_t pc);
   uint32_t get_code(uint32_t ir);
   std::pair<bool, bool> system_call();
+  uint32_t load_wd(uint32_t address);
+  void store_wd(uint32_t address, uint32_t data, int width = 32);
 };
 
 enum CsrsAddresses {

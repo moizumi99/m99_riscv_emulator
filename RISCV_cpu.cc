@@ -27,9 +27,8 @@ void RiscvCpu::set_memory(std::shared_ptr<std::vector<uint8_t>> memory) {
 }
 
 uint32_t RiscvCpu::load_cmd(uint32_t pc) {
-  uint8_t *address = mem + pc;
-  return *address | (*(address + 1) << 8) | (*(address + 2) << 16) |
-         (*(address + 3) << 24);
+  auto &mem = *memory;
+  return mem[pc] | (mem[pc + 1] << 8) | (mem[pc + 2] << 16) | (mem[pc + 3] << 24);
 }
 
 uint32_t RiscvCpu::read_register(uint32_t num) {
@@ -49,15 +48,37 @@ std::pair<bool, bool> RiscvCpu::system_call() {
   } else if (reg[A7] == 64) {
     // Write system call.
     // Ignore fd. Always output to stdout.
-    char *str = reinterpret_cast<char *>(mem) + reg[A1];
-    for (int i = 0; i < reg[A2]; i++) {
-      putchar(str[i]);
+    // char *str = reinterpret_cast<char *>(mem) + reg[A1];
+    std::vector<uint8_t> &mem = *memory;
+    for (int i = reg[A1]; i < reg[A1] + reg[A2]; i++) {
+      putchar(mem[i]);
     }
     reg[A0] = reg[A2];
   }
   // TOOD: Implement close (57), fstat(80), lseek(62), brk(214)
 
   return std::make_pair(error_flag, end_flag);
+}
+
+uint32_t RiscvCpu::load_wd(uint32_t address) {
+  auto &mem = *memory;
+  return mem[address] | (mem[address + 1] << 8) | (mem[address + 2] << 16) | (mem[address + 3] << 24);
+}
+
+void RiscvCpu::store_wd(uint32_t address, uint32_t data, int width) {
+  auto &mem = *memory;
+  switch(width) {
+    case 32:
+      mem[address + 2] = (data >> 16) & 0xFF;
+      mem[address + 3] = (data >> 24) & 0xFF;
+    case 16:
+      mem[address + 1] = (data >> 8) & 0xFF;
+    case 8:
+      mem[address] = data & 0xFF;
+      break;
+    default:
+      throw std::invalid_argument("Store width is not 8, 16, or 32.");
+  }
 }
 
 int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
@@ -72,7 +93,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
            "X26      X27      X28      X29      X30      X31" << std::endl;
   }
 
-  mem = this->memory->data();
+  // mem = this->memory->data();
   pc = start_pc;
   do {
     uint32_t next_pc;
@@ -222,35 +243,35 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         break;
       case INST_LB:
         address = reg[rs1] + imm12;
-        reg[rd] = sext(load_wd(mem + address) & 0xFF, 8);
+        reg[rd] = sext(load_wd(address) & 0xFF, 8);
         break;
       case INST_LBU:
         address = reg[rs1] + imm12;
-        reg[rd] = load_wd(mem + address) & 0xFF;
+        reg[rd] = load_wd(address) & 0xFF;
         break;
       case INST_LH:
         address = reg[rs1] + imm12;
-        reg[rd] = sext(load_wd(mem + address) & 0xFFFF, 16);
+        reg[rd] = sext(load_wd(address) & 0xFFFF, 16);
         break;
       case INST_LHU:
         address = reg[rs1] + imm12;
-        reg[rd] = load_wd(mem + address) & 0xFFFF;
+        reg[rd] = load_wd(address) & 0xFFFF;
         break;
       case INST_LW:
         address = reg[rs1] + imm12;
-        reg[rd] = load_wd(mem + address);
+        reg[rd] = load_wd(address);
         break;
       case INST_SW:
         address = reg[rs1] + imm12_stype;
-        store_wd(mem + address, reg[rs2]);
+        store_wd(address, reg[rs2]);
         break;
       case INST_SH:
         address = reg[rs1] + imm12_stype;
-        store_wd(mem + address, reg[rs2], 16);
+        store_wd(address, reg[rs2], 16);
         break;
       case INST_SB:
         address = reg[rs1] + imm12_stype;
-        store_wd(mem + address, reg[rs2], 16);
+        store_wd(address, reg[rs2], 16);
         break;
       case INST_LUI:
         reg[rd] = imm20 << 12;

@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <vector>
 #include "bit_tools.h"
 
 uint32_t mask[] = {0x0, 0x01, 0x03, 0x07, 0x0F,
@@ -31,23 +32,27 @@ uint32_t bitcrop(uint32_t val, int width, int offset) {
   return val;
 }
 
-uint32_t load_wd(uint8_t *address) {
+uint32_t load_wd(std::vector<uint8_t>::const_iterator address) {
   return *address | (*(address + 1) << 8) | (*(address + 2) << 16) | (*(address + 3) << 24);
 }
 
-void store_wd(uint8_t *address, uint32_t data, int width) {
+std::vector<uint8_t >::iterator store_wd(std::vector<uint8_t>::iterator address, uint32_t data, int width) {
   switch(width) {
     case 32:
       *(address + 2) = (data >> 16) & 0xFF;
       *(address + 3) = (data >> 24) & 0xFF;
+      address += 4;
     case 16:
       *(address + 1) = (data >> 8) & 0xFF;
+      address += 2;
     case 8:
       *address = data & 0xFF;
+      address++;
       break;
     default:
       throw std::invalid_argument("Store width is not 8, 16, or 32.");
   }
+  return address;
 }
 
 int32_t sext(uint32_t value, int width) {

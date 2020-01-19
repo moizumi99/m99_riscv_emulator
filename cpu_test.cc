@@ -5,13 +5,13 @@
 #include "assembler.h"
 #include <map>
 #include <random>
+#include <iostream>
 
 namespace cpu_test {
 
 constexpr int kMemSize = 0x0200000;
-// std::vector<uint8_t > memory;
 std::shared_ptr<std::vector<uint8_t>> memory;
-uint8_t *mem;
+// uint8_t *mem;
 
 
 std::mt19937 rnd;
@@ -28,7 +28,7 @@ constexpr int kUnitTestMax = 100;
 void mem_init() {
   memory = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>());
   memory->resize(kMemSize);
-  mem = memory->data();
+  // mem = memory->data();
 }
 
 void randomize_registers(RiscvCpu &cpu) {
@@ -73,14 +73,13 @@ enum ITYPE_TEST {
 };
 
 bool test_i_type(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int32_t imm12, bool verbose) {
-  bool error = false;
   int32_t expected;
   std::string test_case = "";
 
   // CPU is instantiated here because some tests need access to cpu register.
   RiscvCpu cpu;
   randomize_registers(cpu);
-  uint8_t *pointer = mem;
+  std::vector<uint8_t >::iterator pointer = memory->begin();
   uint32_t val20, val12;
   std::tie(val20, val12) = split_immediate(value);
   pointer = add_cmd(pointer, asm_lui(rs1, val20));
@@ -157,7 +156,7 @@ bool test_i_type(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, i
     expected = 0;
   }
   cpu.set_memory(memory);
-  error = cpu.run_cpu(0, verbose) != 0;
+  bool error = cpu.run_cpu(0, verbose) != 0;
   int return_value = cpu.read_register(A0);
   error |= return_value != expected;
   if (error & verbose) {
@@ -221,7 +220,7 @@ test_r_type(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t
   int32_t expected;
   std::string test_case = "";
 
-  uint8_t *pointer = mem;
+  auto pointer = memory->begin();
   uint32_t val20, val12;
   std::tie(val20, val12) = split_immediate(value1);
   pointer = add_cmd(pointer, asm_lui(rs1, val20));
@@ -362,9 +361,9 @@ bool test_r_type_loop(bool verbose = true) {
 
 // AUIPC has it's own test set, starting here.
 bool test_auipc(int32_t rd, int32_t val, int32_t offset, bool verbose) {
-  uint8_t *pointer = mem;
+  auto pointer = memory->begin();
   add_cmd(pointer, asm_jal(ZERO, offset));
-  pointer = mem + offset;
+  pointer = memory->begin() + offset;
   pointer = add_cmd(pointer, asm_auipc(rd, val));
   pointer = add_cmd(pointer, asm_addi(A0, rd, 0));
   pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
@@ -408,7 +407,7 @@ bool test_auipc_loop(bool verbose) {
 // LUI has its own test cases, starting here.
 bool test_lui(int32_t val, bool verbose) {
   // LUI test code
-  uint8_t *pointer = mem;
+  auto pointer = memory->begin();
   pointer = add_cmd(pointer, asm_add(A0, ZERO, 0));
   pointer = add_cmd(pointer, asm_lui(A0, val >> 12));
   pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
@@ -458,12 +457,12 @@ bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
     offset0 = 0;
   }
   uint32_t address = offset0 + sext(offset1, 12);
-  mem[address] = val & 0xff;
-  mem[address + 1] = (val >> 8) & 0xff;
-  mem[address + 2] = (val >> 16) & 0xff;
-  mem[address + 3] = (val >> 24) & 0xff;
+  (*memory)[address] = val & 0xff;
+  (*memory)[address + 1] = (val >> 8) & 0xff;
+  (*memory)[address + 2] = (val >> 16) & 0xff;
+  (*memory)[address + 3] = (val >> 24) & 0xff;
   // LW test code
-  uint8_t *pointer = mem;
+  auto pointer = memory->begin();
   int32_t val20, val12;
   std::tie(val20, val12) = split_immediate(offset0);
   int32_t expected;
@@ -569,7 +568,7 @@ test_store(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, u
   std::string test_case = "";
 
   // STORE test code
-  uint8_t *pointer = mem;
+  auto pointer = memory->begin();
   uint32_t val20, val12;
   std::tie(val20, val12) = split_immediate(value);
   pointer = add_cmd(pointer, asm_lui(rs2, val20));
@@ -613,9 +612,9 @@ test_store(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, u
   error = cpu.run_cpu(0, verbose) != 0;
   offset0 = (rs1 == ZERO) ? 0 : offset0;
   uint32_t address = offset0 + sext(offset1, 12);
-  int32_t result = mem[address];
-  result |= (test_type == TEST_SH || test_type == TEST_SW) ? (mem[address + 1] << 8) : 0;
-  result |= (test_type == TEST_SW) ? (mem[address + 2] << 16) | (mem[address + 3] << 24) : 0;
+  int32_t result = (*memory)[address];
+  result |= (test_type == TEST_SH || test_type == TEST_SW) ? ((*memory)[address + 1] << 8) : 0;
+  result |= (test_type == TEST_SW) ? ((*memory)[address + 2] << 16) | ((*memory)[address + 3] << 24) : 0;
   error |= result != expected;
   if (verbose) {
     print_error_message(test_case, error, expected, result);
@@ -695,7 +694,7 @@ test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, 
   value1 = (rs1 == rs2) ? value2 : value1;
 
   uint32_t start_point = kMemSize / 2;
-  uint8_t *pointer = mem + start_point;
+  auto pointer = memory->begin() + start_point;
   uint32_t value20, value12;
   uint32_t expected;
   std::tie(value20, value12) = split_immediate(value1);
@@ -704,7 +703,7 @@ test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, 
   std::tie(value20, value12) = split_immediate(value2);
   pointer = add_cmd(pointer, asm_lui(rs2, value20));
   pointer = add_cmd(pointer, asm_addi(rs2, rs2, value12));
-  uint8_t *next_pos = pointer + offset;
+  auto next_pos = pointer + offset;
   if (test_type == TEST_BEQ) {
     pointer = add_cmd(pointer, asm_beq(rs1, rs2, offset));
     expected = (value1 == value2) ? 1 : 0;
@@ -814,7 +813,7 @@ bool test_jalr_type(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, 
     value = 0;
   }
   uint32_t start_point = kMemSize / 4;
-  uint8_t *pointer = mem + start_point;
+  auto pointer = memory->begin() + start_point;
 
   uint32_t value20, value12;
   std::tie(value20, value12) = split_immediate(value);
@@ -824,7 +823,7 @@ bool test_jalr_type(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, 
   pointer = add_cmd(pointer, asm_addi(A0, ZERO, 1));
   pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
   add_cmd(pointer, asm_jalr(ZERO, RA, 0));
-  pointer = mem + ((value + sext(offset, 12)) & ~1);
+  pointer = memory->begin() + (value + sext(offset, 12) & ~1);
   pointer = add_cmd(pointer, asm_addi(A0, ZERO, 2));
   pointer = add_cmd(pointer, asm_xor(RA, RA, RA));
   add_cmd(pointer, asm_jalr(ZERO, RA, 0));
@@ -880,7 +879,8 @@ bool test_jalr_type_loop(bool verbose = true) {
 
 // Summation test starts here.
 bool test_sum(bool verbose) {
-  load_assembler_sum(mem);
+  auto pointer = memory->begin();
+  load_assembler_sum(pointer);
   constexpr int kExpectedValue = 55;
   RiscvCpu cpu;
   randomize_registers(cpu);
@@ -908,21 +908,23 @@ bool test_sum_quiet(bool verbose) {
 
 // Sort test starts here.
 bool test_sort(bool verbose) {
-  load_assembler_sort(mem);
+  auto assembly_pointer = memory->begin();
+  load_assembler_sort(assembly_pointer);
 
   constexpr int kArraySize = 100;
   constexpr int kArrayAddress = 512;
+  auto value_pointer = memory->begin() + kArrayAddress;
   for (int i = 0; i < kArraySize; i++) {
-    int value = rnd() % 1000;
-    store_wd(mem + kArrayAddress + i * 4, value);
+    int value = static_cast<int>(rnd() % 1000);
+    store_wd(value_pointer + i * 4, value);
   }
 
   if (verbose) {
-    printf("Before:\n");
+    std::cout << "Before:\n";
     for (int i = 0; i < kArraySize; i++) {
-      printf("%d\t", load_wd(mem + kArrayAddress + i * 4));
+      std::cout << load_wd(value_pointer + i * 4) << "\t";
     }
-    printf("\n");
+    std::cout << std::endl;
   }
 
   RiscvCpu cpu;
@@ -939,14 +941,14 @@ bool test_sort(bool verbose) {
   }
 
   for (int i = 0; i < kArraySize - 1; i++) {
-    error_flag |= load_wd(mem + kArrayAddress + i * 4) >
-                  load_wd(mem + kArrayAddress + i * 4 + 4);
+    error_flag |= load_wd(value_pointer + i * 4) >
+                  load_wd(value_pointer + i * 4 + 4);
   }
 
   if (verbose) {
     printf("After:\n");
     for (int i = 0; i < kArraySize; i++) {
-      int32_t data = load_wd(mem + kArrayAddress + i * 4);
+      int32_t data = load_wd(value_pointer + i * 4);
       printf("%d\t", data);
     }
   }

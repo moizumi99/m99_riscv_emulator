@@ -2,7 +2,9 @@
 #define ASSEMBLER_H
 
 #include <cstdint>
-uint8_t *add_cmd(uint8_t *mem, uint32_t cmd);
+#include <vector>
+
+std::vector<uint8_t>::iterator add_cmd(std::vector<uint8_t>::iterator &mem, uint32_t cmd);
 
 uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
