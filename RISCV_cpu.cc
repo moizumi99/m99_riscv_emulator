@@ -49,7 +49,7 @@ std::pair<bool, bool> RiscvCpu::system_call() {
     // Write system call.
     // Ignore fd. Always output to stdout.
     // char *str = reinterpret_cast<char *>(mem) + reg[A1];
-    std::vector<uint8_t> &mem = *memory;
+    auto &mem = *memory;
     for (int i = reg[A1]; i < reg[A1] + reg[A2]; i++) {
       putchar(mem[i]);
     }
