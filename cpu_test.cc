@@ -11,8 +11,6 @@ namespace cpu_test {
 
 constexpr int kMemSize = 0x0200000;
 std::shared_ptr<std::vector<uint8_t>> memory;
-// uint8_t *mem;
-
 
 std::mt19937 rnd;
 constexpr int kSeed = 155719;
@@ -79,7 +77,7 @@ bool test_i_type(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, i
   // CPU is instantiated here because some tests need access to cpu register.
   RiscvCpu cpu;
   randomize_registers(cpu);
-  std::vector<uint8_t >::iterator pointer = memory->begin();
+  auto pointer = memory->begin();
   uint32_t val20, val12;
   std::tie(val20, val12) = split_immediate(value);
   add_cmd(pointer, asm_lui(rs1, val20));
@@ -456,11 +454,12 @@ bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
   if (rs1 == ZERO) {
     offset0 = 0;
   }
+  const auto mem = memory->begin();
   uint32_t address = offset0 + sext(offset1, 12);
-  (*memory)[address] = val & 0xff;
-  (*memory)[address + 1] = (val >> 8) & 0xff;
-  (*memory)[address + 2] = (val >> 16) & 0xff;
-  (*memory)[address + 3] = (val >> 24) & 0xff;
+  mem[address] = val & 0xff;
+  mem[address + 1] = (val >> 8) & 0xff;
+  mem[address + 2] = (val >> 16) & 0xff;
+  mem[address + 3] = (val >> 24) & 0xff;
   // LW test code
   auto pointer = memory->begin();
   int32_t val20, val12;
@@ -913,10 +912,10 @@ bool test_sort(bool verbose) {
 
   constexpr int kArraySize = 100;
   constexpr int kArrayAddress = 512;
-  auto value_pointer = memory->begin() + kArrayAddress;
-  for (int i = 0; i < kArraySize; i++) {
+  const auto value_pointer = memory->begin() + kArrayAddress;
+  for (int i = 0; i < kArraySize * 4; i++) {
     int value = static_cast<int>(rnd() % 1000);
-    store_wd(value_pointer + i * 4, value);
+    store_wd(value_pointer + 4 * i, value);
   }
 
   if (verbose) {
