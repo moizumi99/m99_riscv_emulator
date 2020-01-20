@@ -8,21 +8,27 @@ void memory_wrapper::check_range(size_t i) {
   if (i >= kMaxEntry) {
     throw std::out_of_range("Memory wrapper size out of range.");
   }
-  int entry = (i >> kUnitBits) & 0x0fffff;
-  int offset = i & 0x0fff;
+  int entry = (i >> kOffsetBits) & kEntryMask;
+  int offset = i & kOffsetMask;
   if (mapping[entry].empty()) {
-    mapping[entry].resize(1 << kUnitBits, 0);
+    mapping[entry].resize(1 << kOffsetBits, 0);
   }
 }
 
 uint8_t &memory_wrapper::operator[]( size_t i) {
   check_range(i);
-  int entry = (i >> kUnitBits) & 0x0fffff;
-  int offset = i & 0x0fff;
+  int entry = (i >> kOffsetBits) & kEntryMask;
+  int offset = i & kOffsetMask;
   return mapping[entry][offset];
 }
 
-memory_wrapper_iterator::memory_wrapper_iterator(memory_wrapper &m, size_t p): mw(m), pos(p) {}
+bool memory_wrapper::operator==(memory_wrapper &r) {
+  return mapping == r.mapping;
+}
+
+bool memory_wrapper::operator!=(memory_wrapper &r) {
+  return mapping != r.mapping;
+}
 
 memory_wrapper_iterator memory_wrapper::begin() {
   return memory_wrapper_iterator(*this, 0);
@@ -31,6 +37,9 @@ memory_wrapper_iterator memory_wrapper::begin() {
 memory_wrapper_iterator memory_wrapper::end() {
   return memory_wrapper_iterator(*this, kMaxEntry);
 }
+
+// Memory wrapper iterator definition starts here.
+memory_wrapper_iterator::memory_wrapper_iterator(memory_wrapper &m, size_t p): mw(m), pos(p) {}
 
 uint8_t& memory_wrapper_iterator::operator*() {
   return (this->mw)[pos];

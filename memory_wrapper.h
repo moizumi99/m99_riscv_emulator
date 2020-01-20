@@ -15,15 +15,18 @@ class memory_wrapper;
 
 class memory_wrapper {
   static constexpr int kTotalBits = 32;
-  static constexpr int kUnitBits = 20;
-  static constexpr int kEntryBits = kTotalBits - kUnitBits;
+  static constexpr int kOffsetBits= 20;
+  static constexpr int kOffsetMask= 0x0FFFFF;
+  static constexpr int kEntryBits = kTotalBits - kOffsetBits;
+  static constexpr int kEntryMask = 0x0FFF;
   static constexpr int kMapEntry = 1 << kEntryBits;
   static constexpr size_t kMaxEntry = 1l << kTotalBits;
 public:
   uint8_t &operator[]( size_t i);
   memory_wrapper_iterator begin();
   memory_wrapper_iterator end();
-
+  bool operator==(memory_wrapper &r);
+  bool operator!=(memory_wrapper &r);
 private:
   void check_range(size_t i);
   std::array<std::vector<uint8_t>, kMapEntry> mapping;

@@ -1,10 +1,11 @@
 #ifndef ASSEMBLER_H
 #define ASSEMBLER_H
 
+#include "memory_wrapper.h"
 #include <cstdint>
 #include <vector>
 
-std::vector<uint8_t>::iterator add_cmd(std::vector<uint8_t>::iterator &mem, uint32_t cmd);
+memory_wrapper_iterator add_cmd(memory_wrapper_iterator &mem, uint32_t cmd);
 
 uint32_t asm_add(uint32_t rd, uint32_t rs1, uint32_t rs2);
 

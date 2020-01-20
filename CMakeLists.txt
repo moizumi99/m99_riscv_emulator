@@ -18,6 +18,8 @@ add_executable(assembler_test
         load_assembler_test.h
         RISCV_cpu.cc
         RISCV_cpu.h
+        memory_wrapper.h
+        memory_wrapper.cpp
         )
 
 add_executable(cpu_test

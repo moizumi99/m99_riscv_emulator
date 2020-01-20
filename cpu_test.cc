@@ -10,7 +10,7 @@
 namespace cpu_test {
 
 constexpr int kMemSize = 0x0200000;
-std::shared_ptr<std::vector<uint8_t>> memory;
+std::shared_ptr<memory_wrapper> memory;
 
 std::mt19937 rnd;
 constexpr int kSeed = 155719;
@@ -24,8 +24,7 @@ constexpr int kUnitTestMax = 100;
 
 //  memory initialization
 void mem_init() {
-  memory = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>());
-  memory->resize(kMemSize);
+  memory = std::make_shared<memory_wrapper>();
   // mem = memory->data();
 }
 
@@ -361,7 +360,7 @@ bool test_r_type_loop(bool verbose = true) {
 bool test_auipc(int32_t rd, int32_t val, int32_t offset, bool verbose) {
   auto pointer = memory->begin();
   add_cmd(pointer, asm_jal(ZERO, offset));
-  pointer = memory->begin() + offset;
+  pointer += offset - 4;
   add_cmd(pointer, asm_auipc(rd, val));
   add_cmd(pointer, asm_addi(A0, rd, 0));
   add_cmd(pointer, asm_xor(RA, RA, RA));
@@ -454,7 +453,7 @@ bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
   if (rs1 == ZERO) {
     offset0 = 0;
   }
-  const auto mem = memory->begin();
+  auto mem = memory->begin();
   uint32_t address = offset0 + sext(offset1, 12);
   mem[address] = val & 0xff;
   mem[address + 1] = (val >> 8) & 0xff;
@@ -725,10 +724,9 @@ test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, 
   add_cmd(pointer, asm_addi(A0, ZERO, 0));
   add_cmd(pointer, asm_xor(RA, RA, RA));
   add_cmd(pointer, asm_jalr(ZERO, RA, 0));
-  pointer = next_pos;
-  add_cmd(pointer, asm_addi(A0, ZERO, 1));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  add_cmd(next_pos, asm_addi(A0, ZERO, 1));
+  add_cmd(next_pos, asm_xor(RA, RA, RA));
+  add_cmd(next_pos, asm_jalr(ZERO, RA, 0));
 
 
   RiscvCpu cpu;
@@ -822,10 +820,10 @@ bool test_jalr_type(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, 
   add_cmd(pointer, asm_addi(A0, ZERO, 1));
   add_cmd(pointer, asm_xor(RA, RA, RA));
   add_cmd(pointer, asm_jalr(ZERO, RA, 0));
-  pointer = memory->begin() + (value + sext(offset, 12) & ~1);
-  add_cmd(pointer, asm_addi(A0, ZERO, 2));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  auto pointer2 = memory->begin() + (value + sext(offset, 12) & ~1);
+  add_cmd(pointer2, asm_addi(A0, ZERO, 2));
+  add_cmd(pointer2, asm_xor(RA, RA, RA));
+  add_cmd(pointer2, asm_jalr(ZERO, RA, 0));
   uint32_t expected = 2;
   RiscvCpu cpu;
   randomize_registers(cpu);
@@ -912,7 +910,7 @@ bool test_sort(bool verbose) {
 
   constexpr int kArraySize = 100;
   constexpr int kArrayAddress = 512;
-  const auto value_pointer = memory->begin() + kArrayAddress;
+  auto value_pointer = memory->begin() + kArrayAddress;
   for (int i = 0; i < kArraySize * 4; i++) {
     int value = static_cast<int>(rnd() % 1000);
     store_wd(value_pointer + 4 * i, value);

@@ -1,6 +1,7 @@
 #include "RISCV_cpu.h"
 #include "bit_tools.h"
 #include "instruction_encdec.h"
+#include "memory_wrapper.h"
 #include <iostream>
 #include <tuple>
 
@@ -22,7 +23,7 @@ bool RiscvCpu::check(bool x) {
 
 void RiscvCpu::set_register(uint32_t num, uint32_t value) { reg[num] = value; }
 
-void RiscvCpu::set_memory(std::shared_ptr<std::vector<uint8_t>> memory) {
+void RiscvCpu::set_memory(std::shared_ptr<memory_wrapper> memory) {
   this->memory = memory;
 }
 

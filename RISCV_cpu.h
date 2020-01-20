@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include "bit_tools.h"
+#include "memory_wrapper.h"
 
 class RiscvCpu {
   static constexpr int kCsrSize = 4096;
@@ -17,7 +18,7 @@ public:
 
   void set_register(uint32_t num, uint32_t value);
   uint32_t read_register(uint32_t num);
-  void set_memory(std::shared_ptr<std::vector<uint8_t>> memory);
+  void set_memory(std::shared_ptr<memory_wrapper> memory);
   int run_cpu(uint32_t start_pc, bool verbose = true);
 
 protected:
@@ -26,7 +27,7 @@ protected:
 private:
   uint32_t reg[kRegSize];
   uint32_t pc;
-  std::shared_ptr<std::vector<uint8_t>> memory;
+  std::shared_ptr<memory_wrapper> memory;
   std::vector<uint32_t> csrs;
   uint32_t load_cmd(uint32_t pc);
   uint32_t get_code(uint32_t ir);

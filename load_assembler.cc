@@ -2,7 +2,7 @@
 #include "assembler.h"
 #include "bit_tools.h"
 
-std::vector<uint8_t>::iterator add_cmd(std::vector<uint8_t>::iterator &mem, uint32_t cmd) {
+memory_wrapper_iterator add_cmd(memory_wrapper_iterator &mem, uint32_t cmd) {
 
   *(mem++) = cmd & 0xFF;
   *(mem++) = (cmd >> 8) & 0xFF;
@@ -11,7 +11,7 @@ std::vector<uint8_t>::iterator add_cmd(std::vector<uint8_t>::iterator &mem, uint
   return mem;
 }
 
-std::vector<uint8_t>::iterator load_assembler_sum(std::vector<uint8_t>::iterator &mem) {
+memory_wrapper_iterator load_assembler_sum(memory_wrapper_iterator &mem) {
   add_cmd(mem, asm_addi(T0, ZERO, 0));
   add_cmd(mem, asm_addi(T1, ZERO, 0));
   add_cmd(mem, asm_addi(T2, ZERO, 10));
@@ -26,7 +26,7 @@ std::vector<uint8_t>::iterator load_assembler_sum(std::vector<uint8_t>::iterator
   return mem;
 }
 
-std::vector<uint8_t>::iterator load_assembler_sort(std::vector<uint8_t>::iterator &mem) {
+memory_wrapper_iterator load_assembler_sort(memory_wrapper_iterator &mem) {
   // A1 is n and A3 points to A[0]
   // A4 is i, A5 is j, a6 is x
   add_cmd(mem, asm_addi(A3, A0, 4)); // 0

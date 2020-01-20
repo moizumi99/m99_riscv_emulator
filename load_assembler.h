@@ -2,9 +2,10 @@
 #define LOAD_ASSEMBLER_H
 
 #include <cstdint>
+#include "memory_wrapper.h"
 #include <vector>
 
-std::vector<uint8_t>::iterator load_assembler_sum(std::vector<uint8_t>::iterator &mem);
-std::vector<uint8_t>::iterator load_assembler_sort(std::vector<uint8_t>::iterator &mem);
+memory_wrapper_iterator load_assembler_sum(memory_wrapper_iterator &mem);
+memory_wrapper_iterator load_assembler_sort(memory_wrapper_iterator &mem);
 
 #endif // LOAD_ASSEMBLER_H

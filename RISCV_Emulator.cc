@@ -1,5 +1,6 @@
 #include "RISCV_Emulator.h"
 #include "load_assembler.h"
+#include "memory_wrapper.h"
 #include "RISCV_cpu.h"
 #include <iostream>
 #include <vector>
@@ -130,7 +131,7 @@ void extend_mem_size(std::vector<uint8_t> &memory, int new_size) {
   }
 }
 
-void loadElfFile(std::vector<uint8_t> &program, std::vector<uint8_t> &memory) {
+void loadElfFile(std::vector<uint8_t> &program, memory_wrapper &memory) {
   Elf32_Ehdr *ehdr = get_ehdr(program);
   if (isRightElf(ehdr)) {
     std::cerr << "This is a supported RISC-V 32bit Elf file" << std::endl;
@@ -147,8 +148,6 @@ void loadElfFile(std::vector<uint8_t> &program, std::vector<uint8_t> &memory) {
         std::cerr << "Copy to 0x" << std::hex << static_cast<int>(phdr->p_vaddr)
                   << " from 0x" << static_cast<int>(phdr->p_offset) << std::dec
                   << ", size " << static_cast<int>(phdr->p_filesz) << ". ";
-        total_new_size = phdr->p_vaddr + phdr->p_filesz;
-        extend_mem_size(memory, total_new_size);
 
         for (int i = 0; i < phdr->p_filesz; i++) {
           memory[phdr->p_vaddr + i] = program[phdr->p_offset + i];
@@ -263,15 +262,16 @@ int main(int argc, char *argv[]) {
 
   std::vector<uint8_t> program = readFile(filename);
 
-  auto memory = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>(kInitialSize));
+  auto memory = std::make_shared<memory_wrapper>(memory_wrapper());
   loadElfFile(program, *memory);
   int entry_point = get_entry_point(program);
   std::cerr << "Entry point is 0x" << std::hex << entry_point << std::dec << std::endl;
 
   int global_pointer = get_global_pointer(program);
 
-  extend_mem_size(*memory, memory->size() + kStackSize);
-  int sp_value = (memory->size() - 4) & ~0x0F;
+  constexpr int kStackPointer = 0x80000000;
+  int sp_value = (kStackPointer - 4) & ~0x0F;
+  // int sp_value = (memory->size() - 4) & ~0x0F;
 
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
