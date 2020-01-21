@@ -692,7 +692,7 @@ test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, 
   value1 = (rs1 == rs2) ? value2 : value1;
 
   uint32_t start_point = kMemSize / 2;
-  auto pointer = memory->begin() + start_point;
+  memory_wrapper_iterator pointer = memory->begin() + start_point;
   uint32_t value20, value12;
   uint32_t expected;
   std::tie(value20, value12) = split_immediate(value1);
@@ -701,7 +701,7 @@ test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, 
   std::tie(value20, value12) = split_immediate(value2);
   add_cmd(pointer, asm_lui(rs2, value20));
   add_cmd(pointer, asm_addi(rs2, rs2, value12));
-  auto next_pos = pointer + offset;
+  memory_wrapper_iterator next_pos = pointer + offset;
   if (test_type == TEST_BEQ) {
     add_cmd(pointer, asm_beq(rs1, rs2, offset));
     expected = (value1 == value2) ? 1 : 0;
@@ -724,9 +724,10 @@ test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, 
   add_cmd(pointer, asm_addi(A0, ZERO, 0));
   add_cmd(pointer, asm_xor(RA, RA, RA));
   add_cmd(pointer, asm_jalr(ZERO, RA, 0));
-  add_cmd(next_pos, asm_addi(A0, ZERO, 1));
-  add_cmd(next_pos, asm_xor(RA, RA, RA));
-  add_cmd(next_pos, asm_jalr(ZERO, RA, 0));
+  pointer = next_pos;
+  add_cmd(pointer, asm_addi(A0, ZERO, 1));
+  add_cmd(pointer, asm_xor(RA, RA, RA));
+  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
 
 
   RiscvCpu cpu;
@@ -820,10 +821,10 @@ bool test_jalr_type(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, 
   add_cmd(pointer, asm_addi(A0, ZERO, 1));
   add_cmd(pointer, asm_xor(RA, RA, RA));
   add_cmd(pointer, asm_jalr(ZERO, RA, 0));
-  auto pointer2 = memory->begin() + (value + sext(offset, 12) & ~1);
-  add_cmd(pointer2, asm_addi(A0, ZERO, 2));
-  add_cmd(pointer2, asm_xor(RA, RA, RA));
-  add_cmd(pointer2, asm_jalr(ZERO, RA, 0));
+  pointer = memory->begin() + (value + sext(offset, 12) & ~1);
+  add_cmd(pointer, asm_addi(A0, ZERO, 2));
+  add_cmd(pointer, asm_xor(RA, RA, RA));
+  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
   uint32_t expected = 2;
   RiscvCpu cpu;
   randomize_registers(cpu);

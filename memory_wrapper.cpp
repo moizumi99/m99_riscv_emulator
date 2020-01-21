@@ -41,6 +41,22 @@ memory_wrapper_iterator memory_wrapper::end() {
 // Memory wrapper iterator definition starts here.
 memory_wrapper_iterator::memory_wrapper_iterator(memory_wrapper &m, size_t p): mw(m), pos(p) {}
 
+memory_wrapper_iterator& memory_wrapper_iterator::operator=(memory_wrapper_iterator &m) {
+  if (this->mw != m.mw) {
+    throw "memory_wrapper_iteration copy operator can only be used with same memory_wrapper reference.";
+  }
+  this->pos = m.pos;
+  return *this;
+}
+
+memory_wrapper_iterator& memory_wrapper_iterator::operator=(memory_wrapper_iterator &&m) {
+  if (this->mw != m.mw) {
+    throw "memory_wrapper_iteration copy operator can only be used with same memory_wrapper reference.";
+  }
+  this->pos = m.pos;
+  return *this;
+}
+
 uint8_t& memory_wrapper_iterator::operator*() {
   return (this->mw)[pos];
 }

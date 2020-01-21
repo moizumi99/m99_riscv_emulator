@@ -36,6 +36,13 @@ class memory_wrapper_iterator{
 public:
   using iterator = memory_wrapper_iterator;
   memory_wrapper_iterator(memory_wrapper &, size_t = 0);
+  memory_wrapper_iterator() = default;
+  memory_wrapper_iterator(memory_wrapper_iterator &) = default;
+  memory_wrapper_iterator(memory_wrapper_iterator const&) = default;
+  memory_wrapper_iterator(memory_wrapper_iterator &&) = default;
+  memory_wrapper_iterator& operator=(memory_wrapper_iterator const&) = default;
+  memory_wrapper_iterator& operator=(memory_wrapper_iterator&&);
+  memory_wrapper_iterator& operator=(memory_wrapper_iterator &);
 
   uint8_t &operator*();
   const uint8_t &operator*() const;
