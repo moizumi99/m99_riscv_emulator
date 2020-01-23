@@ -245,7 +245,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         break;
       case INST_SB:
         address = reg[rs1] + imm12_stype;
-        store_wd(mem + address, reg[rs2], 16);
+        store_wd(mem + address, reg[rs2], 8);
         break;
       case INST_LUI:
         reg[rd] = imm20 << 12;
