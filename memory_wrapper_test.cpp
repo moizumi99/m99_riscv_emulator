@@ -4,23 +4,26 @@
 
 #include <iostream>
 #include <algorithm>
-#include <array>
 #include <random>
+#include <functional>
 #include "memory_wrapper.h"
+
+int get_hash(int val) {
+  static std::hash<int> h;
+  return (h(val) & 0xFF);
+}
 
 bool memory_wrapper_test(size_t start, size_t end, int val) {
   bool result = true;
   memory_wrapper mw;
-  int value = val;
-  for (size_t j = start; j < end; j++, value++) {
-    mw[j] = value & 0xFF;
+  for (size_t j = start; j < end; j++) {
+    mw[j] = get_hash(j + val);
   }
 
-  value = val;
-  for (size_t j = start; j < end && result; j++, value++) {
-    bool local_result = mw[j] == (value & 0xFF);
+  for (size_t j = start; j < end && result; j++) {
+    bool local_result = mw[j] == get_hash(j + val);
     if (!local_result) {
-      std::cout << "mw[" << j << "] = " << static_cast<int>(mw[j]) << ", expectation = " << (value & 0xFF)
+      std::cout << "mw[" << j << "] = " << static_cast<int>(mw[j]) << ", expectation = " << get_hash(j)
       << std::endl;
     }
     result &= local_result;
@@ -39,15 +42,15 @@ bool memory_wrapper_iterator_test_1(size_t start, size_t end, int val) {
   auto e = mw.begin() + end;
   int value = val;
   for(auto i = b; i < e; i++, value++) {
-    *i = value & 0xff;
+    *i = get_hash(value);
   }
 
   value = val;
   int index = 0;
   for (auto i = b; i != e && result; i++, value++, index++) {
-    bool local_result = *i == (value & 0xff);
+    bool local_result = *i == get_hash(value);
     if (!local_result) {
-      std::cout << "At " << index << ", *i = " << static_cast<int>(*i) << ", expectation = " << (value & 0xff)
+      std::cout << "At " << index << ", *i = " << static_cast<int>(*i) << ", expectation = " << get_hash(value)
                 << std::endl;
     }
     result &= local_result;
@@ -63,16 +66,14 @@ bool memory_wrapper_iterator_test_2(size_t start, size_t end, int val) {
   bool result = true;
   memory_wrapper mw;
   auto i = mw.begin();
-  int value = val;
-  for( size_t index = start; index < end; index++, value++) {
-    i[index] = value & 0xFF;
+  for( size_t index = start; index < end; index++) {
+    i[index] = get_hash(index + val);
   }
 
-  value = val;
-  for( size_t index = start; index < end && result; index++, value++) {
-    bool local_result = i[index] == (value & 0xff);
+  for( size_t index = start; index < end && result; index++) {
+    bool local_result = i[index] == get_hash(index + val);
     if (!local_result) {
-      std::cout << "i[" << index << "] = " << static_cast<int>(i[index]) << ", expectation = " << (value & 0xff)
+      std::cout << "i[" << index << "] = " << static_cast<int>(i[index]) << ", expectation = " << get_hash(index + val)
                 << std::endl;
     }
     result &= local_result;
@@ -80,6 +81,7 @@ bool memory_wrapper_iterator_test_2(size_t start, size_t end, int val) {
   if (!result) {
     std::cout << "Memory wrapper iterator test 2 failed. (" << start << ", " << end << ")" << std::endl;
   }
+  return result;
 }
 
 bool memory_wrapper_iterator_test_3(size_t start, size_t end, int val) {
@@ -87,18 +89,16 @@ bool memory_wrapper_iterator_test_3(size_t start, size_t end, int val) {
   bool result = true;
   memory_wrapper mw;
   auto i = mw.begin();
-  int value = val;
-  for(size_t index = start; index < end; index++, value++) {
-    *(i + index) = value & 0xFF;
+  for(size_t index = start; index < end; index++) {
+    *(i + index) = get_hash(index + val);
   }
 
   auto b = mw.begin() + start;
-  value = val + (end - start) - 1;
   int index = end - 1;
-  for (auto e = mw.begin() + end - 1; e > b && result; e--, value--, index--) {
-    bool local_result = *e == (value & 0xff);
+  for (auto e = mw.begin() + end - 1; e > b && result; e--, index--) {
+    bool local_result = *e == get_hash(index + val);
     if (!local_result) {
-      std::cout << "At " << index << ", *e = " << static_cast<int>(*e) << ", expectation = " << (value & 0xff)
+      std::cout << "At " << index << ", *e = " << static_cast<int>(*e) << ", expectation = " << get_hash( index + val )
                 << std::endl;
     }
     result &= local_result;
@@ -117,11 +117,15 @@ void init_random() {
 }
 
 constexpr size_t kMaxTestSize = 16 * 1024 * 1024;
-constexpr int kTestCycle = 10;
+constexpr size_t kSmallTestSize = 1 * 1024 * 1024;
+constexpr int kTestCycle = 8;
+constexpr int kSmallTestCycle = 100;
 
-bool run_test_single(size_t start, size_t end, int val) {
+bool run_test_single(size_t start, size_t end, int val, bool verbose = false) {
   bool result = true;
-  std::cout << "Start: " << start << ", end: " << end << std::endl;
+  if (verbose) {
+    std::cout << "Start: " << start << ", end: " << end << std::endl;
+  }
   result = result && memory_wrapper_test(start, end, val);
   result = result && memory_wrapper_iterator_test_1(start, end, val);
   result = result && memory_wrapper_iterator_test_2(start, end, val);
@@ -129,25 +133,34 @@ bool run_test_single(size_t start, size_t end, int val) {
   return result;
 }
 
-bool run_test() {
+bool run_test(int test_cycle, size_t test_size, bool verbose = false) {
   bool result = true;
-  for (int i = 0; i < kTestCycle && result; i++) {
+  for (int i = 0; i < test_cycle && result; i++) {
     init_random();
     size_t start = 0, end = 0;
     int val = 0;
-    while (end <= start || (end - start) > kMaxTestSize) {
+    while (end <= start || (end - start) > test_size) {
       start = rand();
       end = rand();
-      val = rand() & 0xFF;
+      val = rand();
     }
-    result = result && run_test_single(start, end, val);
+    result = result && run_test_single(start, end, val, verbose);
+    if (i % 10 == 0 && i > 0) {
+      std::cout << i << " tests finished." << std::endl;
+    }
   }
   return result;
 }
 
 
 int main() {
-  bool result = run_test();
+  bool result = run_test(kSmallTestCycle, kSmallTestSize, false);
+  if (result) {
+    std::cout << kSmallTestCycle << " small tests passed." << std::endl;
+  } else {
+    std::cout << "Small test failed." << std::endl;
+  }
+  result = result && run_test(kTestCycle, kMaxTestSize, true);
   if (result) {
     std::cout << "memory_wrapper test pass.";
   } else {

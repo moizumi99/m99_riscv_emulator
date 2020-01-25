@@ -242,7 +242,6 @@ std::tuple<bool, std::string, bool>parse_cmd(int argc, char *(*argv[])) {
   return std::make_tuple(error, filename, verbose);
 }
 
-
 int main(int argc, char *argv[]) {
   bool cmdline_error, verbose;
   std::string filename;
@@ -268,10 +267,10 @@ int main(int argc, char *argv[]) {
   std::cerr << "Entry point is 0x" << std::hex << entry_point << std::dec << std::endl;
 
   int global_pointer = get_global_pointer(program);
+  std::cerr << "Global Pointer is 0x" << std::hex << global_pointer << std::dec << std::endl;
 
   constexpr int kStackPointer = 0x80000000;
-  int sp_value = (kStackPointer - 4) & ~0x0F;
-  // int sp_value = (memory->size() - 4) & ~0x0F;
+  int sp_value = kStackPointer;
 
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
