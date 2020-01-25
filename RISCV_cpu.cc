@@ -36,6 +36,11 @@ uint32_t RiscvCpu::read_register(uint32_t num) {
   return reg[num];
 }
 
+void RiscvCpu::set_work_memory(uint32_t top, uint32_t bottom) {
+  this->top = top;
+  this->bottom = bottom;
+}
+
 /* The definition of the Linux system call can be found in
  * riscv-gnu-toolchain/linux-headers/include/asm-generic/unistd.h
  */

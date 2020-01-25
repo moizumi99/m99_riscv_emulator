@@ -269,8 +269,9 @@ int main(int argc, char *argv[]) {
   int global_pointer = get_global_pointer(program);
   std::cerr << "Global Pointer is 0x" << std::hex << global_pointer << std::dec << std::endl;
 
-  constexpr int kStackPointer = 0x80000000;
-  int sp_value = kStackPointer;
+  constexpr uint32_t kTop = 0x80000000;
+  constexpr uint32_t kBottom = 0x40000000;
+  int sp_value = kTop;
 
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
@@ -279,6 +280,7 @@ int main(int argc, char *argv[]) {
   cpu.set_register(SP, sp_value);
   cpu.set_register(GP, global_pointer);
   cpu.set_memory(memory);
+  cpu.set_work_memory(kTop, kBottom);
 
   int error = cpu.run_cpu(entry_point, verbose);
   if (error) {
