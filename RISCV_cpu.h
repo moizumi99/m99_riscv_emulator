@@ -40,6 +40,7 @@ public:
 private:
   uint32_t top = 0x80000000;
   uint32_t bottom = 0x40000000;
+  uint32_t brk = bottom;
 };
 
 enum CsrsAddresses {

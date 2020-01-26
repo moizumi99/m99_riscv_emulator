@@ -143,9 +143,7 @@ int32_t get_imm21(uint32_t ir) {
 
 int32_t get_stype_imm12(uint32_t ir) {
   int32_t imm12 = (bitcrop(ir, 7, 25) << 5) | bitcrop(ir, 5, 7);
-
-  // Sign extend.
-  imm12 |= (imm12 & (1 << 11)) ? 0xFFFFF000 : 0;
+  imm12 = sext(imm12, 12);
   return imm12;
 }
 
