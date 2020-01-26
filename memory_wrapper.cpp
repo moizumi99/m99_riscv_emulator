@@ -39,38 +39,22 @@ memory_wrapper_iterator memory_wrapper::end() {
 }
 
 // Memory wrapper iterator definition starts here.
-memory_wrapper_iterator::memory_wrapper_iterator(memory_wrapper &m, size_t p): mw(m), pos(p) {}
-
-memory_wrapper_iterator& memory_wrapper_iterator::operator=(memory_wrapper_iterator &m) {
-  if (this->mw != m.mw) {
-    throw "memory_wrapper_iteration copy operator can only be used with same memory_wrapper reference.";
-  }
-  this->pos = m.pos;
-  return *this;
-}
-
-memory_wrapper_iterator& memory_wrapper_iterator::operator=(memory_wrapper_iterator &&m) {
-  if (this->mw != m.mw) {
-    throw "memory_wrapper_iteration copy operator can only be used with same memory_wrapper reference.";
-  }
-  this->pos = m.pos;
-  return *this;
-}
+memory_wrapper_iterator::memory_wrapper_iterator(memory_wrapper &m, size_t p): mw(&m), pos(p) {}
 
 uint8_t& memory_wrapper_iterator::operator*() {
-  return (this->mw)[pos];
+  return (*this->mw)[pos];
 }
 
 const uint8_t& memory_wrapper_iterator::operator*() const {
-  return (this->mw)[pos];
+  return (*this->mw)[pos];
 }
 
 uint8_t &memory_wrapper_iterator::operator[](size_t n) {
-  return (this->mw)[pos + n];
+  return (*this->mw)[pos + n];
 }
 
 const uint8_t &memory_wrapper_iterator::operator[](size_t n) const {
-  return (this->mw)[pos + n];
+  return (*this->mw)[pos + n];
 }
 
 memory_wrapper_iterator &memory_wrapper_iterator::operator++() {

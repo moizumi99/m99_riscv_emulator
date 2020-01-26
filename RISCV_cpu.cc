@@ -5,7 +5,6 @@
 #include <iostream>
 #include <tuple>
 
-
 RiscvCpu::RiscvCpu() {
   for (int i = 0; i < kRegNum; i++) {
     reg[i] = 0;
@@ -36,6 +35,11 @@ uint32_t RiscvCpu::read_register(uint32_t num) {
   return reg[num];
 }
 
+void RiscvCpu::set_work_memory(uint32_t top, uint32_t bottom) {
+  this->top = top;
+  this->bottom = bottom;
+}
+
 /* The definition of the Linux system call can be found in
  * riscv-gnu-toolchain/linux-headers/include/asm-generic/unistd.h
  */
@@ -47,16 +51,31 @@ std::pair<bool, bool> RiscvCpu::system_call() {
     // Exit system call.
     end_flag = true;
   } else if (reg[A7] == 64) {
-    // Write system call.
+    // Write.
     // Ignore fd. Always output to stdout.
-    // char *str = reinterpret_cast<char *>(mem) + reg[A1];
     auto &mem = *memory;
-    for (int i = reg[A1]; i < reg[A1] + reg[A2]; i++) {
-      putchar(mem[i]);
+    int length = reg[A2];
+    for (int i = 0; i < length; i++) {
+      putchar(mem[reg[A1] + i]);
     }
-    reg[A0] = reg[A2];
+    reg[A0] = length;
+  } else if (reg[A7] == 214) {
+    // BRK.
+    if (reg[A0] == 0) {
+      reg[A0] = brk;
+    } else if (reg[A0] < top){
+      brk = reg[A0];
+      reg[A0] = 0;
+    } else {
+      reg[A0] = -1;
+    }
+  } else if (reg[A7] == 63) {
+    // READ
+    reg[A0] = 0;
+  } else {
+    // TOOD: Implement close (57), fstat(80), lseek(62)
+   reg[A0] = 0;
   }
-  // TOOD: Implement close (57), fstat(80), lseek(62), brk(214)
 
   return std::make_pair(error_flag, end_flag);
 }
@@ -272,7 +291,7 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         break;
       case INST_SB:
         address = reg[rs1] + imm12_stype;
-        store_wd(mem + address, reg[rs2], 8);
+        store_wd(address, reg[rs2], 8);
         break;
       case INST_LUI:
         reg[rd] = imm20 << 12;

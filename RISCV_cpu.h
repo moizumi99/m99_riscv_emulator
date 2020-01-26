@@ -20,7 +20,6 @@ public:
   uint32_t read_register(uint32_t num);
   void set_memory(std::shared_ptr<memory_wrapper> memory);
   int run_cpu(uint32_t start_pc, bool verbose = true);
-
 protected:
   inline bool check(bool x);
 
@@ -34,6 +33,14 @@ private:
   std::pair<bool, bool> system_call();
   uint32_t load_wd(uint32_t address);
   void store_wd(uint32_t address, uint32_t data, int width = 32);
+
+  // Below are for system call emulation
+public:
+  void set_work_memory(uint32_t top, uint32_t bottom);
+private:
+  uint32_t top = 0x80000000;
+  uint32_t bottom = 0x40000000;
+  uint32_t brk = bottom;
 };
 
 enum CsrsAddresses {
