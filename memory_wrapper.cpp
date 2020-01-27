@@ -4,23 +4,35 @@
 #include <stdexcept>
 #include "memory_wrapper.h"
 
-void memory_wrapper::check_range(size_t i) {
+bool memory_wrapper::check_range(size_t i) const {
   if (i >= kMaxEntry) {
     throw std::out_of_range("Memory wrapper size out of range.");
   }
   int entry = (i >> kOffsetBits) & kEntryMask;
-  int offset = i & kOffsetMask;
   if (mapping[entry].empty()) {
-    mapping[entry].resize(1 << kOffsetBits, 0);
+    return false;
   }
+  return true;
 }
 
 uint8_t &memory_wrapper::operator[]( size_t i) {
-  check_range(i);
+  int entry = (i >> kOffsetBits) & kEntryMask;
+  int offset = i & kOffsetMask;
+  if (!check_range(i)) {
+    mapping[entry].resize(1 << kOffsetBits, 0);
+  };
+ return mapping[entry][offset];
+}
+
+const uint8_t memory_wrapper::operator[]( size_t i) const {
+  if (!check_range(i)) {
+    return 0;
+  }
   int entry = (i >> kOffsetBits) & kEntryMask;
   int offset = i & kOffsetMask;
   return mapping[entry][offset];
 }
+
 
 bool memory_wrapper::operator==(memory_wrapper &r) {
   return mapping == r.mapping;
@@ -45,7 +57,7 @@ uint8_t& memory_wrapper_iterator::operator*() {
   return (*this->mw)[pos];
 }
 
-const uint8_t& memory_wrapper_iterator::operator*() const {
+const uint8_t memory_wrapper_iterator::operator*() const {
   return (*this->mw)[pos];
 }
 
@@ -53,7 +65,7 @@ uint8_t &memory_wrapper_iterator::operator[](size_t n) {
   return (*this->mw)[pos + n];
 }
 
-const uint8_t &memory_wrapper_iterator::operator[](size_t n) const {
+const uint8_t memory_wrapper_iterator::operator[](size_t n) const {
   return (*this->mw)[pos + n];
 }
 
@@ -103,27 +115,27 @@ memory_wrapper_iterator memory_wrapper_iterator::operator-(size_t n) {
 
 
 bool memory_wrapper_iterator::operator==(const iterator &r) {
-  return pos == r.pos;
+  return (mw == r.mw && pos == r.pos);
 }
 
 bool memory_wrapper_iterator::operator!=(const iterator &r) {
-  return pos != r.pos;
+  return (mw != r.mw || pos != r.pos);
 }
 
 bool memory_wrapper_iterator::operator<(const iterator &r) {
-  return pos < r.pos;
+  return (mw == r.mw && pos < r.pos);
 }
 
 bool memory_wrapper_iterator::operator>(const iterator &r) {
-  return pos > r.pos;
+  return (mw == r.mw && pos > r.pos);
 }
 
 bool memory_wrapper_iterator::operator<=(const iterator &r) {
-  return pos <= r.pos;
+  return (mw == r.mw && pos <= r.pos);
 }
 
 bool memory_wrapper_iterator::operator>=(const iterator &r) {
-  return pos >= r.pos;
+  return (mw == r.mw && pos >= r.pos);
 }
 
 

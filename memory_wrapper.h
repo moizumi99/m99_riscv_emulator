@@ -23,12 +23,13 @@ class memory_wrapper {
   static constexpr size_t kMaxEntry = 1l << kTotalBits;
 public:
   uint8_t &operator[]( size_t i);
+  const uint8_t operator[]( size_t i) const;
   memory_wrapper_iterator begin();
   memory_wrapper_iterator end();
   bool operator==(memory_wrapper &r);
   bool operator!=(memory_wrapper &r);
 private:
-  void check_range(size_t i);
+  bool check_range(size_t i) const;
   std::array<std::vector<uint8_t>, kMapEntry> mapping;
 };
 
@@ -38,11 +39,11 @@ public:
   memory_wrapper_iterator(memory_wrapper &, size_t = 0);
 
   uint8_t &operator*();
-  const uint8_t &operator*() const;
+  const uint8_t operator*() const;
   uint8_t &operator->() = delete;
   const uint8_t &operator->() const = delete;
   uint8_t &operator[](size_t);
-  const uint8_t &operator[](size_t) const;
+  const uint8_t operator[](size_t) const;
   iterator &operator++();
   iterator operator++(int);
   iterator &operator--();
