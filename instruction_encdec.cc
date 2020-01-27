@@ -31,7 +31,7 @@ void i_type::set_value(uint32_t value) {
   funct3 = bitcrop(value, 3, 12);
   imm12 = get_imm12(value);
   // For SLLI, SRLI, SRAI, only the lower 6 bits are relevant.
-  if (opcode == OPCODE_ARITHLOG_I and (funct3 == FUNC3_SR || funct3 == FUNC3_SL)) {
+  if (opcode == OPCODE_ARITHLOG_I && (funct3 == FUNC3_SR || funct3 == FUNC3_SL)) {
     imm12 &= 0b0111111;
   }
   rs1 = bitcrop(value, 5, 15);
