@@ -126,9 +126,10 @@ Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, int type) {
       return shdr;
     }
   }
+  return NULL;
 }
 
-void extend_mem_size(std::vector<uint8_t> &memory, int new_size) {
+void extend_mem_size(std::vector<uint8_t> &memory, size_t new_size) {
   if (memory.size() < new_size) {
     new_size = (new_size + kUnitSize - 1) / kUnitSize * kUnitSize;
     memory.resize(new_size);
@@ -154,7 +155,7 @@ void loadElfFile(std::vector<uint8_t> &program, memory_wrapper &memory) {
                   << " from 0x" << static_cast<int>(phdr->p_offset) << std::dec
                   << ", size " << static_cast<int>(phdr->p_filesz) << ". ";
 
-        for (int i = 0; i < phdr->p_filesz; i++) {
+        for (Elf32_Word i = 0; i < phdr->p_filesz; i++) {
           memory[phdr->p_vaddr + i] = program[phdr->p_offset + i];
         }
         std::cerr << "Loaded" << std::endl;

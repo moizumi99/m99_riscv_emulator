@@ -20,7 +20,7 @@ class memory_wrapper {
   static constexpr int kEntryBits = kTotalBits - kOffsetBits;
   static constexpr int kEntryMask = 0x0FFF;
   static constexpr int kMapEntry = 1 << kEntryBits;
-  static constexpr size_t kMaxEntry = 1l << kTotalBits;
+  static constexpr size_t kMaxEntry = ((1ull << 32) - 1);
 public:
   uint8_t &operator[]( size_t i);
   memory_wrapper_iterator begin();
