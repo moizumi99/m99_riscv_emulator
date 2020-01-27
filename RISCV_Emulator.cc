@@ -5,7 +5,12 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#ifndef WIN32
 #include <elf.h>
+#else
+#include <win32_elf.h>
+#endif
+#include <string>
 #include <cstring>
 #include <tuple>
 
