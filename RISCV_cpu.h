@@ -21,7 +21,7 @@ public:
   void set_memory(std::shared_ptr<memory_wrapper> memory);
   int run_cpu(uint32_t start_pc, bool verbose = true);
 protected:
-  inline bool check(bool x);
+  inline bool check(bool x, const std::string &);
 
 private:
   uint32_t reg[kRegSize];
