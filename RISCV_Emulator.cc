@@ -36,7 +36,7 @@ std::vector<uint8_t> readFile(std::string filename)
 
   // read the data:
   std::vector<uint8_t> fileData;
-  fileData.resize(size);
+  fileData.resize((unsigned int)size);
   file.read(reinterpret_cast<char *>(fileData.data()), size);
   return fileData;
 }
@@ -113,7 +113,7 @@ Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, std::string name) {
   return NULL;
 }
 
-Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, int type) {
+Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, Elf32_Word type) {
   Elf32_Ehdr *ehdr = get_ehdr(program);
 
   // Find the last section header that has the name information.
