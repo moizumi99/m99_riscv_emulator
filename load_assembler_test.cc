@@ -592,7 +592,7 @@ bool test_i_type(bool verbose = false) {
         }
           break;
         case TEST_FENCEI:
-          rd = rs1 = imm12 = 0;
+          rd = rs1 = 0; imm12 = 0;
           cmd = asm_fencei();
           break;
         default:
@@ -716,7 +716,7 @@ bool test_j_type(bool verbose = false) {
     }
     uint8_t opcode = base & 0b01111111;
 
-    for (int i = 0; i < TEST_NUM & !error; i++) {
+    for (int i = 0; i < TEST_NUM && !error; i++) {
       uint32_t cmd;
       uint8_t rd = rnd() % 32;
       int32_t imm21 = (rnd() % (1 << 21)) - (1 << 20);
