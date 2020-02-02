@@ -34,7 +34,7 @@ add_executable(cpu_test
         cpu_test.cc
         RISCV_cpu.cc
         RISCV_cpu.h
-        memory_wrapper.cpp memory_wrapper.h)
+        memory_wrapper.cpp memory_wrapper.h system_call_emulator.cpp system_call_emulator.h)
 
 add_executable(RISCV_Emulator
         assembler.cc
@@ -49,7 +49,7 @@ add_executable(RISCV_Emulator
         RISCV_cpu.h
         RISCV_Emulator.cc
         RISCV_Emulator.h
-        memory_wrapper.cpp memory_wrapper.h)
+        memory_wrapper.cpp memory_wrapper.h system_call_emulator.cpp system_call_emulator.h)
 
 add_executable(memory_wrapper_test
         memory_wrapper.cpp
