@@ -32,12 +32,20 @@ struct riscv32_newlib_stat {
 };
 
 void show_guest_stat(const riscv32_newlib_stat &guest_stat);
+
 void show_host_stat(const struct stat &host_stat);
+
 void conv_guest_stat_to_host_stat(const riscv32_newlib_stat &guest_stat, struct stat *host_stat);
+
 void conv_host_stat_to_guest_stat(const struct stat &host_stat, riscv32_newlib_stat *guest_stat);
+
 constexpr size_t kMaxBufferSize = UINT16_MAX;
+
 size_t memory_wrapper_strlen(const memory_wrapper &mem, size_t address, size_t max = kMaxBufferSize);
+
 char *memory_wrapper_copy(const memory_wrapper &mem, size_t address, size_t length, char *dst);
-std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memory, uint32_t reg[], const uint32_t top, uint32_t *break_address);
+
+std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memory, uint32_t reg[], const uint32_t top,
+                                            uint32_t *break_address, bool debug = false);
 
 #endif //ASSEMBLER_TEST_SYSTEM_CALL_EMULATOR_H
