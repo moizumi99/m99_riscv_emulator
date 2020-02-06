@@ -123,7 +123,7 @@ std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memo
     reg[A0] = return_value;
     delete buffer;
   } else if (reg[A7] == 214) {
-    // BRK
+    // BRK.
     if (debug)
       std::cerr << "BRK System Call" << std::endl;
     if (reg[A0] == 0) {
@@ -135,7 +135,7 @@ std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memo
       reg[A0] = -1;
     }
   } else if (reg[A7] == 63) {
-    // READ
+    // READ.
     if (debug)
       std::cerr << "Read System Call" << std::endl;
     int length = reg[A2];
@@ -147,6 +147,7 @@ std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memo
     }
     delete buffer;
   } else if (reg[A7] == 80) {
+    // FSTAT.
     struct riscv32_newlib_stat guest_stat;
     if (debug) {
       std::cerr << "Fstat System Call" << std::endl;
@@ -175,7 +176,7 @@ std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memo
     int return_value = close(reg[A0]);
     reg[A0] = return_value;
   } else if (reg[A7] == 1024) {
-    // Open
+    // Open.
     if (debug)
       std::cerr << "Open System Call" << std::endl;
     // These values are found in newlib/libc/include/sys/_default_fcntl.h
@@ -220,7 +221,7 @@ std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memo
     }
     reg[A0] = return_value;
   } else if (reg[A7] == 62) {
-    // lseek
+    // lseek.
     std::cerr << "Lseek System Call" << std::endl;
     int return_value = lseek(reg[A0], reg[A1], reg[A2]);
     reg[A0] = return_value;
