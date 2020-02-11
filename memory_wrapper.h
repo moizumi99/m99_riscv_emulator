@@ -13,14 +13,22 @@
 class memory_wrapper_iterator; // Forward declaration.
 class memory_wrapper;
 
+constexpr int generate_mask(const int bits) {
+  int mask = 0;
+  for (int i = 0; i < bits; i++) {
+    mask = (mask << 1) | 0b1;
+  }
+  return mask;
+}
+
 class memory_wrapper {
   static constexpr int kTotalBits = 32;
   static constexpr int kOffsetBits= 20;
-  static constexpr int kOffsetMask= 0x0FFFFF;
+  static constexpr int kOffsetMask= generate_mask(kOffsetBits);
   static constexpr int kEntryBits = kTotalBits - kOffsetBits;
-  static constexpr int kEntryMask = 0x0FFF;
+  static constexpr int kEntryMask = generate_mask(kEntryBits);
   static constexpr int kMapEntry = 1 << kEntryBits;
-  static constexpr size_t kMaxEntry = ((1ull << kTotalBits) - 1);
+  static constexpr size_t kMaxAddress = ((1ull << kTotalBits) - 1);
 public:
   uint8_t &operator[]( size_t i);
   const uint8_t operator[]( size_t i) const;
@@ -29,7 +37,7 @@ public:
   bool operator==(memory_wrapper &r);
   bool operator!=(memory_wrapper &r);
 private:
-  bool check_range(size_t i) const;
+  bool check_range(int entry) const;
   std::array<std::vector<uint8_t>, kMapEntry> mapping;
 };
 

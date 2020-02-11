@@ -46,8 +46,6 @@ void RiscvCpu::set_work_memory(uint32_t top, uint32_t bottom) {
  * riscv-gnu-toolchain/linux-headers/include/asm-generic/unistd.h
  */
 
-
-
 std::pair<bool, bool> RiscvCpu::system_call() {
   return system_call_emulation(memory, reg, top, &brk);
 }
