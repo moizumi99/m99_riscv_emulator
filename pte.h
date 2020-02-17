@@ -25,8 +25,16 @@ public:
   uint32_t GetW() const;
   uint32_t GetR() const;
   uint32_t GetV() const;
-  void SetA(int value);
+  void SetPpn(uint32_t);
+  void SetRsw(uint32_t);
   void SetD(int value);
+  void SetA(int value);
+  void SetG(int value);
+  void SetU(int value);
+  void SetX(int value);
+  void SetW(int value);
+  void SetR(int value);
+  void SetV(int value);
   bool IsLeaf() const;
   bool IsValid() const;
 private:

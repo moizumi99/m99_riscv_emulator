@@ -84,7 +84,7 @@ bool CheckValidAndLeaf() {
     int w = (i >> 2) & 1;
     int x = (i >> 3) & 1;
     bool invalid = (v == 0 || (r == 0 && w == 1));
-    bool leaf = (r == 0 && x == 0 && w == 0);
+    bool leaf = (r != 0 || x != 0 || w != 0);
 
     uint32_t pte_value = (GetRandom32() & ~0b01111) | i;
     pte = pte_value;

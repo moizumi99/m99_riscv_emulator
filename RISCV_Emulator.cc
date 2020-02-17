@@ -2,6 +2,7 @@
 #include "load_assembler.h"
 #include "memory_wrapper.h"
 #include "RISCV_cpu.h"
+#include "pte.h"
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -13,11 +14,8 @@
 #include <string>
 #include <cstring>
 #include <tuple>
+#include <cassert>
 
-constexpr int kUnitSize = 1024 * 1024; // 1 MB
-constexpr int kInitialSize = 4 * kUnitSize; // 4 MB
-constexpr int kStackSize = 4 * kUnitSize; // 4 MB
-constexpr int kMaxBinarySize = 1024 * 1024 * 1024; // 1 GB
 
 std::vector<uint8_t> readFile(std::string filename)
 {
@@ -248,6 +246,39 @@ std::tuple<bool, std::string, bool>parse_cmd(int argc, char *(*argv[])) {
   return std::make_tuple(error, filename, verbose);
 }
 
+constexpr int kMmuLevelOneSize = 4096; // 4096 x 4 B = 16 KiB.
+constexpr int kMmuLevelZeroSize = 1024; // 1024 x 4 B = 4 KiB.
+constexpr int kPteSize = 4;
+
+void set_default_mmu_table(uint32_t level1, uint32_t level0, std::shared_ptr<memory_wrapper> memory) {
+  memory_wrapper& mem = *memory;
+  // Level1.
+  Pte pte(0);
+  pte.SetV(1);
+  for (int i = 0; i < kMmuLevelOneSize; ++i) {
+    uint32_t address = level1 + i * kPteSize;
+    uint32_t ppn = (level0 + i * kMmuLevelZeroSize * kPteSize) >> 12;
+    pte.SetPpn(ppn);
+    uint32_t pte_value = pte.GetValue();
+    memory->write32(address, pte_value);
+  }
+  // Level0.
+  pte.SetX(1);
+  pte.SetW(1);
+  pte.SetR(1);
+  for (int j = 0; j < kMmuLevelOneSize; ++j) {
+    for (int i = 0; i < kMmuLevelZeroSize; ++i) {
+      uint32_t address = level0 + (j * kMmuLevelZeroSize + i) * kPteSize;
+      assert(address < level1);
+      // ((ppn << 12) + offset) will be the physical address. So, x4096 is not needed here.
+      uint32_t ppn = j * kMmuLevelZeroSize + i;
+      pte.SetPpn(ppn);
+      memory->write32(address, pte.GetValue());
+    }
+  }
+  return;
+}
+
 int main(int argc, char *argv[]) {
   bool cmdline_error, verbose;
   std::string filename;
@@ -275,9 +306,7 @@ int main(int argc, char *argv[]) {
   int global_pointer = get_global_pointer(program);
   std::cerr << "Global Pointer is 0x" << std::hex << global_pointer << std::dec << std::endl;
 
-  constexpr uint32_t kTop = 0x80000000;
-  constexpr uint32_t kBottom = 0x40000000;
-  int sp_value = kTop;
+ int sp_value = kTop;
 
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
@@ -285,6 +314,10 @@ int main(int argc, char *argv[]) {
   RiscvCpu cpu;
   cpu.set_register(SP, sp_value);
   cpu.set_register(GP, global_pointer);
+  set_default_mmu_table(mmu_level1, mmu_level0, memory);
+  // Enable paging by setting mode (31st bit).
+  uint32_t sptbr = (mmu_level1 >> 12) | (1 << 31);
+  cpu.set_csr(kSptbr, sptbr);
   cpu.set_memory(memory);
   cpu.set_work_memory(kTop, kBottom);
 

@@ -19,8 +19,10 @@ public:
   void set_register(uint32_t num, uint32_t value);
   uint32_t read_register(uint32_t num);
   void set_memory(std::shared_ptr<memory_wrapper> memory);
+  void set_csr(uint32_t index, uint32_t value);
+  uint32_t read_csr(uint32_t index);
   int run_cpu(uint32_t start_pc, bool verbose = true);
-  uint64_t PhysicalToVirtual(uint32_t virtual_address, bool write_access = false);
+  uint32_t VirtualToPhysical(uint32_t virtual_address, bool write_access = false);
 protected:
   inline bool check_shift_sign(bool x, const std::string &message_str);
 
@@ -32,8 +34,8 @@ private:
   uint32_t load_cmd(uint32_t pc);
   uint32_t get_code(uint32_t ir);
   std::pair<bool, bool> system_call();
-  uint32_t load_wd(uint32_t address);
-  void store_wd(uint32_t address, uint32_t data, int width = 32);
+  uint32_t load_wd(uint32_t virtual_address);
+  void store_wd(uint32_t virtual_address, uint32_t data, int width = 32);
 
   // Below are for system call emulation
 public:

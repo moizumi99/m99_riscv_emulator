@@ -19,13 +19,13 @@ constexpr int kPageSize = 4096;
 constexpr int kMmuLevels = 2;
 constexpr int kPteSize = 4;
 
-uint64_t RiscvCpu::PhysicalToVirtual(uint32_t virtual_address, bool write_access) {
+uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access) {
   uint64_t physical_address = virtual_address;
   memory_wrapper& mem = *memory;
   uint32_t sptbr = csrs[kSptbr];
   uint8_t mode = bitcrop(sptbr, 1, 31);
   if (mode == 0) {
-    return virtual_address;
+    return physical_address;
   }
   // uint16_t asid = bitcrop(sptbr, 9, 22);
   uint32_t ppn = bitcrop(sptbr, 22, 0);
@@ -36,19 +36,25 @@ uint64_t RiscvCpu::PhysicalToVirtual(uint32_t virtual_address, bool write_access
   int level;
   uint32_t vpn = vpn1;
   uint32_t pte_address;
-  for (level = kMmuLevels - 1; level > 0; --level) {
+  for (level = kMmuLevels - 1; level >= 0; --level) {
     pte_address = ppn * kPageSize + vpn * kPteSize;
     uint32_t pte_value = mem.read32(pte_address);
     pte = pte_value;
     if (!pte.IsValid()) {
       // TODO: Do page-fault exception.
+      std::cerr << "PTE not valid." << std::endl;
+      std::cerr << "PTE = " << std::hex << pte.GetValue() << std::endl;
+      std::cerr << "virtual_address = " << virtual_address << std::endl;
+      exit(-1);
       return virtual_address;
     }
-    if (!pte.IsLeaf()) {
+    if (pte.IsLeaf()) {
       break;
     }
     if (level == 0) {
       // TODO: Do page-fault exception.
+      std::cerr << "Non-leaf block in level 0." << std::endl;
+      exit(-1);
       return physical_address;
     }
     ppn = pte.GetPpn();
@@ -57,6 +63,8 @@ uint64_t RiscvCpu::PhysicalToVirtual(uint32_t virtual_address, bool write_access
   if (level > 0 && pte.GetPpn0() != 0) {
     // Misaligned superpage.
     // TODO: Do page-fault exception.
+    std::cerr << "Misaligned super page." << std::endl;
+    exit(-1);
     return physical_address;
   }
   // Access and Dirty bit process;
@@ -65,12 +73,13 @@ uint64_t RiscvCpu::PhysicalToVirtual(uint32_t virtual_address, bool write_access
     pte.SetD(1);
   }
   mem.write32(pte_address, pte.GetValue());
-  // TODO: PMA or PMP check. (Page 70 of RISC-V Privileged Architectures Manual Vol. II.)
-  uint64_t ppn1 = pte.GetPpn1() << 22;
+  // TODO: Add PMP check. (Page 70 of RISC-V Privileged Architectures Manual Vol. II.)
+  uint64_t ppn1 = pte.GetPpn1();
   uint32_t ppn0 = (level == 1) ? vpn0 : pte.GetPpn0();
   physical_address = (ppn1 << 22) | (ppn0 << 12) | offset;
 
-  return physical_address;
+  uint32_t physical_address_32bit = static_cast<uint32_t >(physical_address & 0xFFFFFFFF);
+  return physical_address_32bit;
 }
 
 // A helper function to record shift sign error.
@@ -90,11 +99,20 @@ void RiscvCpu::set_memory(std::shared_ptr<memory_wrapper> memory) {
 
 uint32_t RiscvCpu::load_cmd(uint32_t pc) {
   auto &mem = *memory;
-  return mem[pc] | (mem[pc + 1] << 8) | (mem[pc + 2] << 16) | (mem[pc + 3] << 24);
+  uint32_t physical_address = VirtualToPhysical(pc);
+  return mem.read32(physical_address);
 }
 
 uint32_t RiscvCpu::read_register(uint32_t num) {
   return reg[num];
+}
+
+void RiscvCpu::set_csr(uint32_t index, uint32_t value) {
+  csrs[index] = value;
+}
+
+uint32_t RiscvCpu::read_csr(uint32_t index) {
+  return csrs[index];
 }
 
 void RiscvCpu::set_work_memory(uint32_t top, uint32_t bottom) {
@@ -110,21 +128,23 @@ std::pair<bool, bool> RiscvCpu::system_call() {
   return system_call_emulation(memory, reg, top, &brk);
 }
 
-uint32_t RiscvCpu::load_wd(uint32_t address) {
+uint32_t RiscvCpu::load_wd(uint32_t virtual_address) {
   auto &mem = *memory;
-  return mem[address] | (mem[address + 1] << 8) | (mem[address + 2] << 16) | (mem[address + 3] << 24);
+  uint32_t physical_address = VirtualToPhysical(virtual_address);
+  return mem.read32(physical_address);
 }
 
-void RiscvCpu::store_wd(uint32_t address, uint32_t data, int width) {
+void RiscvCpu::store_wd(uint32_t virtual_address, uint32_t data, int width) {
   auto &mem = *memory;
+  uint32_t physical_address = VirtualToPhysical(virtual_address, true);
   switch (width) {
     case 32:
-      mem[address + 2] = (data >> 16) & 0xFF;
-      mem[address + 3] = (data >> 24) & 0xFF;
+      mem[physical_address + 2] = (data >> 16) & 0xFF;
+      mem[physical_address + 3] = (data >> 24) & 0xFF;
     case 16:
-      mem[address + 1] = (data >> 8) & 0xFF;
+      mem[physical_address + 1] = (data >> 8) & 0xFF;
     case 8:
-      mem[address] = data & 0xFF;
+      mem[physical_address] = data & 0xFF;
       break;
     default:
       throw std::invalid_argument("Store width is not 8, 16, or 32.");
