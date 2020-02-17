@@ -20,8 +20,9 @@ public:
   uint32_t read_register(uint32_t num);
   void set_memory(std::shared_ptr<memory_wrapper> memory);
   int run_cpu(uint32_t start_pc, bool verbose = true);
+  uint64_t PhysicalToVirtual(uint32_t virtual_address, bool write_access = false);
 protected:
-  inline bool check(bool x, const std::string &);
+  inline bool check_shift_sign(bool x, const std::string &message_str);
 
 private:
   uint32_t reg[kRegSize];
@@ -44,7 +45,11 @@ private:
 };
 
 enum CsrsAddresses {
-  kMepc = 0x341,
+  // Super visor Protection and Translation.
+  kSptbr = 0x180, // Page-table base register. Former satp register.
+  // Machine Trap Handling.
+  kMscratch = 0x340, // Scratch register for machine trap handlers.
+  kMepc = 0x341, // Machine exception program counter.
   // TDOD: add other CSR addresses.
   // https://people.eecs.berkeley.edu/~krste/papers/riscv-privileged-v1.9.1.pdf
 };

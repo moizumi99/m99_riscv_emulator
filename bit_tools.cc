@@ -33,24 +33,6 @@ uint32_t bitcrop(uint32_t val, int width, int offset) {
   return val;
 }
 
-uint32_t load_wd(const memory_wrapper_iterator &&address) {
-  return address[0] | (address[1] << 8) | (address[2] << 16) | (address[3] << 24);
-}
-
-void store_wd(memory_wrapper_iterator &&address, uint32_t data, int width) {
-  switch(width) {
-    case 32:
-      address[2] = (data >> 16) & 0xFF;
-      address[3] = (data >> 24) & 0xFF;
-    case 16:
-      address[1] = (data >> 8) & 0xFF;
-    case 8:
-      address[0] = data & 0xFF;
-      break;
-    default:
-      throw std::invalid_argument("Store width is not 8, 16, or 32.");
-  }
-}
 
 int32_t sext(uint32_t value, int width) {
   if (value & (1 << (width - 1))) {

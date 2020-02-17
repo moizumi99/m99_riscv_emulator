@@ -3,6 +3,7 @@
 #include "instruction_encdec.h"
 #include "memory_wrapper.h"
 #include "system_call_emulator.h"
+#include "pte.h"
 #include <iostream>
 #include <tuple>
 #include <stdint.h>
@@ -11,12 +12,71 @@ RiscvCpu::RiscvCpu() {
   for (int i = 0; i < kRegNum; i++) {
     reg[i] = 0;
   }
-  csrs.resize(kCsrSize);
+  csrs.resize(kCsrSize, 0);
 }
 
-bool RiscvCpu::check(bool x, const std::string &str) {
+constexpr int kPageSize = 4096;
+constexpr int kMmuLevels = 2;
+constexpr int kPteSize = 4;
+
+uint64_t RiscvCpu::PhysicalToVirtual(uint32_t virtual_address, bool write_access) {
+  uint64_t physical_address = virtual_address;
+  memory_wrapper& mem = *memory;
+  uint32_t sptbr = csrs[kSptbr];
+  uint8_t mode = bitcrop(sptbr, 1, 31);
+  if (mode == 0) {
+    return virtual_address;
+  }
+  // uint16_t asid = bitcrop(sptbr, 9, 22);
+  uint32_t ppn = bitcrop(sptbr, 22, 0);
+  uint16_t vpn1 = bitcrop(virtual_address, 10, 22);
+  uint16_t vpn0 = bitcrop(virtual_address, 10, 12);
+  uint16_t offset = bitcrop(virtual_address, 12, 0);
+  Pte pte;
+  int level;
+  uint32_t vpn = vpn1;
+  uint32_t pte_address;
+  for (level = kMmuLevels - 1; level > 0; --level) {
+    pte_address = ppn * kPageSize + vpn * kPteSize;
+    uint32_t pte_value = mem.read32(pte_address);
+    pte = pte_value;
+    if (!pte.IsValid()) {
+      // TODO: Do page-fault exception.
+      return virtual_address;
+    }
+    if (!pte.IsLeaf()) {
+      break;
+    }
+    if (level == 0) {
+      // TODO: Do page-fault exception.
+      return physical_address;
+    }
+    ppn = pte.GetPpn();
+    vpn = vpn0;
+  }
+  if (level > 0 && pte.GetPpn0() != 0) {
+    // Misaligned superpage.
+    // TODO: Do page-fault exception.
+    return physical_address;
+  }
+  // Access and Dirty bit process;
+  pte.SetA(1);
+  if (write_access) {
+    pte.SetD(1);
+  }
+  mem.write32(pte_address, pte.GetValue());
+  // TODO: PMA or PMP check. (Page 70 of RISC-V Privileged Architectures Manual Vol. II.)
+  uint64_t ppn1 = pte.GetPpn1() << 22;
+  uint32_t ppn0 = (level == 1) ? vpn0 : pte.GetPpn0();
+  physical_address = (ppn1 << 22) | (ppn0 << 12) | offset;
+
+  return physical_address;
+}
+
+// A helper function to record shift sign error.
+bool RiscvCpu::check_shift_sign(bool x, const std::string &message_str) {
   if (!x) {
-    std::cerr << str << " Shift sign error." << std::endl;
+    std::cerr << message_str << " Shift sign error." << std::endl;
     return true;
   }
   return false;
@@ -83,7 +143,6 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
                  "X26      X27      X28      X29      X30      X31" << std::endl;
   }
 
-  // mem = this->memory->data();
   pc = start_pc;
   do {
     uint32_t next_pc;
@@ -168,15 +227,15 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         break;
       case INST_SLLI:
         reg[rd] = reg[rs1] << shamt;
-        check((shamt >> 5 & 1) == 0, "SLLI");
+        check_shift_sign((shamt >> 5 & 1) == 0, "SLLI");
         break;
       case INST_SRLI:
         reg[rd] = reg[rs1] >> shamt;
-        check((shamt >> 5 & 1) == 0, "SRLI");
+        check_shift_sign((shamt >> 5 & 1) == 0, "SRLI");
         break;
       case INST_SRAI:
         reg[rd] = static_cast<int32_t>(reg[rs1]) >> shamt;
-        check((shamt >> 5 & 1) == 0, "SRAI");
+        check_shift_sign((shamt >> 5 & 1) == 0, "SRAI");
         break;
       case INST_SLTI:
         reg[rd] = static_cast<int32_t>(reg[rs1]) < imm12 ? 1 : 0;

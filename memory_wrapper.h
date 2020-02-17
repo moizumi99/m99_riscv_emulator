@@ -32,6 +32,8 @@ class memory_wrapper {
 public:
   uint8_t &operator[]( size_t i);
   const uint8_t operator[]( size_t i) const;
+  const uint32_t read32(size_t i) const;
+  void write32(size_t i, uint32_t value);
   memory_wrapper_iterator begin();
   memory_wrapper_iterator end();
   bool operator==(memory_wrapper &r);
@@ -71,5 +73,7 @@ private:
   class memory_wrapper *mw;
 };
 
+uint32_t load_wd(const memory_wrapper_iterator &&address);
+void store_wd(memory_wrapper_iterator &&address, uint32_t data, int width = 32);
 
 #endif //MEMORY_WRAPPER_H

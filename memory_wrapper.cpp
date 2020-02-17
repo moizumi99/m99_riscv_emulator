@@ -29,6 +29,17 @@ const uint8_t memory_wrapper::operator[]( size_t i) const {
   return mapping[entry][offset];
 }
 
+const uint32_t memory_wrapper::read32(size_t i) const {
+  return (*this)[i] | ((*this)[i + 1] << 8) | ((*this)[i + 2] << 16) | ((*this)[i + 3] << 24);
+}
+
+void memory_wrapper::write32(size_t i, uint32_t value) {
+  (*this)[i] = value & 0xFF;
+  (*this)[i + 1] = (value >> 8) & 0xFF;
+  (*this)[i + 2] = (value >> 16) & 0xFF;
+  (*this)[i + 3] = (value >> 24) & 0xFF;
+}
+
 bool memory_wrapper::operator==(memory_wrapper &r) {
   return mapping == r.mapping;
 }
@@ -133,6 +144,24 @@ bool memory_wrapper_iterator::operator>=(const iterator &r) {
   return (mw == r.mw && pos >= r.pos);
 }
 
+uint32_t load_wd(const memory_wrapper_iterator &&address) {
+  return address[0] | (address[1] << 8) | (address[2] << 16) | (address[3] << 24);
+}
+
+void store_wd(memory_wrapper_iterator &&address, uint32_t data, int width) {
+  switch(width) {
+    case 32:
+      address[2] = (data >> 16) & 0xFF;
+      address[3] = (data >> 24) & 0xFF;
+    case 16:
+      address[1] = (data >> 8) & 0xFF;
+    case 8:
+      address[0] = data & 0xFF;
+      break;
+    default:
+      throw std::invalid_argument("Store width is not 8, 16, or 32.");
+  }
+}
 
 
 
