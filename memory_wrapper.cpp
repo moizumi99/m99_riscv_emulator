@@ -57,7 +57,7 @@ memory_wrapper_iterator memory_wrapper::end() {
 }
 
 // Memory wrapper iterator definition starts here.
-memory_wrapper_iterator::memory_wrapper_iterator(memory_wrapper &m, size_t p): mw(&m), pos(p) {}
+memory_wrapper_iterator::memory_wrapper_iterator(memory_wrapper &m, size_t p): pos(p), mw(&m)  {}
 
 uint8_t& memory_wrapper_iterator::operator*() {
   return (*this->mw)[pos];
