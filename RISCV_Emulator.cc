@@ -270,8 +270,6 @@ void set_default_mmu_table(uint32_t level1, uint32_t level0, std::shared_ptr<mem
       uint32_t ppn = j * kMmuLevelZeroSize + i;
       uint32_t address = level0 + ppn * kPteSize;
       assert(address < level1 || level1 + kMmuLevelOneSize * kPteSize <= address);
-      // 0x00000000 - 0x7fffffff are mapped to 0x80000000 - 0xffffffff
-      ppn = 0x080000 | (ppn & 0xFFFFF);
       // ((ppn << 12) + offset) will be the physical address. So, x4096 is not needed here.
       pte.SetPpn(ppn);
       memory->write32(address, pte.GetValue());
