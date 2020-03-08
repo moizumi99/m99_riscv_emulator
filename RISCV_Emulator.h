@@ -22,7 +22,7 @@ constexpr uint32_t kBottom = 0x40000000;
  * 0xC0000000 - 0xC0100000 : Level 0
  * 0xC0100000 - 0xC0101000 : Level 1
  */
-constexpr uint32_t mmu_level1 = 0xC1000000;
-constexpr uint32_t mmu_level0 = 0xC0000000;
+constexpr uint32_t mmu_level1 = 0xC0000000;
+constexpr uint32_t mmu_level0 = 0xC0001000;
 
 #endif // RISCV_EMULATOR_H

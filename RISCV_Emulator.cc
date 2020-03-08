@@ -97,11 +97,9 @@ Elf32_Shdr *search_shdr(std::vector<uint8_t> &program, std::string name) {
   Elf32_Ehdr *ehdr = get_ehdr(program);
 
   // Find the last section header that has the name information.
-  Elf32_Shdr *nhdr = get_shdr(program, ehdr->e_shstrndx);
   for(int i = 0; i < ehdr->e_shnum; i++) {
     Elf32_Shdr *shdr = get_shdr(program, i);
     char *section_name = get_section_name(program, shdr);
-//    char *section_name = reinterpret_cast<char *>(program.data()) + nhdr->sh_offset + shdr->sh_name;
     if (!std::strcmp(section_name, name.c_str())) {
       std::cerr << "Section " << name << " found at 0x0" << std::hex
                 << shdr->sh_offset << "." << std::endl;
@@ -145,7 +143,6 @@ void loadElfFile(std::vector<uint8_t> &program, memory_wrapper &memory) {
     std::cerr << "Program Header " << i << ":";
     Elf32_Phdr *phdr = (Elf32_Phdr *)(program.data() + ehdr->e_phoff + ehdr->e_phentsize * i);
     switch (phdr->p_type) {
-      int total_new_size;
 
       case PT_LOAD:
         std::cerr << "Type: LOAD. ";
@@ -168,8 +165,11 @@ void loadElfFile(std::vector<uint8_t> &program, memory_wrapper &memory) {
   Elf32_Shdr *shdr = search_shdr(program, ".bss");
   if (shdr) {
     std::cerr << "Secure BSS." << std::endl;
-    int total_new_size = shdr->sh_addr + shdr->sh_size;
-    extend_mem_size(program, total_new_size);
+    std::cerr << "BSS start address: " << std::hex << shdr->sh_addr;
+    std::cerr << ", end address: " << shdr->sh_addr + shdr->sh_size << std::endl;
+    for (uint32_t i = shdr->sh_addr; i < shdr->sh_addr + shdr->sh_size; i++) {
+      memory[i] = 0;
+    }
   } else {
     std::cerr << "No BSS found." << std::endl;
   }
@@ -213,8 +213,8 @@ int get_global_pointer(std::vector<uint8_t> &program) {
               << symbol->st_value << std::dec << "." << std::endl;
     return symbol->st_value;
   }
-  std::cerr << "Global Pointer Value not defined. Set to zero." << std::endl;
-  return 0;
+  std::cerr << "Global Pointer Value not defined." << std::endl;
+  return -1;
 }
 
 int get_entry_point(std::vector<uint8_t> &program) {
@@ -246,12 +246,11 @@ std::tuple<bool, std::string, bool>parse_cmd(int argc, char *(*argv[])) {
   return std::make_tuple(error, filename, verbose);
 }
 
-constexpr int kMmuLevelOneSize = 4096; // 4096 x 4 B = 16 KiB.
+constexpr int kMmuLevelOneSize = 1024; // 1024 x 4 B = 4 KiB.
 constexpr int kMmuLevelZeroSize = 1024; // 1024 x 4 B = 4 KiB.
 constexpr int kPteSize = 4;
 
 void set_default_mmu_table(uint32_t level1, uint32_t level0, std::shared_ptr<memory_wrapper> memory) {
-  memory_wrapper& mem = *memory;
   // Level1.
   Pte pte(0);
   pte.SetV(1);
@@ -268,10 +267,12 @@ void set_default_mmu_table(uint32_t level1, uint32_t level0, std::shared_ptr<mem
   pte.SetR(1);
   for (int j = 0; j < kMmuLevelOneSize; ++j) {
     for (int i = 0; i < kMmuLevelZeroSize; ++i) {
-      uint32_t address = level0 + (j * kMmuLevelZeroSize + i) * kPteSize;
-      assert(address < level1);
-      // ((ppn << 12) + offset) will be the physical address. So, x4096 is not needed here.
       uint32_t ppn = j * kMmuLevelZeroSize + i;
+      uint32_t address = level0 + ppn * kPteSize;
+      assert(address < level1 || level1 + kMmuLevelOneSize * kPteSize <= address);
+      // 0x00000000 - 0x7fffffff are mapped to 0x80000000 - 0xffffffff
+      ppn = 0x080000 | (ppn & 0xFFFFF);
+      // ((ppn << 12) + offset) will be the physical address. So, x4096 is not needed here.
       pte.SetPpn(ppn);
       memory->write32(address, pte.GetValue());
     }
@@ -304,6 +305,9 @@ int main(int argc, char *argv[]) {
   std::cerr << "Entry point is 0x" << std::hex << entry_point << std::dec << std::endl;
 
   int global_pointer = get_global_pointer(program);
+  if (global_pointer == -1) {
+    global_pointer = entry_point;
+  }
   std::cerr << "Global Pointer is 0x" << std::hex << global_pointer << std::dec << std::endl;
 
  int sp_value = kTop;
@@ -316,8 +320,8 @@ int main(int argc, char *argv[]) {
   cpu.set_register(GP, global_pointer);
   set_default_mmu_table(mmu_level1, mmu_level0, memory);
   // Enable paging by setting mode (31st bit).
-  uint32_t sptbr = (mmu_level1 >> 12) | (1 << 31);
-  cpu.set_csr(kSptbr, sptbr);
+  uint32_t satp = (mmu_level1 >> 12) | (1 << 31);
+  cpu.set_csr(kSatp, satp);
   cpu.set_memory(memory);
   cpu.set_work_memory(kTop, kBottom);
 

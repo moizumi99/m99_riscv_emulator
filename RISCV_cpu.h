@@ -8,6 +8,12 @@
 #include "bit_tools.h"
 #include "memory_wrapper.h"
 
+enum PrivilegeModes {
+  kUser = 0,
+  kSupervisor = 1,
+  kMachine = 3
+};
+
 class RiscvCpu {
   static constexpr int kCsrSize = 4096;
   static constexpr int kRegSize = 32;
@@ -29,6 +35,7 @@ protected:
 private:
   uint32_t reg[kRegSize];
   uint32_t pc;
+  uint8_t privilege = kMachine;
   std::shared_ptr<memory_wrapper> memory;
   std::vector<uint32_t> csrs;
   uint32_t load_cmd(uint32_t pc);
@@ -36,6 +43,10 @@ private:
   std::pair<bool, bool> system_call();
   uint32_t load_wd(uint32_t virtual_address);
   void store_wd(uint32_t virtual_address, uint32_t data, int width = 32);
+  void instruction_page_fault();
+  bool page_fault = false;
+  bool prev_page_fault = false;
+  bool error_flag, end_flag;
 
   // Below are for system call emulation
 public:
@@ -47,13 +58,26 @@ private:
 };
 
 enum CsrsAddresses {
+  // Supervisor Trap Handling
+  kSepc = 0x141, // Supervisor exception program counter.
   // Super visor Protection and Translation.
-  kSptbr = 0x180, // Page-table base register. Former satp register.
+  kSatp = 0x180, // Page-table base register. Former satp register.
+  // Machine Trap Setup
+  kMstatus = 0x300, // Machine status register.
+  kMisa = 0x301, // ISA and extensions.
+  kMedeleg = 0x302, // Machine exception delegation register.
+  kMideleg = 0x303, // Machine interrupt delegation register.
+  kMie = 0x304, // Machine interrupt-enable register.
+  kMtvec = 0x305, // Machine trap-handler base address.
+  kMcounteren = 0x306, // Machine counter enable.
   // Machine Trap Handling.
   kMscratch = 0x340, // Scratch register for machine trap handlers.
   kMepc = 0x341, // Machine exception program counter.
+  kMcause = 0x342, // Machine trap cause.
+  kMtval = 0x343, // Machine bad address
+  kMip = 0x344, // Machine interrupt pending
   // TDOD: add other CSR addresses.
-  // https://people.eecs.berkeley.edu/~krste/papers/riscv-privileged-v1.9.1.pdf
+  // https://riscv.org/specifications/privileged-isa/
 };
 
 enum Registers {

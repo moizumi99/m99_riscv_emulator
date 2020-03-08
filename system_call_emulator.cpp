@@ -165,7 +165,7 @@ std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memo
       std::cerr << "Guest: struct stat\n";
       show_guest_stat(guest_stat);
     }
-    for (int i = 0; i < sizeof(riscv32_newlib_stat); i++) {
+    for (unsigned int i = 0; i < sizeof(riscv32_newlib_stat); i++) {
       mem[reg[A1] + i] = statbuf_p[i];
     }
     reg[A0] = return_value;
@@ -226,8 +226,8 @@ std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memo
     int return_value = lseek(reg[A0], reg[A1], reg[A2]);
     reg[A0] = return_value;
   } else {
-    std::cerr << "Undefined system call (" << reg[A7] << ")\n";
-    reg[A0] = 0;
+    std::cerr << "Undefined system call (" << reg[A7] << "). Exit.\n";
+    end_flag = true;
   }
 
   return std::make_pair(error_flag, end_flag);

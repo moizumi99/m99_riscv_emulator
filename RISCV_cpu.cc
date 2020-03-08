@@ -22,7 +22,7 @@ constexpr int kPteSize = 4;
 uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access) {
   uint64_t physical_address = virtual_address;
   memory_wrapper& mem = *memory;
-  uint32_t sptbr = csrs[kSptbr];
+  uint32_t sptbr = csrs[kSatp];
   uint8_t mode = bitcrop(sptbr, 1, 31);
   if (mode == 0) {
     return physical_address;
@@ -45,16 +45,16 @@ uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access
       std::cerr << "PTE not valid." << std::endl;
       std::cerr << "PTE = " << std::hex << pte.GetValue() << std::endl;
       std::cerr << "virtual_address = " << virtual_address << std::endl;
-      exit(-1);
-      return virtual_address;
+      std::cerr << "PTE entry address = " << pte_address << std::endl;
+      page_fault = true;
+      return physical_address;
     }
     if (pte.IsLeaf()) {
       break;
     }
     if (level == 0) {
-      // TODO: Do page-fault exception.
       std::cerr << "Non-leaf block in level 0." << std::endl;
-      exit(-1);
+      page_fault = true;
       return physical_address;
     }
     ppn = pte.GetPpn();
@@ -64,7 +64,7 @@ uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access
     // Misaligned superpage.
     // TODO: Do page-fault exception.
     std::cerr << "Misaligned super page." << std::endl;
-    exit(-1);
+    page_fault = true;
     return physical_address;
   }
   // Access and Dirty bit process;
@@ -151,17 +151,36 @@ void RiscvCpu::store_wd(uint32_t virtual_address, uint32_t data, int width) {
   }
 }
 
-int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
-  bool error_flag = false;
-  bool end_flag = false;
-
-  if (verbose) {
-    std::cout << "   PC       CMD       X0       X1       X2       X3       X4       "
-                 "X5       X6       X7       X8       X9      X10      X11      "
-                 "X12      X13      X14      X15      X16      X17      X18      "
-                 "X19      X20      X21      X22      X23      X24      X25      "
-                 "X26      X27      X28      X29      X30      X31" << std::endl;
+void RiscvCpu::instruction_page_fault() {
+  if (prev_page_fault) {
+    // This is a page fault right after another fault. Exit.
+    error_flag = true;
   }
+  prev_page_fault = page_fault;
+  page_fault = false;
+  csrs[kMepc] = pc;
+  uint32_t mtvec = csrs[kMtvec];
+  uint8_t mode = mtvec & 0b11;
+  csrs[kMtval] = pc;
+  if (mode == 0) {
+    pc = mtvec & ~0b11;
+  } else {
+    pc = (mtvec & ~0b11) + 4 * (csrs[kMcause] & 0x7FFFFFFF);
+  }
+  // Copy old MIE (#3) to MPIE (#7). Then, disable MIE.
+  const uint32_t mie = csrs[kMstatus] & ~(1 << 3) >> 3;
+  csrs[kMstatus] = (csrs[kMstatus] & ~(1 << 7)) | (mie << 7);
+  csrs[kMstatus] &= ~(1 << 3);
+
+  // Save the current privilege mode to MPP (#12-11), and set the privilege to Machine.
+  csrs[kMstatus] &= ~(0b11 << 11);
+  csrs[kMstatus] |= privilege << 11;
+  privilege = kMachine;
+}
+
+int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
+  error_flag = false;
+  end_flag = false;
 
   pc = start_pc;
   do {
@@ -169,12 +188,21 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
     uint32_t ir;
 
     ir = load_cmd(pc);
+    if (page_fault) {
+      instruction_page_fault();
+      continue;
+    }
     if (verbose) {
-      printf(" %4x  %08x %08x %08x %08x %08x %08x %08x %08x %08x "
+      std::cout << " PC        CMD      X1/RA    X2/SP    X3/GP    X4/TP    "
+                   "X5/T0    X6/T1    X7/T2    X8/S0/FP X9/S1    X10/A0   X11/A1   "
+                   "X12/A2   X13/A3   X14/A4   X15/A5   X16/A6   X17/A7   X18/S2   "
+                   "X19/S3   X20/S4   X21/S5   X22/S6   X23/S7   X24/S8   X25/S9   "
+                   "X26/S10  X27/S11  X28/T3   X29/T4   X30/T5   X31/T6" << std::endl;
+      printf(" %08x  %08x %08x %08x %08x %08x %08x %08x %08x "
              "%08x %08x %08x %08x %08x %08x %08x %08x "
              "%08x %08x %08x %08x %08x %08x %08x %08x "
              "%08x %08x %08x %08x %08x %08x %08x %08x",
-             pc, ir, reg[0], reg[1], reg[2], reg[3], reg[4], reg[5],
+             pc, ir, reg[1], reg[2], reg[3], reg[4], reg[5],
              reg[6], reg[7], reg[8], reg[9], reg[10], reg[11],
              reg[12], reg[13], reg[14], reg[15], reg[16], reg[17],
              reg[18], reg[19], reg[20], reg[21], reg[22], reg[23],
@@ -358,8 +386,13 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
           // MRET
           next_pc = csrs[kMepc];
           // TODO: Implement privilege mode change.
+        } else if (imm12 == 0b000100000010) {
+          // SRET
+          next_pc = csrs[kSepc];
+          // TODO: Implement privilege mode change.
         } else {
           // not defined.
+          std::cerr << "Undefined System instruction." << std::endl;
           error_flag = true;
         }
         break;
