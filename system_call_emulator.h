@@ -8,7 +8,7 @@
 #include <memory>
 #include "memory_wrapper.h"
 
-struct riscv32_newlib_stat {
+struct Riscv32NewlibStat {
   uint16_t st_dev;  // 0
   uint16_t st_ino;  // 2
   uint32_t st_mode;  // 4
@@ -31,21 +31,21 @@ struct riscv32_newlib_stat {
   int32_t st_spare4[2]; // 76
 };
 
-void show_guest_stat(const riscv32_newlib_stat &guest_stat);
+void ShowGuestStat(const Riscv32NewlibStat &guest_stat);
 
-void show_host_stat(const struct stat &host_stat);
+void ShowHostStat(const struct stat &host_stat);
 
-void conv_guest_stat_to_host_stat(const riscv32_newlib_stat &guest_stat, struct stat *host_stat);
+void ConvGuestStatToHostStat(const Riscv32NewlibStat &guest_stat, struct stat *host_stat);
 
-void conv_host_stat_to_guest_stat(const struct stat &host_stat, riscv32_newlib_stat *guest_stat);
+void ConvHostStatToGuestStat(const struct stat &host_stat, Riscv32NewlibStat *guest_stat);
 
 constexpr size_t kMaxBufferSize = UINT16_MAX;
 
-size_t memory_wrapper_strlen(const memory_wrapper &mem, size_t address, size_t max = kMaxBufferSize);
+size_t MemoryWrapperStrlen(const MemoryWrapper &mem, size_t address, size_t max = kMaxBufferSize);
 
-char *memory_wrapper_copy(const memory_wrapper &mem, size_t address, size_t length, char *dst);
+char *MemoryWrapperCopy(const MemoryWrapper &mem, size_t address, size_t length, char *dst);
 
-std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memory, uint32_t reg[], const uint32_t top,
-                                            uint32_t *break_address, bool debug = false);
+std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint32_t *reg, const uint32_t top,
+                                          uint32_t *break_address, bool debug = false);
 
 #endif //ASSEMBLER_TEST_SYSTEM_CALL_EMULATOR_H

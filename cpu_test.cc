@@ -10,12 +10,12 @@
 namespace cpu_test {
 
 constexpr int kMemSize = 0x0200000;
-std::shared_ptr<memory_wrapper> memory;
+std::shared_ptr<MemoryWrapper> memory;
 
 std::mt19937 rnd;
 constexpr int kSeed = 155719;
 
-void init_random() {
+void InitRandom() {
   rnd.seed(kSeed);
 }
 
@@ -23,23 +23,23 @@ void init_random() {
 constexpr int kUnitTestMax = 100;
 
 //  memory initialization
-void mem_init() {
-  memory = std::make_shared<memory_wrapper>();
+void MemInit() {
+  memory = std::make_shared<MemoryWrapper>();
   // mem = memory->data();
 }
 
-void randomize_registers(RiscvCpu &cpu) {
+void RandomizeRegisters(RiscvCpu &cpu) {
   std::mt19937_64 gen(std::random_device{}());
 
   constexpr int kRegNumber = 32;
   for (int i = 1; i < kRegNumber; i++) {
     uint32_t reg = gen() & 0xFFFFFFFF;
-    cpu.set_register(i, reg);
+    cpu.SetRegister(i, reg);
   }
 }
 
 // Commonly used helper function for error message.
-void print_error_message(const std::string &text, bool error, int32_t expected, int32_t actual) {
+void PrintErrorMessage(const std::string &text, bool error, int32_t expected, int32_t actual) {
   if (error) {
     printf("%s test failed.", text.c_str());
   } else {
@@ -50,15 +50,15 @@ void print_error_message(const std::string &text, bool error, int32_t expected, 
   printf(" Expected %d, Actual %d\n", expected, actual);
 }
 
-// A helper function to split 32 bit value to 20 bit and singed 12 bit immediates.
-std::pair<uint32_t, uint32_t> split_immediate(uint32_t value) {
+// A helper function to split 32 bit GetValue to 20 bit and singed 12 bit immediates.
+std::pair<uint32_t, uint32_t> SplitImmediate(uint32_t value) {
   uint32_t value20 = value >> 12;
   uint32_t value12 = value & 0xFFF;
   if (value12 >> 11) {
     value20++;
   }
   // Double check that the sum of these two equals the input.
-  if ((value20 << 12) + sext(value12, 12) != value) {
+  if ((value20 << 12) + SignExtend(value12, 12) != value) {
     printf("Test bench error: value1 = %8X, value20 = %8X, value12 = %8X\n", value, value20, value12);
   }
   return std::make_pair(value20, value12);
@@ -69,73 +69,73 @@ enum ITYPE_TEST {
   TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI, TEST_SLTIU, TEST_EBREAK
 };
 
-bool test_i_type(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int32_t imm12, bool verbose) {
+bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int32_t imm12, bool verbose) {
   int32_t expected;
   std::string test_case = "";
 
   // CPU is instantiated here because some tests need access to cpu register.
   RiscvCpu cpu;
-  randomize_registers(cpu);
+  RandomizeRegisters(cpu);
   auto pointer = memory->begin();
   uint32_t val20, val12;
-  std::tie(val20, val12) = split_immediate(value);
-  add_cmd(pointer, asm_lui(rs1, val20));
-  add_cmd(pointer, asm_addi(rs1, rs1, val12));
+  std::tie(val20, val12) = SplitImmediate(value);
+  AddCmd(pointer, AsmLui(rs1, val20));
+  AddCmd(pointer, AsmAddi(rs1, rs1, val12));
   if (rs1 == 0) {
     value = 0;
   }
   switch (test_type) {
     case TEST_ADDI:
-      add_cmd(pointer, asm_addi(rd, rs1, imm12));
-      expected = value + sext(imm12 & 0x0FFF, 12);
+      AddCmd(pointer, AsmAddi(rd, rs1, imm12));
+      expected = value + SignExtend(imm12 & 0x0FFF, 12);
       test_case = "ADDI";
       break;
     case TEST_ANDI:
-      add_cmd(pointer, asm_andi(rd, rs1, imm12));
-      expected = value & sext(imm12 & 0x0FFF, 12);
+      AddCmd(pointer, AsmAndi(rd, rs1, imm12));
+      expected = value & SignExtend(imm12 & 0x0FFF, 12);
       test_case = "ANDI";
       break;
     case TEST_ORI:
-      add_cmd(pointer, asm_ori(rd, rs1, imm12));
-      expected = value | sext(imm12 & 0x0FFF, 12);
+      AddCmd(pointer, AsmOri(rd, rs1, imm12));
+      expected = value | SignExtend(imm12 & 0x0FFF, 12);
       test_case = "ORI";
       break;
     case TEST_XORI:
-      add_cmd(pointer, asm_xori(rd, rs1, imm12));
-      expected = value ^ sext(imm12 & 0x0FFF, 12);
+      AddCmd(pointer, AsmXori(rd, rs1, imm12));
+      expected = value ^ SignExtend(imm12 & 0x0FFF, 12);
       test_case = "XORI";
       break;
     case TEST_SLLI:
       imm12 = imm12 & 0b0011111;
-      add_cmd(pointer, asm_slli(rd, rs1, imm12));
+      AddCmd(pointer, AsmSlli(rd, rs1, imm12));
       expected = value << imm12;
       test_case = "SLLI";
       break;
     case TEST_SRLI:
       imm12 = imm12 & 0b0011111;
-      add_cmd(pointer, asm_srli(rd, rs1, imm12));
+      AddCmd(pointer, AsmSrli(rd, rs1, imm12));
       expected = static_cast<uint32_t>(value) >> imm12;
       test_case = "SRLI";
       break;
     case TEST_SRAI:
       imm12 = imm12 & 0b0011111;
-      add_cmd(pointer, asm_srai(rd, rs1, imm12));
+      AddCmd(pointer, AsmSrai(rd, rs1, imm12));
       expected = value >> imm12;
       test_case = "SRAI";
       break;
     case TEST_SLTI:
-      add_cmd(pointer, asm_slti(rd, rs1, imm12));
+      AddCmd(pointer, AsmSlti(rd, rs1, imm12));
       expected = value < imm12 ? 1 : 0;
       test_case = "SLTI";
       break;
     case TEST_SLTIU:
-      add_cmd(pointer, asm_sltiu(rd, rs1, imm12));
+      AddCmd(pointer, AsmSltiu(rd, rs1, imm12));
       expected = static_cast<uint32_t>(value) < static_cast<uint32_t >(imm12) ? 1 : 0;
       test_case = "SLTIU";
       break;
     case TEST_EBREAK:
-      add_cmd(pointer, asm_ebreak());
-      expected = cpu.read_register(rd);
+      AddCmd(pointer, AsmEbreak());
+      expected = cpu.ReadRegister(rd);
       if (rs1 == rd) {
         expected = value;
       }
@@ -145,27 +145,27 @@ bool test_i_type(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, i
       printf("I TYPE Test case undefined.\n");
       return true;
   }
-  add_cmd(pointer, asm_addi(A0, rd, 0));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  AddCmd(pointer, AsmAddi(A0, rd, 0));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
 
   if (rd == 0) {
     expected = 0;
   }
-  cpu.set_memory(memory);
-  bool error = cpu.run_cpu(0, verbose) != 0;
-  int return_value = cpu.read_register(A0);
+  cpu.SetMemory(memory);
+  bool error = cpu.RunCpu(0, verbose) != 0;
+  int return_value = cpu.ReadRegister(A0);
   error |= return_value != expected;
   if (error & verbose) {
     printf("RD: %d, RS1: %d, Value: %d(%08x), imm12: %d(%03x)\n", rd, rs1, value, value, imm12, imm12);
   }
   if (verbose) {
-    print_error_message(test_case, error, expected, return_value);
+    PrintErrorMessage(test_case, error, expected, return_value);
   }
   return error;
 }
 
-void print_i_type_instruction_message(ITYPE_TEST test_case, bool error) {
+void PrintITypeInstructionMessage(ITYPE_TEST test_case, bool error) {
   std::map<ITYPE_TEST, const std::string> test_name = {{TEST_ADDI,  "ADDI"},
                                                        {TEST_ANDI,  "ANDI"},
                                                        {TEST_ORI,   "ORI"},
@@ -179,7 +179,7 @@ void print_i_type_instruction_message(ITYPE_TEST test_case, bool error) {
   printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
 }
 
-bool test_i_type_loop(bool verbose) {
+bool TestITypeLoop(bool verbose) {
   bool total_error = false;
   ITYPE_TEST test_set[] = {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_SLTI,
                            TEST_SLTIU, TEST_EBREAK};
@@ -189,15 +189,15 @@ bool test_i_type_loop(bool verbose) {
       uint32_t rd = rnd() & 0x1F;
       uint32_t rs1 = rnd() & 0x1F;
       int32_t value = rnd();
-      int32_t imm12 = sext(rnd() & 0x0FFF, 12);
-      bool test_error = test_i_type(test_case, rd, rs1, value, imm12, false);
+      int32_t imm12 = SignExtend(rnd() & 0x0FFF, 12);
+      bool test_error = TestIType(test_case, rd, rs1, value, imm12, false);
       if (test_error) {
-        test_error |= test_i_type(test_case, rd, rs1, value, imm12, true);
+        test_error |= TestIType(test_case, rd, rs1, value, imm12, true);
       }
       error |= test_error;
     }
     if (verbose) {
-      print_i_type_instruction_message(test_case, error);
+      PrintITypeInstructionMessage(test_case, error);
     }
     total_error |= error;
   }
@@ -211,20 +211,20 @@ enum R_TYPE_TEST {
 };
 
 bool
-test_r_type(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t value1, int32_t value2,
-            bool verbose) {
+TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t value1, int32_t value2,
+          bool verbose) {
   bool error = false;
   int32_t expected;
   std::string test_case = "";
 
   auto pointer = memory->begin();
   uint32_t val20, val12;
-  std::tie(val20, val12) = split_immediate(value1);
-  add_cmd(pointer, asm_lui(rs1, val20));
-  add_cmd(pointer, asm_addi(rs1, rs1, val12));
-  std::tie(val20, val12) = split_immediate(value2);
-  add_cmd(pointer, asm_lui(rs2, val20));
-  add_cmd(pointer, asm_addi(rs2, rs2, val12));
+  std::tie(val20, val12) = SplitImmediate(value1);
+  AddCmd(pointer, AsmLui(rs1, val20));
+  AddCmd(pointer, AsmAddi(rs1, rs1, val12));
+  std::tie(val20, val12) = SplitImmediate(value2);
+  AddCmd(pointer, AsmLui(rs2, val20));
+  AddCmd(pointer, AsmAddi(rs2, rs2, val12));
 
   if (rs1 == 0) {
     value1 = 0;
@@ -237,52 +237,52 @@ test_r_type(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t
   }
   switch (test_type) {
     case TEST_ADD:
-      add_cmd(pointer, asm_add(rd, rs1, rs2));
+      AddCmd(pointer, AsmAdd(rd, rs1, rs2));
       expected = value1 + value2;
       test_case = "ADD";
       break;
     case TEST_SUB:
-      add_cmd(pointer, asm_sub(rd, rs1, rs2));
+      AddCmd(pointer, AsmSub(rd, rs1, rs2));
       expected = value1 - value2;
       test_case = "SUB";
       break;
     case TEST_AND:
-      add_cmd(pointer, asm_and(rd, rs1, rs2));
+      AddCmd(pointer, AsmAnd(rd, rs1, rs2));
       expected = value1 & value2;
       test_case = "AND";
       break;
     case TEST_OR:
-      add_cmd(pointer, asm_or(rd, rs1, rs2));
+      AddCmd(pointer, AsmOr(rd, rs1, rs2));
       expected = value1 | value2;
       test_case = "OR";
       break;
     case TEST_XOR:
-      add_cmd(pointer, asm_xor(rd, rs1, rs2));
+      AddCmd(pointer, AsmXor(rd, rs1, rs2));
       expected = value1 ^ value2;
       test_case = "XOR";
       break;
     case TEST_SLL:
-      add_cmd(pointer, asm_sll(rd, rs1, rs2));
+      AddCmd(pointer, AsmSll(rd, rs1, rs2));
       expected = value1 << (value2 & 0x1F);
       test_case = "SLL";
       break;
     case TEST_SRL:
-      add_cmd(pointer, asm_srl(rd, rs1, rs2));
+      AddCmd(pointer, AsmSrl(rd, rs1, rs2));
       expected = static_cast<uint32_t>(value1) >> (value2 & 0x1F);
       test_case = "SRL";
       break;
     case TEST_SRA:
-      add_cmd(pointer, asm_sra(rd, rs1, rs2));
+      AddCmd(pointer, AsmSra(rd, rs1, rs2));
       expected = value1 >> (value2 & 0x1F);
       test_case = "SRA";
       break;
     case TEST_SLT:
-      add_cmd(pointer, asm_slt(rd, rs1, rs2));
+      AddCmd(pointer, AsmSlt(rd, rs1, rs2));
       expected = (value1 < value2) ? 1 : 0;
       test_case = "SLT";
       break;
     case TEST_SLTU:
-      add_cmd(pointer, asm_sltu(rd, rs1, rs2));
+      AddCmd(pointer, AsmSltu(rd, rs1, rs2));
       expected = (static_cast<uint32_t>(value1) < static_cast<uint32_t>(value2)) ? 1 : 0;
       test_case = "SLTU";
       break;
@@ -292,30 +292,30 @@ test_r_type(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t
       }
       return true;
   }
-  add_cmd(pointer, asm_addi(A0, rd, 0));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  AddCmd(pointer, AsmAddi(A0, rd, 0));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
 
   if (rd == 0) {
     expected = 0;
   }
   RiscvCpu cpu;
-  randomize_registers(cpu);
-  cpu.set_memory(memory);
-  error = cpu.run_cpu(0, verbose) != 0;
-  int return_value = cpu.read_register(A0);
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  error = cpu.RunCpu(0, verbose) != 0;
+  int return_value = cpu.ReadRegister(A0);
   error |= return_value != expected;
   if (error & verbose) {
     printf("RD: %d, RS1: %d, RS2: %d, Value1: %d(%08x), value2: %d(%03x)\n", rd, rs1, rs2, value1, value1,
            value2, value2);
   }
   if (verbose) {
-    print_error_message(test_case, error, expected, return_value);
+    PrintErrorMessage(test_case, error, expected, return_value);
   }
   return error;
 }
 
-void print_r_type_instruction_message(R_TYPE_TEST test_case, bool error) {
+void PrintRTypeInstructionMessage(R_TYPE_TEST test_case, bool error) {
   std::map<R_TYPE_TEST, const std::string> test_name = {{TEST_ADD,  "ADD"},
                                                         {TEST_SUB,  "SUB"},
                                                         {TEST_AND,  "AND"},
@@ -329,7 +329,7 @@ void print_r_type_instruction_message(R_TYPE_TEST test_case, bool error) {
   printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
 }
 
-bool test_r_type_loop(bool verbose = true) {
+bool TestRTypeLoop(bool verbose = true) {
   bool total_error = false;
   R_TYPE_TEST test_sets[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA,
                              TEST_SLT, TEST_SLTU};
@@ -341,14 +341,14 @@ bool test_r_type_loop(bool verbose = true) {
       int32_t rs2 = rnd() & 0x1F;
       int32_t value1 = static_cast<int32_t>(rnd());
       int32_t value2 = static_cast<int32_t>(rnd());
-      bool test_error = test_r_type(test_case, rd, rs1, rs2, value1, value2, false);
+      bool test_error = TestRType(test_case, rd, rs1, rs2, value1, value2, false);
       if (test_error && verbose) {
-        test_error = test_r_type(test_case, rd, rs1, rs2, value1, value2, true);
+        test_error = TestRType(test_case, rd, rs1, rs2, value1, value2, true);
       }
       error |= test_error;
     }
     if (verbose) {
-      print_r_type_instruction_message(test_case, error);
+      PrintRTypeInstructionMessage(test_case, error);
     }
     total_error |= error;
   }
@@ -357,40 +357,40 @@ bool test_r_type_loop(bool verbose = true) {
 // R-Type test cases end here.
 
 // AUIPC has it's own test set, starting here.
-bool test_auipc(int32_t rd, int32_t val, int32_t offset, bool verbose) {
+bool TestAuipc(int32_t rd, int32_t val, int32_t offset, bool verbose) {
   auto pointer = memory->begin();
-  add_cmd(pointer, asm_jal(ZERO, offset));
+  AddCmd(pointer, AsmJal(ZERO, offset));
   pointer += offset - 4;
-  add_cmd(pointer, asm_auipc(rd, val));
-  add_cmd(pointer, asm_addi(A0, rd, 0));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  AddCmd(pointer, AsmAuipc(rd, val));
+  AddCmd(pointer, AsmAddi(A0, rd, 0));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
 
   int32_t expected = offset + (val << 12);
   if (rd == 0) {
     expected = 0;
   }
   RiscvCpu cpu;
-  randomize_registers(cpu);
-  cpu.set_memory(memory);
-  bool error = cpu.run_cpu(0, verbose) != 0;
-  int return_value = cpu.read_register(A0);
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  bool error = cpu.RunCpu(0, verbose) != 0;
+  int return_value = cpu.ReadRegister(A0);
   error |= return_value != expected;
   if (verbose) {
-    print_error_message("AUIPC", error, expected, return_value);
+    PrintErrorMessage("AUIPC", error, expected, return_value);
   }
   return error;
 }
 
-bool test_auipc_loop(bool verbose) {
+bool TestAuipcLoop(bool verbose) {
   bool error = false;
   for (int i = 0; i < kUnitTestMax && !error; i++) {
     int32_t value = static_cast<int32_t>(rnd()) & 0x0FFFFF;
     int32_t offset = static_cast<uint32_t>(rnd()) & 0x0FFF0;
     int32_t rd = rnd() % 32;
-    bool test_error = test_auipc(rd, value, offset, false);
+    bool test_error = TestAuipc(rd, value, offset, false);
     if (test_error && verbose) {
-      test_error |= test_auipc(rd, value, offset, true);
+      test_error |= TestAuipc(rd, value, offset, true);
     }
     error |= test_error;
   }
@@ -402,34 +402,34 @@ bool test_auipc_loop(bool verbose) {
 // AUIPC test cases end here.
 
 // LUI has its own test cases, starting here.
-bool test_lui(int32_t val, bool verbose) {
+bool TestLui(int32_t val, bool verbose) {
   // LUI test code
   auto pointer = memory->begin();
-  add_cmd(pointer, asm_add(A0, ZERO, 0));
-  add_cmd(pointer, asm_lui(A0, val >> 12));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  AddCmd(pointer, AsmAdd(A0, ZERO, 0));
+  AddCmd(pointer, AsmLui(A0, val >> 12));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
 
   int32_t expected = val & 0xFFFFF000;
   RiscvCpu cpu;
-  randomize_registers(cpu);
-  cpu.set_memory(memory);
-  bool error = cpu.run_cpu(0, verbose) != 0;
-  int return_value = cpu.read_register(A0);
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  bool error = cpu.RunCpu(0, verbose) != 0;
+  int return_value = cpu.ReadRegister(A0);
   error |= return_value != expected;
   if (verbose) {
-    print_error_message("LUI", error, expected, return_value);
+    PrintErrorMessage("LUI", error, expected, return_value);
   }
   return error;
 }
 
-bool test_lui_loop(bool verbose) {
+bool TestLuiLoop(bool verbose) {
   bool error = false;
   for (int i = 0; i < kUnitTestMax && !error; i++) {
     int32_t value = static_cast<int32_t>(rnd());
-    bool test_error = test_lui(value, false);
+    bool test_error = TestLui(value, false);
     if (test_error && verbose) {
-      test_error = test_lui(value, true);
+      test_error = TestLui(value, true);
     }
     error |= test_error;
   }
@@ -445,8 +445,8 @@ enum LOAD_TEST {
   TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW
 };
 
-bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0, uint32_t offset1, uint32_t val,
-               bool verbose) {
+bool TestLoad(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0, uint32_t offset1, uint32_t val,
+              bool verbose) {
   bool error = false;
   std::string test_case = "";
 
@@ -454,7 +454,7 @@ bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
     offset0 = 0;
   }
   auto mem = memory->begin();
-  uint32_t address = offset0 + sext(offset1, 12);
+  uint32_t address = offset0 + SignExtend(offset1, 12);
   mem[address] = val & 0xff;
   mem[address + 1] = (val >> 8) & 0xff;
   mem[address + 2] = (val >> 16) & 0xff;
@@ -462,29 +462,29 @@ bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
   // LW test code
   auto pointer = memory->begin();
   int32_t val20, val12;
-  std::tie(val20, val12) = split_immediate(offset0);
+  std::tie(val20, val12) = SplitImmediate(offset0);
   int32_t expected;
-  add_cmd(pointer, asm_lui(rs1, val20));
-  add_cmd(pointer, asm_addi(rs1, rs1, val12));
+  AddCmd(pointer, AsmLui(rs1, val20));
+  AddCmd(pointer, AsmAddi(rs1, rs1, val12));
   switch (test_type) {
     case TEST_LW:
-      add_cmd(pointer, asm_lw(rd, rs1, offset1));
+      AddCmd(pointer, AsmLw(rd, rs1, offset1));
       expected = val;
       break;
     case TEST_LB:
-      add_cmd(pointer, asm_lb(rd, rs1, offset1));
-      expected = sext(val & 0xFF, 8);
+      AddCmd(pointer, AsmLb(rd, rs1, offset1));
+      expected = SignExtend(val & 0xFF, 8);
       break;
     case TEST_LBU:
-      add_cmd(pointer, asm_lbu(rd, rs1, offset1));
+      AddCmd(pointer, AsmLbu(rd, rs1, offset1));
       expected = val & 0xFF;
       break;
     case TEST_LH:
-      add_cmd(pointer, asm_lh(rd, rs1, offset1));
-      expected = sext(val & 0xFFFF, 16);
+      AddCmd(pointer, AsmLh(rd, rs1, offset1));
+      expected = SignExtend(val & 0xFFFF, 16);
       break;
     case TEST_LHU:
-      add_cmd(pointer, asm_lhu(rd, rs1, offset1));
+      AddCmd(pointer, AsmLhu(rd, rs1, offset1));
       expected = val & 0xFFFF;
       break;
     default:
@@ -493,19 +493,19 @@ bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
         return true;
       }
   }
-  add_cmd(pointer, asm_addi(A0, rd, 0));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  AddCmd(pointer, AsmAddi(A0, rd, 0));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
   expected = (rd == ZERO) ? 0 : expected;
 
   RiscvCpu cpu;
-  randomize_registers(cpu);
-  cpu.set_memory(memory);
-  error = cpu.run_cpu(0, verbose) != 0;
-  int return_value = cpu.read_register(A0);
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  error = cpu.RunCpu(0, verbose) != 0;
+  int return_value = cpu.ReadRegister(A0);
   error |= return_value != expected;
   if (verbose) {
-    print_error_message(test_case, error, expected, return_value);
+    PrintErrorMessage(test_case, error, expected, return_value);
     if (error) {
       printf("rd: %2d, rs1: %2d, offset0: %08X, offset1: %08X, val: %08X\n", rd, rs1, offset0, offset1, val);
     }
@@ -513,7 +513,7 @@ bool test_load(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
   return error;
 }
 
-void print_load_instruction_message(LOAD_TEST test_case, bool error, bool verbose = true) {
+void PrintLoadInstructionMessage(LOAD_TEST test_case, bool error, bool verbose = true) {
   if (!verbose) {
     return;
   }
@@ -525,7 +525,7 @@ void print_load_instruction_message(LOAD_TEST test_case, bool error, bool verbos
   printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
 }
 
-bool test_load_loop(bool verbose) {
+bool TestLoadLoop(bool verbose) {
   bool error = false;
   LOAD_TEST test_sets[] = {TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW};
   for (auto test_case: test_sets) {
@@ -539,16 +539,16 @@ bool test_load_loop(bool verbose) {
         offset0 = rnd() % kMemSize;
         offset1 = rnd() & 0x0FFF;
         offset0_effective = (rs1 == ZERO) ? 0 : offset0;
-        offset = offset0_effective + sext(offset1, 12);
+        offset = offset0_effective + SignExtend(offset1, 12);
       }
       uint32_t val = rnd() & 0x0FFFFFFFF;
-      bool test_error = test_load(test_case, rd, rs1, offset0, offset1, val, false);
+      bool test_error = TestLoad(test_case, rd, rs1, offset0, offset1, val, false);
       if (test_error && verbose) {
-        test_error = test_load(test_case, rd, rs1, offset0, offset1, val, true);
+        test_error = TestLoad(test_case, rd, rs1, offset0, offset1, val, true);
       }
       error |= test_error;
     }
-    print_load_instruction_message(test_case, error, verbose);
+    PrintLoadInstructionMessage(test_case, error, verbose);
   }
   return error;
 }
@@ -560,37 +560,37 @@ enum STORE_TEST {
 };
 
 bool
-test_store(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, uint32_t offset1, uint32_t value,
-           bool verbose) {
+TestStore(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, uint32_t offset1, uint32_t value,
+          bool verbose) {
   bool error = false;
   std::string test_case = "";
 
   // STORE test code
   auto pointer = memory->begin();
   uint32_t val20, val12;
-  std::tie(val20, val12) = split_immediate(value);
-  add_cmd(pointer, asm_lui(rs2, val20));
-  add_cmd(pointer, asm_addi(rs2, rs2, val12));
+  std::tie(val20, val12) = SplitImmediate(value);
+  AddCmd(pointer, AsmLui(rs2, val20));
+  AddCmd(pointer, AsmAddi(rs2, rs2, val12));
   uint32_t offset20, offset12;
-  std::tie(offset20, offset12) = split_immediate(offset0);
-  add_cmd(pointer, asm_lui(rs1, offset20));
-  add_cmd(pointer, asm_addi(rs1, rs1, offset12));
-  add_cmd(pointer, asm_sw(rs1, rs2, offset1));
+  std::tie(offset20, offset12) = SplitImmediate(offset0);
+  AddCmd(pointer, AsmLui(rs1, offset20));
+  AddCmd(pointer, AsmAddi(rs1, rs1, offset12));
+  AddCmd(pointer, AsmSw(rs1, rs2, offset1));
   int32_t expected;
   switch (test_type) {
     case TEST_SW:
       test_case = "SW";
-      add_cmd(pointer, asm_sw(rs1, rs2, offset1));
+      AddCmd(pointer, AsmSw(rs1, rs2, offset1));
       expected = value;
       break;
     case TEST_SH:
       test_case = "SH";
-      add_cmd(pointer, asm_sh(rs1, rs2, offset1));
+      AddCmd(pointer, AsmSh(rs1, rs2, offset1));
       expected = value & 0x0000FFFF;
       break;
     case TEST_SB:
       test_case = "SB";
-      add_cmd(pointer, asm_sb(rs1, rs2, offset1));
+      AddCmd(pointer, AsmSb(rs1, rs2, offset1));
       expected = value & 0x000000FF;
       break;
     default:
@@ -599,23 +599,23 @@ test_store(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, u
       }
       return true;
   }
-  add_cmd(pointer, asm_addi(A0, ZERO, 0));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  AddCmd(pointer, AsmAddi(A0, ZERO, 0));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
   expected = (rs2 == ZERO) ? 0 : expected;
 
   RiscvCpu cpu;
-  randomize_registers(cpu);
-  cpu.set_memory(memory);
-  error = cpu.run_cpu(0, verbose) != 0;
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  error = cpu.RunCpu(0, verbose) != 0;
   offset0 = (rs1 == ZERO) ? 0 : offset0;
-  uint32_t address = offset0 + sext(offset1, 12);
+  uint32_t address = offset0 + SignExtend(offset1, 12);
   int32_t result = (*memory)[address];
   result |= (test_type == TEST_SH || test_type == TEST_SW) ? ((*memory)[address + 1] << 8) : 0;
   result |= (test_type == TEST_SW) ? ((*memory)[address + 2] << 16) | ((*memory)[address + 3] << 24) : 0;
   error |= result != expected;
   if (verbose) {
-    print_error_message(test_case, error, expected, result);
+    PrintErrorMessage(test_case, error, expected, result);
     if (error) {
       printf("rs1: %2d, rs2: %2d, offset0: %08X, offset1: %08X, val: %08X\n", rs1, rs2, offset0, offset1,
              value);
@@ -624,7 +624,7 @@ test_store(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, u
   return error;
 }
 
-void print_store_instruction_message(STORE_TEST test_case, bool error, bool verbose = true) {
+void PrintStoreInstructionMessage(STORE_TEST test_case, bool error, bool verbose = true) {
   if (!verbose) {
     return;
   }
@@ -634,7 +634,7 @@ void print_store_instruction_message(STORE_TEST test_case, bool error, bool verb
   printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
 }
 
-bool test_store_loop(bool verbose) {
+bool TestStoreLoop(bool verbose) {
   bool error = false;
   STORE_TEST test_sets[] = {TEST_SW, TEST_SH, TEST_SB};
   for (auto test_case: test_sets) {
@@ -647,19 +647,19 @@ bool test_store_loop(bool verbose) {
         offset0 = rnd() % kMemSize;
         offset1 = rnd() & 0x0FFF;
         offset0_effective = (rs1 == ZERO) ? 0 : offset0;
-        offset = offset0_effective + sext(offset1, 12);
+        offset = offset0_effective + SignExtend(offset1, 12);
       }
       int32_t value = rnd() & 0xFFFFFFFF;
       if (rs1 == rs2) {
         value = offset0;
       }
-      bool test_error = test_store(test_case, rs1, rs2, offset0, offset1, value, false);
+      bool test_error = TestStore(test_case, rs1, rs2, offset0, offset1, value, false);
       if (test_error && verbose) {
-        test_error = test_store(test_case, rs1, rs2, offset0, offset1, value, true);
+        test_error = TestStore(test_case, rs1, rs2, offset0, offset1, value, true);
       }
       error |= test_error;
     }
-    print_store_instruction_message(test_case, error, verbose);
+    PrintStoreInstructionMessage(test_case, error, verbose);
   }
   return error;
 }
@@ -677,13 +677,13 @@ std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ,  "BEQ"},
                                                       {TEST_BLTU, "BLTU"},
                                                       {TEST_BNE,  "BNE"}};
 
-void print_b_type_instruction_message(B_TYPE_TEST test_case, bool error) {
+void PrintBTypeInstructionMessage(B_TYPE_TEST test_case, bool error) {
   printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
 }
 
 bool
-test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, uint32_t value2, int32_t offset,
-            bool verbose = true) {
+TestBType(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, uint32_t value2, int32_t offset,
+          bool verbose = true) {
   bool error = false;
   std::string test_case = test_name[test_type];
 
@@ -692,49 +692,49 @@ test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, 
   value1 = (rs1 == rs2) ? value2 : value1;
 
   uint32_t start_point = kMemSize / 2;
-  memory_wrapper_iterator pointer = memory->begin() + start_point;
+  MemorWrapperIterator pointer = memory->begin() + start_point;
   uint32_t value20, value12;
   uint32_t expected;
-  std::tie(value20, value12) = split_immediate(value1);
-  add_cmd(pointer, asm_lui(rs1, value20));
-  add_cmd(pointer, asm_addi(rs1, rs1, value12));
-  std::tie(value20, value12) = split_immediate(value2);
-  add_cmd(pointer, asm_lui(rs2, value20));
-  add_cmd(pointer, asm_addi(rs2, rs2, value12));
-  memory_wrapper_iterator next_pos = pointer + offset;
+  std::tie(value20, value12) = SplitImmediate(value1);
+  AddCmd(pointer, AsmLui(rs1, value20));
+  AddCmd(pointer, AsmAddi(rs1, rs1, value12));
+  std::tie(value20, value12) = SplitImmediate(value2);
+  AddCmd(pointer, AsmLui(rs2, value20));
+  AddCmd(pointer, AsmAddi(rs2, rs2, value12));
+  MemorWrapperIterator next_pos = pointer + offset;
   if (test_type == TEST_BEQ) {
-    add_cmd(pointer, asm_beq(rs1, rs2, offset));
+    AddCmd(pointer, AsmBeq(rs1, rs2, offset));
     expected = (value1 == value2) ? 1 : 0;
   } else if (test_type == TEST_BGE) {
-    add_cmd(pointer, asm_bge(rs1, rs2, offset));
+    AddCmd(pointer, AsmBge(rs1, rs2, offset));
     expected = (static_cast<int32_t>(value1) >= static_cast<int32_t>(value2)) ? 1 : 0;
   } else if (test_type == TEST_BGEU) {
-    add_cmd(pointer, asm_bgeu(rs1, rs2, offset));
+    AddCmd(pointer, AsmBgeu(rs1, rs2, offset));
     expected = value1 >= value2 ? 1 : 0;
   } else if (test_type == TEST_BLT) {
-    add_cmd(pointer, asm_blt(rs1, rs2, offset));
+    AddCmd(pointer, AsmBlt(rs1, rs2, offset));
     expected = static_cast<int32_t>(value1) < static_cast<int32_t>(value2) ? 1 : 0;
   } else if (test_type == TEST_BLTU) {
-    add_cmd(pointer, asm_bltu(rs1, rs2, offset));
+    AddCmd(pointer, AsmBltu(rs1, rs2, offset));
     expected = value1 < value2 ? 1 : 0;
   } else if (test_type == TEST_BNE) {
-    add_cmd(pointer, asm_bne(rs1, rs2, offset));
+    AddCmd(pointer, AsmBne(rs1, rs2, offset));
     expected = value1 != value2 ? 1 : 0;
   }
-  add_cmd(pointer, asm_addi(A0, ZERO, 0));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  AddCmd(pointer, AsmAddi(A0, ZERO, 0));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
   pointer = next_pos;
-  add_cmd(pointer, asm_addi(A0, ZERO, 1));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  AddCmd(pointer, AsmAddi(A0, ZERO, 1));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
 
 
   RiscvCpu cpu;
-  randomize_registers(cpu);
-  cpu.set_memory(memory);
-  error = cpu.run_cpu(start_point, verbose) != 0;
-  int return_value = cpu.read_register(A0);
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  error = cpu.RunCpu(start_point, verbose) != 0;
+  int return_value = cpu.ReadRegister(A0);
   error |= return_value != expected;
   if (error & verbose) {
     printf("RS1: %d, RS2: %d, value1: %d(%08x), value2: %d(%08x), offset: %d(%03x)\n",
@@ -742,13 +742,13 @@ test_b_type(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, 
   }
 
   if (verbose) {
-    print_error_message(test_case, error, expected, return_value);
+    PrintErrorMessage(test_case, error, expected, return_value);
   }
 
   return error;
 }
 
-bool test_b_type_loop(bool verbose = true) {
+bool TestBTypeLoop(bool verbose = true) {
   bool total_error = false;
   B_TYPE_TEST test_sets[] = {TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU, TEST_BNE};
 
@@ -764,7 +764,7 @@ bool test_b_type_loop(bool verbose = true) {
         case TEST_BEQ:
         case TEST_BNE:
           value1 = rnd();
-          // You can ignore the corner case new random value equals to value1.
+          // You can ignore the corner case new random GetValue equals to value1.
           value2 = equal ? value1 : rnd();
           break;
         case TEST_BGE:
@@ -785,26 +785,26 @@ bool test_b_type_loop(bool verbose = true) {
         constexpr int kRange = 1 << 12;
         offset = 2 * ((rnd() % kRange) - kRange / 2);
       }
-      bool test_error = test_b_type(test_case, rs1, rs2, value1, value2, offset, false);
+      bool test_error = TestBType(test_case, rs1, rs2, value1, value2, offset, false);
       if (test_error) {
-        test_error = test_b_type(test_case, rs1, rs2, value1, value2, offset, true);
+        test_error = TestBType(test_case, rs1, rs2, value1, value2, offset, true);
       }
       error |= test_error;
     }
     total_error |= error;
     if (verbose) {
-      print_b_type_instruction_message(test_case, error);
+      PrintBTypeInstructionMessage(test_case, error);
     }
   }
   return total_error;
 }
 // B-Type tests end here.
 
-void print_jalr_type_instruction_message(bool error) {
+void PrintJalrTypeInstructionMessage(bool error) {
   printf("%s test %s.\n", "JALR", error ? "failed" : "passed");
 }
 
-bool test_jalr_type(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, bool verbose) {
+bool TestJalrType(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, bool verbose) {
   std::string test_case = "JALR";
 
   if (rs1 == 0) {
@@ -814,45 +814,45 @@ bool test_jalr_type(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, 
   auto pointer = memory->begin() + start_point;
 
   uint32_t value20, value12;
-  std::tie(value20, value12) = split_immediate(value);
-  add_cmd(pointer, asm_lui(rs1, value20));
-  add_cmd(pointer, asm_addi(rs1, rs1, value12));
-  add_cmd(pointer, asm_jalr(rd, rs1, offset));
-  add_cmd(pointer, asm_addi(A0, ZERO, 1));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
-  pointer = memory->begin() + (value + sext(offset, 12) & ~1);
-  add_cmd(pointer, asm_addi(A0, ZERO, 2));
-  add_cmd(pointer, asm_xor(RA, RA, RA));
-  add_cmd(pointer, asm_jalr(ZERO, RA, 0));
+  std::tie(value20, value12) = SplitImmediate(value);
+  AddCmd(pointer, AsmLui(rs1, value20));
+  AddCmd(pointer, AsmAddi(rs1, rs1, value12));
+  AddCmd(pointer, AsmJalr(rd, rs1, offset));
+  AddCmd(pointer, AsmAddi(A0, ZERO, 1));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
+  pointer = memory->begin() + (value + SignExtend(offset, 12) & ~1);
+  AddCmd(pointer, AsmAddi(A0, ZERO, 2));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
   uint32_t expected = 2;
   RiscvCpu cpu;
-  randomize_registers(cpu);
-  cpu.set_memory(memory);
-  bool error = cpu.run_cpu(start_point, verbose) != 0;
-  int return_value = cpu.read_register(A0);
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  bool error = cpu.RunCpu(start_point, verbose) != 0;
+  int return_value = cpu.ReadRegister(A0);
   error |= return_value != expected;
   if (rd != 0 && rd != RA && rd!= A0) {
     uint32_t expect = start_point + 12;
-    uint32_t actual = cpu.read_register(rd);
+    uint32_t actual = cpu.ReadRegister(rd);
     error |= actual != expect;
     if (actual != expect) {
       printf("reg[rd] = %d(%08x), expected = %d(%08x)\n", actual, actual, expect, expect);
     }
   }
   if (error & verbose) {
-    printf("RS1: %d, RD: %d, value: %d(%08x), offset: %d(%03x)\n",
+    printf("RS1: %d, RD: %d, GetValue: %d(%08x), offset: %d(%03x)\n",
            rs1, rd, value, value, offset, offset);
   }
 
   if (verbose) {
-    print_error_message(test_case, error, expected, return_value);
+    PrintErrorMessage(test_case, error, expected, return_value);
   }
 
   return error;
 }
 
-bool test_jalr_type_loop(bool verbose = true) {
+bool TestJalrTypeLoop(bool verbose = true) {
   bool error = false;
   for (int i = 0; i < kUnitTestMax && !error; i++) {
     uint32_t rs1 = rnd() % 32;
@@ -863,39 +863,39 @@ bool test_jalr_type_loop(bool verbose = true) {
       offset &= 0x7FF;
     }
     uint32_t value = kMemSize / 2 + (rnd() % (kMemSize / 4));
-    bool test_error = test_jalr_type(rd, rs1, offset, value, false);
+    bool test_error = TestJalrType(rd, rs1, offset, value, false);
     if (test_error) {
-      test_error = test_jalr_type(rd, rs1, offset, value, true);
+      test_error = TestJalrType(rd, rs1, offset, value, true);
     }
     error |= test_error;
   }
   if (verbose) {
-    print_jalr_type_instruction_message(error);
+    PrintJalrTypeInstructionMessage(error);
   }
   return error;
 }
 
 // Summation test starts here.
-bool test_sum(bool verbose) {
+bool TestSum(bool verbose) {
   auto pointer = memory->begin();
-  load_assembler_sum(pointer);
+  LoadAssemblerSum(pointer);
   constexpr int kExpectedValue = 55;
   RiscvCpu cpu;
-  randomize_registers(cpu);
-  cpu.set_memory(memory);
-  bool error = cpu.run_cpu(0, verbose) != 0;
-  int return_value = cpu.read_register(A0);
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  bool error = cpu.RunCpu(0, verbose) != 0;
+  int return_value = cpu.ReadRegister(A0);
   error |= return_value != kExpectedValue;
   if (verbose) {
-    print_error_message("Summation", error, kExpectedValue, return_value);
+    PrintErrorMessage("Summation", error, kExpectedValue, return_value);
   }
   return error;
 }
 
-bool test_sum_quiet(bool verbose) {
-  bool error = test_sum(false);
+bool TestSumQuiet(bool verbose) {
+  bool error = TestSum(false);
   if (error & verbose) {
-    error = test_sum(true);
+    error = TestSum(true);
   }
   if (verbose) {
     printf("SUM test %s.\n", error ? "failed" : "passed");
@@ -905,33 +905,33 @@ bool test_sum_quiet(bool verbose) {
 // Summation test ends here.
 
 // Sort test starts here.
-bool test_sort(bool verbose) {
+bool TestSort(bool verbose) {
   auto assembly_pointer = memory->begin();
-  load_assembler_sort(assembly_pointer);
+  LoadAssemblerSort(assembly_pointer);
 
   constexpr int kArraySize = 100;
   constexpr int kArrayAddress = 512;
   auto value_pointer = memory->begin() + kArrayAddress;
   for (int i = 0; i < kArraySize * 4; i++) {
     int value = static_cast<int>(rnd() % 1000);
-    store_wd(value_pointer + 4 * i, value);
+    StoreWd(value_pointer + 4 * i, value);
   }
 
   if (verbose) {
     std::cout << "Before:\n";
     for (int i = 0; i < kArraySize; i++) {
-      std::cout << load_wd(value_pointer + i * 4) << "\t";
+      std::cout << LoadWd(value_pointer + i * 4) << "\t";
     }
     std::cout << std::endl;
   }
 
   RiscvCpu cpu;
-  randomize_registers(cpu);
-  cpu.set_register(A0, kArrayAddress);
-  cpu.set_register(A1, kArraySize);
-  cpu.set_register(RA, 0);
-  cpu.set_memory(memory);
-  int error = cpu.run_cpu(0, verbose);
+  RandomizeRegisters(cpu);
+  cpu.SetRegister(A0, kArrayAddress);
+  cpu.SetRegister(A1, kArraySize);
+  cpu.SetRegister(RA, 0);
+  cpu.SetMemory(memory);
+  int error = cpu.RunCpu(0, verbose);
   bool error_flag = error != 0;
 
   if (error_flag) {
@@ -939,14 +939,14 @@ bool test_sort(bool verbose) {
   }
 
   for (int i = 0; i < kArraySize - 1; i++) {
-    error_flag |= load_wd(value_pointer + i * 4) >
-                  load_wd(value_pointer + i * 4 + 4);
+    error_flag |= LoadWd(value_pointer + i * 4) >
+                  LoadWd(value_pointer + i * 4 + 4);
   }
 
   if (verbose) {
     printf("After:\n");
     for (int i = 0; i < kArraySize; i++) {
-      int32_t data = load_wd(value_pointer + i * 4);
+      int32_t data = LoadWd(value_pointer + i * 4);
       printf("%d\t", data);
     }
   }
@@ -957,10 +957,10 @@ bool test_sort(bool verbose) {
   return error_flag;
 }
 
-bool test_sort_quiet(bool verbose) {
-  bool error = test_sort(false);
+bool TestSortQuiet(bool verbose) {
+  bool error = TestSort(false);
   if (error & verbose) {
-    error = test_sort(true);
+    error = TestSort(true);
   }
   if (verbose) {
     printf("Sort test %s.\n", error ? "failed" : "passed");
@@ -969,24 +969,24 @@ bool test_sort_quiet(bool verbose) {
 }
 // Sort test ends here.
 
-bool run_test() {
+bool RunTest() {
 
   bool verbose = true;
 
   bool error = false;
-  init_random();
+  InitRandom();
 
-  mem_init();
-  error |= test_i_type_loop(verbose);
-  error |= test_r_type_loop(verbose);
-  error |= test_lui_loop(verbose);
-  error |= test_auipc_loop(verbose);
-  error |= test_load_loop(verbose);
-  error |= test_store_loop(verbose);
-  error |= test_b_type_loop(verbose);
-  error |= test_jalr_type_loop(verbose);
-  error |= test_sum_quiet(verbose);
-  error |= test_sort_quiet(verbose);
+  MemInit();
+  error |= TestITypeLoop(verbose);
+  error |= TestRTypeLoop(verbose);
+  error |= TestLuiLoop(verbose);
+  error |= TestAuipcLoop(verbose);
+  error |= TestLoadLoop(verbose);
+  error |= TestStoreLoop(verbose);
+  error |= TestBTypeLoop(verbose);
+  error |= TestJalrTypeLoop(verbose);
+  error |= TestSumQuiet(verbose);
+  error |= TestSortQuiet(verbose);
   // Add test for MRET
 
   if (error) {
@@ -1000,5 +1000,5 @@ bool run_test() {
 } // namespace cpu_test
 
 int main() {
-  return cpu_test::run_test();
+  return cpu_test::RunTest();
 }

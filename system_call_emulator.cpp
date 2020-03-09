@@ -10,7 +10,7 @@
 #include "system_call_emulator.h"
 #include "RISCV_cpu.h"
 
-void show_guest_stat(const riscv32_newlib_stat &guest_stat) {
+void ShowGuestStat(const Riscv32NewlibStat &guest_stat) {
   std::cerr << "st_dev: " << guest_stat.st_dev << std::endl;
   std::cerr << "st_ino: " << guest_stat.st_ino << std::endl;
   std::cerr << "st_mode: " << guest_stat.st_mode << std::endl;
@@ -26,7 +26,7 @@ void show_guest_stat(const riscv32_newlib_stat &guest_stat) {
   std::cerr << "st_blocks: " << guest_stat.st_blocks << std::endl;
 }
 
-void show_host_stat(const struct stat &host_stat) {
+void ShowHostStat(const struct stat &host_stat) {
   std::cerr << "st_dev: " << host_stat.st_dev << std::endl;
   std::cerr << "st_ino: " << host_stat.st_ino << std::endl;
   std::cerr << "st_mode: " << host_stat.st_mode << std::endl;
@@ -45,7 +45,7 @@ void show_host_stat(const struct stat &host_stat) {
   std::cerr << "st_ctim.tv_nsec: " << host_stat.st_ctim.tv_nsec << std::endl;
 }
 
-void conv_guest_stat_to_host_stat(const riscv32_newlib_stat &guest_stat, struct stat *host_stat) {
+void ConvGuestStatToHostStat(const Riscv32NewlibStat &guest_stat, struct stat *host_stat) {
   host_stat->st_dev = guest_stat.st_dev;
   host_stat->st_ino = guest_stat.st_ino;
   host_stat->st_mode = guest_stat.st_mode;
@@ -64,7 +64,7 @@ void conv_guest_stat_to_host_stat(const riscv32_newlib_stat &guest_stat, struct 
   host_stat->st_ctim.tv_nsec = 0;
 }
 
-void conv_host_stat_to_guest_stat(const struct stat &host_stat, riscv32_newlib_stat *guest_stat) {
+void ConvHostStatToGuestStat(const struct stat &host_stat, Riscv32NewlibStat *guest_stat) {
   guest_stat->st_dev = host_stat.st_dev;
   guest_stat->st_ino = host_stat.st_ino;
   guest_stat->st_mode = host_stat.st_mode;
@@ -80,7 +80,7 @@ void conv_host_stat_to_guest_stat(const struct stat &host_stat, riscv32_newlib_s
   guest_stat->st_ctim = (int64_t) host_stat.st_ctim.tv_sec;
 }
 
-size_t memory_wrapper_strlen(const memory_wrapper &mem, size_t address, size_t max) {
+size_t MemoryWrapperStrlen(const MemoryWrapper &mem, size_t address, size_t max) {
   size_t counter = 0;
   size_t index = address;
   while (mem[index++] && counter < max) {
@@ -89,15 +89,15 @@ size_t memory_wrapper_strlen(const memory_wrapper &mem, size_t address, size_t m
   return counter;
 }
 
-char *memory_wrapper_copy(const memory_wrapper &mem, size_t address, size_t length, char *dst) {
+char *MemoryWrapperCopy(const MemoryWrapper &mem, size_t address, size_t length, char *dst) {
   for (size_t i = 0; i < length; ++i) {
     dst[i] = mem[address + i];
   }
   return dst;
 }
 
-std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memory, uint32_t reg[], const uint32_t top,
-                                            uint32_t *break_address, bool debug) {
+std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint32_t *reg, const uint32_t top,
+                                          uint32_t *break_address, bool debug) {
   auto &brk = *break_address;
   auto &mem = *memory;
   bool end_flag = false;
@@ -148,24 +148,24 @@ std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memo
     delete buffer;
   } else if (reg[A7] == 80) {
     // FSTAT.
-    struct riscv32_newlib_stat guest_stat;
+    struct Riscv32NewlibStat guest_stat;
     if (debug) {
       std::cerr << "Fstat System Call" << std::endl;
       std::cerr << "fd: " << reg[A0] << std::endl;
-      std::cerr << "riscv32_stat size: " << sizeof(struct riscv32_newlib_stat) << std::endl;
+      std::cerr << "riscv32_stat size: " << sizeof(struct Riscv32NewlibStat) << std::endl;
     }
     unsigned char *statbuf_p = (unsigned char *) &guest_stat;
 
     struct stat host_stat;
     int return_value = fstat(reg[A0], &host_stat);
 
-    conv_host_stat_to_guest_stat(host_stat, &guest_stat);
+    ConvHostStatToGuestStat(host_stat, &guest_stat);
     if (debug) {
       std::cerr << "ret: " << reg[A0] << std::endl;
       std::cerr << "Guest: struct stat\n";
-      show_guest_stat(guest_stat);
+      ShowGuestStat(guest_stat);
     }
-    for (unsigned int i = 0; i < sizeof(riscv32_newlib_stat); i++) {
+    for (unsigned int i = 0; i < sizeof(Riscv32NewlibStat); i++) {
       mem[reg[A1] + i] = statbuf_p[i];
     }
     reg[A0] = return_value;
@@ -204,11 +204,11 @@ std::pair<bool, bool> system_call_emulation(std::shared_ptr<memory_wrapper> memo
     flag |= (reg[A1] & kO_SYNC) ? O_SYNC : 0;
     flag |= (reg[A1] & kO_TRUNC) ? O_TRUNC : 0;
     constexpr size_t kMax = 1024;
-    size_t length = memory_wrapper_strlen(mem, reg[A0], kMax);
+    size_t length = MemoryWrapperStrlen(mem, reg[A0], kMax);
     int return_value = -1;
     if (length > 0) {
       char *buffer = new char[length + 1];
-      memory_wrapper_copy(mem, reg[A0], length, buffer);
+      MemoryWrapperCopy(mem, reg[A0], length, buffer);
       buffer[length] = 0;
       if (debug) {
         std::cerr << "FIle path: " << buffer << std::endl;

@@ -20,7 +20,7 @@ uint32_t sign_mask[] = {0xFFFFFFFE, 0xFFFFFFFC, 0xFFFFFFF8,
                         0xF0000000, 0xE0000000, 0xC0000000, 0x80000000, 0x00000000,
 };
 
-uint32_t bitshift(uint32_t val, int width, int offset, int distpos) {
+uint32_t BitShift(uint32_t val, int width, int offset, int distpos) {
   val >>= offset;
   val &= mask[width];
   val <<= distpos;
@@ -34,7 +34,7 @@ uint32_t bitcrop(uint32_t val, int width, int offset) {
 }
 
 
-int32_t sext(uint32_t value, int width) {
+int32_t SignExtend(uint32_t value, int width) {
   if (value & (1 << (width - 1))) {
     value |= sign_mask[width - 1];
   }

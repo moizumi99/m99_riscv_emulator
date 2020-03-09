@@ -8,26 +8,26 @@
 #include <functional>
 #include "memory_wrapper.h"
 
-int get_hash32(uint32_t val) {
+int GetHash32(uint32_t val) {
   static std::hash<uint32_t> h;
   return h(val);
 }
 
-int get_hash8(uint32_t val) {
-  return get_hash32(val) & 0xFF;
+int GetHash8(uint32_t val) {
+  return GetHash32(val) & 0xFF;
 }
 
-bool memory_wrapper_test(size_t start, size_t end, int val) {
+bool MemoryWrapperTest(size_t start, size_t end, int val) {
   bool result = true;
-  memory_wrapper mw;
+  MemoryWrapper mw;
   for (size_t j = start; j < end; j++) {
-    mw[j] = get_hash8(j + val);
+    mw[j] = GetHash8(j + val);
   }
 
   for (size_t j = start; j < end && result; j++) {
-    bool local_result = mw[j] == get_hash8(j + val);
+    bool local_result = mw[j] == GetHash8(j + val);
     if (!local_result) {
-      std::cout << "mw[" << j << "] = " << static_cast<int>(mw[j]) << ", expectation = " << get_hash8(j)
+      std::cout << "mw[" << j << "] = " << static_cast<int>(mw[j]) << ", expectation = " << GetHash8(j)
       << std::endl;
     }
     result &= local_result;
@@ -38,23 +38,23 @@ bool memory_wrapper_test(size_t start, size_t end, int val) {
   return result;
 }
 
-bool memory_wrapper_iterator_test_1(size_t start, size_t end, int val) {
+bool MemoryWrapperIteratorTest1(size_t start, size_t end, int val) {
   // Test for *, ++, <, != operation
   bool result = true;
-  memory_wrapper mw;
+  MemoryWrapper mw;
   auto b = mw.begin() + start;
   auto e = mw.begin() + end;
   int value = val;
   for(auto i = b; i < e; i++, value++) {
-    *i = get_hash8(value);
+    *i = GetHash8(value);
   }
 
   value = val;
   int index = 0;
   for (auto i = b; i != e && result; i++, value++, index++) {
-    bool local_result = *i == get_hash8(value);
+    bool local_result = *i == GetHash8(value);
     if (!local_result) {
-      std::cout << "At " << index << ", *i = " << static_cast<int>(*i) << ", expectation = " << get_hash8(value)
+      std::cout << "At " << index << ", *i = " << static_cast<int>(*i) << ", expectation = " << GetHash8(value)
                 << std::endl;
     }
     result &= local_result;
@@ -65,19 +65,19 @@ bool memory_wrapper_iterator_test_1(size_t start, size_t end, int val) {
   return result;
 }
 
-bool memory_wrapper_iterator_test_2(size_t start, size_t end, int val) {
+bool MemoryWrapperIteratorTest2(size_t start, size_t end, int val) {
   // Test for [] operation
   bool result = true;
-  memory_wrapper mw;
+  MemoryWrapper mw;
   auto i = mw.begin();
   for( size_t index = start; index < end; index++) {
-    i[index] = get_hash8(index + val);
+    i[index] = GetHash8(index + val);
   }
 
   for( size_t index = start; index < end && result; index++) {
-    bool local_result = i[index] == get_hash8(index + val);
+    bool local_result = i[index] == GetHash8(index + val);
     if (!local_result) {
-      std::cout << "i[" << index << "] = " << static_cast<int>(i[index]) << ", expectation = " << get_hash8(index + val)
+      std::cout << "i[" << index << "] = " << static_cast<int>(i[index]) << ", expectation = " << GetHash8(index + val)
                 << std::endl;
     }
     result &= local_result;
@@ -88,21 +88,21 @@ bool memory_wrapper_iterator_test_2(size_t start, size_t end, int val) {
   return result;
 }
 
-bool memory_wrapper_iterator_test_3(size_t start, size_t end, int val) {
+bool MemoryWrapperIteratorTest3(size_t start, size_t end, int val) {
   // Test for +, -. --, >, operation
   bool result = true;
-  memory_wrapper mw;
+  MemoryWrapper mw;
   auto i = mw.begin();
   for(size_t index = start; index < end; index++) {
-    *(i + index) = get_hash8(index + val);
+    *(i + index) = GetHash8(index + val);
   }
 
   auto b = mw.begin() + start;
   int index = end - 1;
   for (auto e = mw.begin() + end - 1; e > b && result; e--, index--) {
-    bool local_result = *e == get_hash8(index + val);
+    bool local_result = *e == GetHash8(index + val);
     if (!local_result) {
-      std::cout << "At " << index << ", *e = " << static_cast<int>(*e) << ", expectation = " << get_hash8(index + val)
+      std::cout << "At " << index << ", *e = " << static_cast<int>(*e) << ", expectation = " << GetHash8(index + val)
                 << std::endl;
     }
     result &= local_result;
@@ -116,7 +116,7 @@ bool memory_wrapper_iterator_test_3(size_t start, size_t end, int val) {
 std::mt19937 rnd;
 constexpr int kSeed = 155719;
 
-void init_random() {
+void InitRandom() {
   rnd.seed(kSeed);
 }
 
@@ -125,22 +125,22 @@ constexpr size_t kSmallTestSize = 1 * 1024 * 1024;
 constexpr int kTestCycle = 8;
 constexpr int kSmallTestCycle = 100;
 
-bool run_test_single(size_t start, size_t end, int val, bool verbose = false) {
+bool RunTestSingle(size_t start, size_t end, int val, bool verbose = false) {
   bool result = true;
   if (verbose) {
     std::cout << "Start: " << start << ", end: " << end << std::endl;
   }
-  result = result && memory_wrapper_test(start, end, val);
-  result = result && memory_wrapper_iterator_test_1(start, end, val);
-  result = result && memory_wrapper_iterator_test_2(start, end, val);
-  result = result && memory_wrapper_iterator_test_3(start, end, val);
+  result = result && MemoryWrapperTest(start, end, val);
+  result = result && MemoryWrapperIteratorTest1(start, end, val);
+  result = result && MemoryWrapperIteratorTest2(start, end, val);
+  result = result && MemoryWrapperIteratorTest3(start, end, val);
   return result;
 }
 
-bool run_test(int test_cycle, size_t test_size, bool verbose = false) {
+bool RunTests(int test_cycle, size_t test_size, bool verbose = false) {
   bool result = true;
   for (int i = 0; i < test_cycle && result; i++) {
-    init_random();
+    InitRandom();
     size_t start = 0, end = 0;
     int val = 0;
     while (end <= start || (end - start) > test_size) {
@@ -148,7 +148,7 @@ bool run_test(int test_cycle, size_t test_size, bool verbose = false) {
       end = rand();
       val = rand();
     }
-    result = result && run_test_single(start, end, val, verbose);
+    result = result && RunTestSingle(start, end, val, verbose);
     if (i % 10 == 0 && i > 0) {
       std::cout << i << " tests finished." << std::endl;
     }
@@ -156,18 +156,18 @@ bool run_test(int test_cycle, size_t test_size, bool verbose = false) {
   return result;
 }
 
-bool run_32bit_test(const size_t start, const size_t end, const size_t val, const bool verbose) {
+bool Run32bitTest(const size_t start, const size_t end, const size_t val, const bool verbose) {
   if (verbose) {
     std::cout << "Start: " << start << ", end: " << end << std::endl;
   }
   int result = true;
-  memory_wrapper mw;
+  MemoryWrapper mw;
   for (size_t i = start; i < end; i += 4) {
-    mw.write32(i, get_hash32(i + val));
+    mw.Write32(i, GetHash32(i + val));
   }
   for (size_t i = start; i < end && result; i += 4) {
-    uint32_t expectation = get_hash32(i + val);
-    uint32_t read_value = mw.read32(i);
+    uint32_t expectation = GetHash32(i + val);
+    uint32_t read_value = mw.Read32(i);
     result &= read_value == expectation;
     if (!result) {
       std::cout << "At i = " << i << ", expectation = " << std::hex << expectation << ", actual = " << read_value << std::endl;
@@ -176,10 +176,10 @@ bool run_32bit_test(const size_t start, const size_t end, const size_t val, cons
   return result;
 }
 
-bool run_32bit_test(int test_cycle, size_t test_size, bool verbose = false) {
+bool Run32bitTest(int test_cycle, size_t test_size, bool verbose = false) {
   bool result = true;
   for (int i = 0; i < test_cycle && result; i++) {
-    init_random();
+    InitRandom();
     size_t start = 0, end = 0;
     int val = 0;
     while (end <= start || (end - start) > test_size) {
@@ -187,7 +187,7 @@ bool run_32bit_test(int test_cycle, size_t test_size, bool verbose = false) {
       end = rand();
       val = rand();
     }
-    result = result && run_32bit_test(start, end, val, verbose);
+    result = result && Run32bitTest(start, end, val, verbose);
     if (i % 10 == 0 && i > 0) {
       std::cout << i << " tests finished." << std::endl;
     }
@@ -196,19 +196,19 @@ bool run_32bit_test(int test_cycle, size_t test_size, bool verbose = false) {
 }
 
 int main() {
-  bool result = run_test(kSmallTestCycle, kSmallTestSize, false);
+  bool result = RunTests(kSmallTestCycle, kSmallTestSize, false);
   if (result) {
     std::cout << kSmallTestCycle << " small tests passed." << std::endl;
   } else {
     std::cout << "Small test failed." << std::endl;
   }
-  result = result && run_test(kTestCycle, kMaxTestSize, true);
+  result = result && RunTests(kTestCycle, kMaxTestSize, true);
   if (result) {
     std::cout << "memory_wrapper test pass." << std::endl;
   } else {
     std::cout << "memory_wrapper test fail." << std::endl;
   }
-  result = result && run_32bit_test(kSmallTestCycle, kSmallTestSize, false);
+  result = result && Run32bitTest(kSmallTestCycle, kSmallTestSize, false);
   if (result) {
     std::cout << "32bit read/write test pass." << std::endl;
   } else {

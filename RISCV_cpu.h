@@ -9,9 +9,9 @@
 #include "memory_wrapper.h"
 
 enum PrivilegeModes {
-  kUser = 0,
-  kSupervisor = 1,
-  kMachine = 3
+  USER_LEVEL = 0,
+  SUPERVISOR_LEVEL = 1,
+  MACHINE_LEVEL = 3
 };
 
 class RiscvCpu {
@@ -22,60 +22,60 @@ public:
   RiscvCpu();
   ~RiscvCpu() {};
 
-  void set_register(uint32_t num, uint32_t value);
-  uint32_t read_register(uint32_t num);
-  void set_memory(std::shared_ptr<memory_wrapper> memory);
-  void set_csr(uint32_t index, uint32_t value);
-  uint32_t read_csr(uint32_t index);
-  int run_cpu(uint32_t start_pc, bool verbose = true);
+  void SetRegister(uint32_t num, uint32_t value);
+  uint32_t ReadRegister(uint32_t num);
+  void SetMemory(std::shared_ptr<MemoryWrapper> memory);
+  void SetCsr(uint32_t index, uint32_t value);
+  uint32_t ReadCsr(uint32_t index);
+  int RunCpu(uint32_t start_pc, bool verbose = true);
   uint32_t VirtualToPhysical(uint32_t virtual_address, bool write_access = false);
 protected:
-  inline bool check_shift_sign(bool x, const std::string &message_str);
+  inline bool CheckShiftSign(bool x, const std::string &message_str);
 
 private:
-  uint32_t reg[kRegSize];
-  uint32_t pc;
-  uint8_t privilege = kMachine;
-  std::shared_ptr<memory_wrapper> memory;
-  std::vector<uint32_t> csrs;
-  uint32_t load_cmd(uint32_t pc);
-  uint32_t get_code(uint32_t ir);
-  std::pair<bool, bool> system_call();
-  uint32_t load_wd(uint32_t virtual_address);
-  void store_wd(uint32_t virtual_address, uint32_t data, int width = 32);
-  void instruction_page_fault();
-  bool page_fault = false;
-  bool prev_page_fault = false;
-  bool error_flag, end_flag;
+  uint32_t reg_[kRegSize];
+  uint32_t pc_;
+  uint8_t privilege_ = MACHINE_LEVEL;
+  std::shared_ptr<MemoryWrapper> memory_;
+  std::vector<uint32_t> csrs_;
+  uint32_t LoadCmd(uint32_t pc);
+  uint32_t GetCode(uint32_t ir);
+  std::pair<bool, bool> SystemCall();
+  uint32_t LoadWd(uint32_t virtual_address);
+  void StoreWd(uint32_t virtual_address, uint32_t data, int width = 32);
+  void InstructionPageFault();
+  bool page_fault_ = false;
+  bool prev_page_fault_ = false;
+  bool error_flag_, end_flag_;
 
   // Below are for system call emulation
 public:
-  void set_work_memory(uint32_t top, uint32_t bottom);
+  void SetWorkMemory(uint32_t top, uint32_t bottom);
 private:
-  uint32_t top = 0x80000000;
-  uint32_t bottom = 0x40000000;
-  uint32_t brk = bottom;
+  uint32_t top_ = 0x80000000;
+  uint32_t bottom_ = 0x40000000;
+  uint32_t brk_ = bottom_;
 };
 
 enum CsrsAddresses {
   // Supervisor Trap Handling
-  kSepc = 0x141, // Supervisor exception program counter.
+  SEPC = 0x141, // Supervisor exception program counter.
   // Super visor Protection and Translation.
-  kSatp = 0x180, // Page-table base register. Former satp register.
+  SATP = 0x180, // Page-table base register. Former satp register.
   // Machine Trap Setup
-  kMstatus = 0x300, // Machine status register.
-  kMisa = 0x301, // ISA and extensions.
-  kMedeleg = 0x302, // Machine exception delegation register.
-  kMideleg = 0x303, // Machine interrupt delegation register.
-  kMie = 0x304, // Machine interrupt-enable register.
-  kMtvec = 0x305, // Machine trap-handler base address.
-  kMcounteren = 0x306, // Machine counter enable.
+  MSTATUS = 0x300, // Machine status register.
+  MISA = 0x301, // ISA and extensions.
+  MEDELEG = 0x302, // Machine exception delegation register.
+  MIDELEG = 0x303, // Machine interrupt delegation register.
+  MIE = 0x304, // Machine interrupt-enable register.
+  MTVEC = 0x305, // Machine trap-handler base address.
+  MCOUNTEREN = 0x306, // Machine counter enable.
   // Machine Trap Handling.
-  kMscratch = 0x340, // Scratch register for machine trap handlers.
-  kMepc = 0x341, // Machine exception program counter.
-  kMcause = 0x342, // Machine trap cause.
-  kMtval = 0x343, // Machine bad address
-  kMip = 0x344, // Machine interrupt pending
+  MSCRATCH = 0x340, // Scratch register for machine trap handlers.
+  MEPC = 0x341, // Machine exception program counter.
+  MCAUSE = 0x342, // Machine trap cause.
+  MTVAL = 0x343, // Machine bad address
+  MIP = 0x344, // Machine interrupt pending
   // TDOD: add other CSR addresses.
   // https://riscv.org/specifications/privileged-isa/
 };

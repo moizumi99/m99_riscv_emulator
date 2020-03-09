@@ -10,9 +10,9 @@
 
 RiscvCpu::RiscvCpu() {
   for (int i = 0; i < kRegNum; i++) {
-    reg[i] = 0;
+    reg_[i] = 0;
   }
-  csrs.resize(kCsrSize, 0);
+  csrs_.resize(kCsrSize, 0);
 }
 
 constexpr int kPageSize = 4096;
@@ -21,8 +21,8 @@ constexpr int kPteSize = 4;
 
 uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access) {
   uint64_t physical_address = virtual_address;
-  memory_wrapper& mem = *memory;
-  uint32_t sptbr = csrs[kSatp];
+  MemoryWrapper& mem = *memory_;
+  uint32_t sptbr = csrs_[SATP];
   uint8_t mode = bitcrop(sptbr, 1, 31);
   if (mode == 0) {
     return physical_address;
@@ -38,7 +38,7 @@ uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access
   uint32_t pte_address;
   for (level = kMmuLevels - 1; level >= 0; --level) {
     pte_address = ppn * kPageSize + vpn * kPteSize;
-    uint32_t pte_value = mem.read32(pte_address);
+    uint32_t pte_value = mem.Read32(pte_address);
     pte = pte_value;
     if (!pte.IsValid()) {
       // TODO: Do page-fault exception.
@@ -46,7 +46,7 @@ uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access
       std::cerr << "PTE = " << std::hex << pte.GetValue() << std::endl;
       std::cerr << "virtual_address = " << virtual_address << std::endl;
       std::cerr << "PTE entry address = " << pte_address << std::endl;
-      page_fault = true;
+      page_fault_ = true;
       return physical_address;
     }
     if (pte.IsLeaf()) {
@@ -54,7 +54,7 @@ uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access
     }
     if (level == 0) {
       std::cerr << "Non-leaf block in level 0." << std::endl;
-      page_fault = true;
+      page_fault_ = true;
       return physical_address;
     }
     ppn = pte.GetPpn();
@@ -64,7 +64,7 @@ uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access
     // Misaligned superpage.
     // TODO: Do page-fault exception.
     std::cerr << "Misaligned super page." << std::endl;
-    page_fault = true;
+    page_fault_ = true;
     return physical_address;
   }
   // Access and Dirty bit process;
@@ -72,7 +72,7 @@ uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access
   if (write_access) {
     pte.SetD(1);
   }
-  mem.write32(pte_address, pte.GetValue());
+  mem.Write32(pte_address, pte.GetValue());
   // TODO: Add PMP check. (Page 70 of RISC-V Privileged Architectures Manual Vol. II.)
   uint64_t ppn1 = pte.GetPpn1();
   uint32_t ppn0 = (level == 1) ? vpn0 : pte.GetPpn0();
@@ -83,7 +83,7 @@ uint32_t RiscvCpu::VirtualToPhysical(uint32_t virtual_address, bool write_access
 }
 
 // A helper function to record shift sign error.
-bool RiscvCpu::check_shift_sign(bool x, const std::string &message_str) {
+bool RiscvCpu::CheckShiftSign(bool x, const std::string &message_str) {
   if (!x) {
     std::cerr << message_str << " Shift sign error." << std::endl;
     return true;
@@ -91,51 +91,51 @@ bool RiscvCpu::check_shift_sign(bool x, const std::string &message_str) {
   return false;
 }
 
-void RiscvCpu::set_register(uint32_t num, uint32_t value) { reg[num] = value; }
+void RiscvCpu::SetRegister(uint32_t num, uint32_t value) { reg_[num] = value; }
 
-void RiscvCpu::set_memory(std::shared_ptr<memory_wrapper> memory) {
-  this->memory = memory;
+void RiscvCpu::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
+  this->memory_ = memory;
 }
 
-uint32_t RiscvCpu::load_cmd(uint32_t pc) {
-  auto &mem = *memory;
+uint32_t RiscvCpu::LoadCmd(uint32_t pc) {
+  auto &mem = *memory_;
   uint32_t physical_address = VirtualToPhysical(pc);
-  return mem.read32(physical_address);
+  return mem.Read32(physical_address);
 }
 
-uint32_t RiscvCpu::read_register(uint32_t num) {
-  return reg[num];
+uint32_t RiscvCpu::ReadRegister(uint32_t num) {
+  return reg_[num];
 }
 
-void RiscvCpu::set_csr(uint32_t index, uint32_t value) {
-  csrs[index] = value;
+void RiscvCpu::SetCsr(uint32_t index, uint32_t value) {
+  csrs_[index] = value;
 }
 
-uint32_t RiscvCpu::read_csr(uint32_t index) {
-  return csrs[index];
+uint32_t RiscvCpu::ReadCsr(uint32_t index) {
+  return csrs_[index];
 }
 
-void RiscvCpu::set_work_memory(uint32_t top, uint32_t bottom) {
-  this->top = top;
-  this->bottom = bottom;
+void RiscvCpu::SetWorkMemory(uint32_t top, uint32_t bottom) {
+  this->top_ = top;
+  this->bottom_ = bottom;
 }
 
 /* The definition of the Linux system call can be found in
  * riscv-gnu-toolchain/linux-headers/include/asm-generic/unistd.h
  */
 
-std::pair<bool, bool> RiscvCpu::system_call() {
-  return system_call_emulation(memory, reg, top, &brk);
+std::pair<bool, bool> RiscvCpu::SystemCall() {
+  return SystemCallEmulation(memory_, reg_, top_, &brk_);
 }
 
-uint32_t RiscvCpu::load_wd(uint32_t virtual_address) {
-  auto &mem = *memory;
+uint32_t RiscvCpu::LoadWd(uint32_t virtual_address) {
+  auto &mem = *memory_;
   uint32_t physical_address = VirtualToPhysical(virtual_address);
-  return mem.read32(physical_address);
+  return mem.Read32(physical_address);
 }
 
-void RiscvCpu::store_wd(uint32_t virtual_address, uint32_t data, int width) {
-  auto &mem = *memory;
+void RiscvCpu::StoreWd(uint32_t virtual_address, uint32_t data, int width) {
+  auto &mem = *memory_;
   uint32_t physical_address = VirtualToPhysical(virtual_address, true);
   switch (width) {
     case 32:
@@ -151,45 +151,45 @@ void RiscvCpu::store_wd(uint32_t virtual_address, uint32_t data, int width) {
   }
 }
 
-void RiscvCpu::instruction_page_fault() {
-  if (prev_page_fault) {
+void RiscvCpu::InstructionPageFault() {
+  if (prev_page_fault_) {
     // This is a page fault right after another fault. Exit.
-    error_flag = true;
+    error_flag_ = true;
   }
-  prev_page_fault = page_fault;
-  page_fault = false;
-  csrs[kMepc] = pc;
-  uint32_t mtvec = csrs[kMtvec];
+  prev_page_fault_ = page_fault_;
+  page_fault_ = false;
+  csrs_[MEPC] = pc_;
+  uint32_t mtvec = csrs_[MTVEC];
   uint8_t mode = mtvec & 0b11;
-  csrs[kMtval] = pc;
+  csrs_[MTVAL] = pc_;
   if (mode == 0) {
-    pc = mtvec & ~0b11;
+    pc_ = mtvec & ~0b11;
   } else {
-    pc = (mtvec & ~0b11) + 4 * (csrs[kMcause] & 0x7FFFFFFF);
+    pc_ = (mtvec & ~0b11) + 4 * (csrs_[MCAUSE] & 0x7FFFFFFF);
   }
   // Copy old MIE (#3) to MPIE (#7). Then, disable MIE.
-  const uint32_t mie = csrs[kMstatus] & ~(1 << 3) >> 3;
-  csrs[kMstatus] = (csrs[kMstatus] & ~(1 << 7)) | (mie << 7);
-  csrs[kMstatus] &= ~(1 << 3);
+  const uint32_t mie = csrs_[MSTATUS] & ~(1 << 3) >> 3;
+  csrs_[MSTATUS] = (csrs_[MSTATUS] & ~(1 << 7)) | (mie << 7);
+  csrs_[MSTATUS] &= ~(1 << 3);
 
   // Save the current privilege mode to MPP (#12-11), and set the privilege to Machine.
-  csrs[kMstatus] &= ~(0b11 << 11);
-  csrs[kMstatus] |= privilege << 11;
-  privilege = kMachine;
+  csrs_[MSTATUS] &= ~(0b11 << 11);
+  csrs_[MSTATUS] |= privilege_ << 11;
+  privilege_ = MACHINE_LEVEL;
 }
 
-int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
-  error_flag = false;
-  end_flag = false;
+int RiscvCpu::RunCpu(uint32_t start_pc, bool verbose) {
+  error_flag_ = false;
+  end_flag_ = false;
 
-  pc = start_pc;
+  pc_ = start_pc;
   do {
     uint32_t next_pc;
     uint32_t ir;
 
-    ir = load_cmd(pc);
-    if (page_fault) {
-      instruction_page_fault();
+    ir = LoadCmd(pc_);
+    if (page_fault_) {
+      InstructionPageFault();
       continue;
     }
     if (verbose) {
@@ -202,229 +202,229 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
              "%08x %08x %08x %08x %08x %08x %08x %08x "
              "%08x %08x %08x %08x %08x %08x %08x %08x "
              "%08x %08x %08x %08x %08x %08x %08x %08x",
-             pc, ir, reg[1], reg[2], reg[3], reg[4], reg[5],
-             reg[6], reg[7], reg[8], reg[9], reg[10], reg[11],
-             reg[12], reg[13], reg[14], reg[15], reg[16], reg[17],
-             reg[18], reg[19], reg[20], reg[21], reg[22], reg[23],
-             reg[24], reg[25], reg[26], reg[27], reg[28], reg[29],
-             reg[30], reg[31]
+             pc_, ir, reg_[1], reg_[2], reg_[3], reg_[4], reg_[5],
+             reg_[6], reg_[7], reg_[8], reg_[9], reg_[10], reg_[11],
+             reg_[12], reg_[13], reg_[14], reg_[15], reg_[16], reg_[17],
+             reg_[18], reg_[19], reg_[20], reg_[21], reg_[22], reg_[23],
+             reg_[24], reg_[25], reg_[26], reg_[27], reg_[28], reg_[29],
+             reg_[30], reg_[31]
       );
       std::cout << std::endl;
     }
 
-    next_pc = pc + 4;
+    next_pc = pc_ + 4;
 
     // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
-    uint8_t instruction = get_code(ir);
-    uint8_t rd = get_rd(ir);
-    uint8_t rs1 = get_rs1(ir);
-    uint8_t rs2 = get_rs2(ir);
-    int16_t imm12 = get_imm12(ir);
-    int16_t csr = get_csr(ir);
-    uint8_t shamt = get_shamt(ir);
-    int16_t imm13 = get_imm13(ir);
-    int32_t imm21 = get_imm21(ir);
-    int16_t imm12_stype = get_stype_imm12(ir);
-    int32_t imm20 = get_imm20(ir);
+    uint8_t instruction = GetCode(ir);
+    uint8_t rd = GetRd(ir);
+    uint8_t rs1 = GetRs1(ir);
+    uint8_t rs2 = GetRs2(ir);
+    int16_t imm12 = GetImm12(ir);
+    int16_t csr = GetCsr(ir);
+    uint8_t shamt = GetShamt(ir);
+    int16_t imm13 = GetImm13(ir);
+    int32_t imm21 = GetImm21(ir);
+    int16_t imm12_stype = GetStypeImm12(ir);
+    int32_t imm20 = GetImm20(ir);
     uint32_t address;
     int32_t sreg_rs1, sreg_rs2;
 
     switch (instruction) {
       uint32_t t;
       case INST_ADD:
-        reg[rd] = reg[rs1] + reg[rs2];
+        reg_[rd] = reg_[rs1] + reg_[rs2];
         break;
       case INST_AND:
-        reg[rd] = reg[rs1] & reg[rs2];
+        reg_[rd] = reg_[rs1] & reg_[rs2];
         break;
       case INST_SUB:
-        reg[rd] = reg[rs1] - reg[rs2];
+        reg_[rd] = reg_[rs1] - reg_[rs2];
         break;
       case INST_OR:
-        reg[rd] = reg[rs1] | reg[rs2];
+        reg_[rd] = reg_[rs1] | reg_[rs2];
         break;
       case INST_XOR:
-        reg[rd] = reg[rs1] ^ reg[rs2];
+        reg_[rd] = reg_[rs1] ^ reg_[rs2];
         break;
       case INST_SLL:
-        reg[rd] = reg[rs1] << (reg[rs2] & 0x1F);
+        reg_[rd] = reg_[rs1] << (reg_[rs2] & 0x1F);
         break;
       case INST_SRL:
-        reg[rd] = reg[rs1] >> (reg[rs2] & 0x1F);
+        reg_[rd] = reg_[rs1] >> (reg_[rs2] & 0x1F);
         break;
       case INST_SRA:
-        reg[rd] = static_cast<int32_t>(reg[rs1]) >> (reg[rs2] & 0x1F);
+        reg_[rd] = static_cast<int32_t>(reg_[rs1]) >> (reg_[rs2] & 0x1F);
         break;
       case INST_SLT:
-        reg[rd] = (static_cast<int32_t>(reg[rs1]) < static_cast<int32_t>(reg[rs2])) ? 1 : 0;
+        reg_[rd] = (static_cast<int32_t>(reg_[rs1]) < static_cast<int32_t>(reg_[rs2])) ? 1 : 0;
         break;
       case INST_SLTU:
-        reg[rd] = (reg[rs1] < reg[rs2]) ? 1 : 0;
+        reg_[rd] = (reg_[rs1] < reg_[rs2]) ? 1 : 0;
         break;
       case INST_ADDI:
-        reg[rd] = reg[rs1] + imm12;
+        reg_[rd] = reg_[rs1] + imm12;
         break;
       case INST_ANDI:
-        reg[rd] = reg[rs1] & imm12;
+        reg_[rd] = reg_[rs1] & imm12;
         break;
       case INST_ORI:
-        reg[rd] = reg[rs1] | imm12;
+        reg_[rd] = reg_[rs1] | imm12;
         break;
       case INST_XORI:
-        reg[rd] = reg[rs1] ^ imm12;
+        reg_[rd] = reg_[rs1] ^ imm12;
         break;
       case INST_SLLI:
-        reg[rd] = reg[rs1] << shamt;
-        check_shift_sign((shamt >> 5 & 1) == 0, "SLLI");
+        reg_[rd] = reg_[rs1] << shamt;
+        CheckShiftSign((shamt >> 5 & 1) == 0, "SLLI");
         break;
       case INST_SRLI:
-        reg[rd] = reg[rs1] >> shamt;
-        check_shift_sign((shamt >> 5 & 1) == 0, "SRLI");
+        reg_[rd] = reg_[rs1] >> shamt;
+        CheckShiftSign((shamt >> 5 & 1) == 0, "SRLI");
         break;
       case INST_SRAI:
-        reg[rd] = static_cast<int32_t>(reg[rs1]) >> shamt;
-        check_shift_sign((shamt >> 5 & 1) == 0, "SRAI");
+        reg_[rd] = static_cast<int32_t>(reg_[rs1]) >> shamt;
+        CheckShiftSign((shamt >> 5 & 1) == 0, "SRAI");
         break;
       case INST_SLTI:
-        reg[rd] = static_cast<int32_t>(reg[rs1]) < imm12 ? 1 : 0;
+        reg_[rd] = static_cast<int32_t>(reg_[rs1]) < imm12 ? 1 : 0;
         break;
       case INST_SLTIU:
-        reg[rd] = reg[rs1] < static_cast<uint32_t>(imm12) ? 1 : 0;
+        reg_[rd] = reg_[rs1] < static_cast<uint32_t>(imm12) ? 1 : 0;
         break;
       case INST_BEQ:
-        if (reg[rs1] == reg[rs2]) {
-          next_pc = pc + sext(imm13, 13);
+        if (reg_[rs1] == reg_[rs2]) {
+          next_pc = pc_ + SignExtend(imm13, 13);
         }
         break;
       case INST_BGE:
-        sreg_rs1 = static_cast<int32_t>(reg[rs1]);
-        sreg_rs2 = static_cast<int32_t>(reg[rs2]);
+        sreg_rs1 = static_cast<int32_t>(reg_[rs1]);
+        sreg_rs2 = static_cast<int32_t>(reg_[rs2]);
         if (sreg_rs1 >= sreg_rs2) {
-          next_pc = pc + imm13;
+          next_pc = pc_ + imm13;
         }
         break;
       case INST_BGEU:
-        if (reg[rs1] >= reg[rs2]) {
-          next_pc = pc + imm13;
+        if (reg_[rs1] >= reg_[rs2]) {
+          next_pc = pc_ + imm13;
         }
         break;
       case INST_BLT:
-        if (static_cast<int32_t>(reg[rs1]) < static_cast<int32_t>(reg[rs2])) {
-          next_pc = pc + imm13;
+        if (static_cast<int32_t>(reg_[rs1]) < static_cast<int32_t>(reg_[rs2])) {
+          next_pc = pc_ + imm13;
         }
         break;
       case INST_BLTU:
-        if (reg[rs1] < reg[rs2]) {
-          next_pc = pc + imm13;
+        if (reg_[rs1] < reg_[rs2]) {
+          next_pc = pc_ + imm13;
         }
         break;
       case INST_BNE:
-        if (reg[rs1] != reg[rs2]) {
-          next_pc = pc + imm13;
+        if (reg_[rs1] != reg_[rs2]) {
+          next_pc = pc_ + imm13;
         }
         break;
       case INST_JAL:
-        reg[rd] = pc + 4;
-        next_pc = pc + imm21;
-        if (next_pc == pc) {
-          error_flag = true;
+        reg_[rd] = pc_ + 4;
+        next_pc = pc_ + imm21;
+        if (next_pc == pc_) {
+          error_flag_ = true;
         }
         break;
       case INST_JALR:
-        next_pc = (reg[rs1] + imm12) & ~1;
-        reg[rd] = pc + 4;
-        if (rd == ZERO && rs1 == RA && reg[rs1] == 0 && imm12 == 0) {
-          end_flag = true;
+        next_pc = (reg_[rs1] + imm12) & ~1;
+        reg_[rd] = pc_ + 4;
+        if (rd == ZERO && rs1 == RA && reg_[rs1] == 0 && imm12 == 0) {
+          end_flag_ = true;
         }
         break;
       case INST_LB:
-        address = reg[rs1] + imm12;
-        reg[rd] = sext(load_wd(address) & 0xFF, 8);
+        address = reg_[rs1] + imm12;
+        reg_[rd] = SignExtend(LoadWd(address) & 0xFF, 8);
         break;
       case INST_LBU:
-        address = reg[rs1] + imm12;
-        reg[rd] = load_wd(address) & 0xFF;
+        address = reg_[rs1] + imm12;
+        reg_[rd] = LoadWd(address) & 0xFF;
         break;
       case INST_LH:
-        address = reg[rs1] + imm12;
-        reg[rd] = sext(load_wd(address) & 0xFFFF, 16);
+        address = reg_[rs1] + imm12;
+        reg_[rd] = SignExtend(LoadWd(address) & 0xFFFF, 16);
         break;
       case INST_LHU:
-        address = reg[rs1] + imm12;
-        reg[rd] = load_wd(address) & 0xFFFF;
+        address = reg_[rs1] + imm12;
+        reg_[rd] = LoadWd(address) & 0xFFFF;
         break;
       case INST_LW:
-        address = reg[rs1] + imm12;
-        reg[rd] = load_wd(address);
+        address = reg_[rs1] + imm12;
+        reg_[rd] = LoadWd(address);
         break;
       case INST_SW:
-        address = reg[rs1] + imm12_stype;
-        store_wd(address, reg[rs2]);
+        address = reg_[rs1] + imm12_stype;
+        StoreWd(address, reg_[rs2]);
         break;
       case INST_SH:
-        address = reg[rs1] + imm12_stype;
-        store_wd(address, reg[rs2], 16);
+        address = reg_[rs1] + imm12_stype;
+        StoreWd(address, reg_[rs2], 16);
         break;
       case INST_SB:
-        address = reg[rs1] + imm12_stype;
-        store_wd(address, reg[rs2], 8);
+        address = reg_[rs1] + imm12_stype;
+        StoreWd(address, reg_[rs2], 8);
         break;
       case INST_LUI:
-        reg[rd] = imm20 << 12;
+        reg_[rd] = imm20 << 12;
         break;
       case INST_AUIPC:
-        reg[rd] = pc + (imm20 << 12);
+        reg_[rd] = pc_ + (imm20 << 12);
         break;
       case INST_SYSTEM:
         if (imm12 == 0b000000000000) {
           // ECALL
-          std::tie(error_flag, end_flag) = system_call();
+          std::tie(error_flag_, end_flag_) = SystemCall();
         } else if (imm12 == 0b000000000001) {
           // EBREAK
           // Debug function is not implemented yet.
         } else if (imm12 == 0b001100000010) {
           // MRET
-          next_pc = csrs[kMepc];
+          next_pc = csrs_[MEPC];
           // TODO: Implement privilege mode change.
         } else if (imm12 == 0b000100000010) {
           // SRET
-          next_pc = csrs[kSepc];
+          next_pc = csrs_[SEPC];
           // TODO: Implement privilege mode change.
         } else {
           // not defined.
           std::cerr << "Undefined System instruction." << std::endl;
-          error_flag = true;
+          error_flag_ = true;
         }
         break;
       case INST_CSRRC:
-        t = csrs[csr];
-        csrs[csr] &= ~reg[rs1];
-        reg[rd] = t;
+        t = csrs_[csr];
+        csrs_[csr] &= ~reg_[rs1];
+        reg_[rd] = t;
         break;
       case INST_CSRRCI:
-        t = csrs[csr];
-        csrs[csr] &= ~rs1;
-        reg[rd] = t;
+        t = csrs_[csr];
+        csrs_[csr] &= ~rs1;
+        reg_[rd] = t;
         break;
       case INST_CSRRS:
-        t = csrs[csr];
-        csrs[csr] |= reg[rs1];
-        reg[rd] = t;
+        t = csrs_[csr];
+        csrs_[csr] |= reg_[rs1];
+        reg_[rd] = t;
         break;
       case INST_CSRRSI:
-        t = csrs[csr];
-        csrs[csr] |= rs1;
-        reg[rd] = t;
+        t = csrs_[csr];
+        csrs_[csr] |= rs1;
+        reg_[rd] = t;
         break;
       case INST_CSRRW:
-        t = csrs[csr];
-        csrs[csr] = reg[rs1];
-        reg[rd] = t;
+        t = csrs_[csr];
+        csrs_[csr] = reg_[rs1];
+        reg_[rd] = t;
         break;
       case INST_CSRRWI:
-        t = csrs[csr];
-        csrs[csr] = rs1;
-        reg[rd] = t;
+        t = csrs_[csr];
+        csrs_[csr] = rs1;
+        reg_[rd] = t;
         break;
       case INST_FENCE:
       case INST_FENCEI:
@@ -432,21 +432,21 @@ int RiscvCpu::run_cpu(uint32_t start_pc, bool verbose) {
         break;
       case INST_ERROR:
       default:
-        error_flag = true;
+        error_flag_ = true;
         break;
     }
-    reg[ZERO] = 0;
-    if (pc == next_pc) {
+    reg_[ZERO] = 0;
+    if (pc_ == next_pc) {
       std::cerr << "Infinite loop detected." << std::endl;
-      error_flag = true;
+      error_flag_ = true;
     }
-    pc = next_pc & 0xFFFFFFFF;
-  } while (!error_flag && !end_flag);
+    pc_ = next_pc & 0xFFFFFFFF;
+  } while (!error_flag_ && !end_flag_);
 
-  return error_flag;
+  return error_flag_;
 }
 
-uint32_t RiscvCpu::get_code(uint32_t ir) {
+uint32_t RiscvCpu::GetCode(uint32_t ir) {
   uint16_t opcode = bitcrop(ir, 7, 0);
   uint8_t funct3 = bitcrop(ir, 3, 12);
   uint8_t funct7 = bitcrop(ir, 7, 25);

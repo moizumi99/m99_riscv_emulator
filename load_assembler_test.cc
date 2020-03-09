@@ -62,8 +62,8 @@ bool test_r_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
                         uint8_t funct7, uint8_t rd, uint8_t rs1, uint8_t rs2,
                         bool verbose = false) {
   bool error = false;
-  r_type cmd;
-  cmd.set_value(instruction);
+  RType cmd;
+  cmd.SetValue(instruction);
   error |= check_equal("opcode", cmd.opcode, opcode, verbose);
   error |= check_equal("funct7", cmd.funct7, funct7, verbose);
   error |= check_equal("funct3", cmd.funct3, funct3, verbose);
@@ -91,13 +91,13 @@ bool test_i_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
                         uint8_t rd, uint8_t rs1, int16_t imm12,
                         bool verbose = false) {
   bool error = false;
-  i_type cmd;
-  cmd.set_value(instruction);
+  IType cmd;
+  cmd.SetValue(instruction);
   error |= check_equal("cmd", cmd.opcode, opcode, verbose);
   error |= check_equal("funct3", cmd.funct3, funct3, verbose);
   error |= check_equal("rd", cmd.rd, rd, verbose);
   error |= check_equal("rs1", cmd.rs1, rs1, verbose);
-  error |= check_equal("imm12", sext(cmd.imm12, 12), imm12, verbose);
+  error |= check_equal("imm12", SignExtend(cmd.imm12, 12), imm12, verbose);
   return error;
 }
 
@@ -119,13 +119,13 @@ bool test_b_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
                         uint8_t rs1, uint8_t rs2, int16_t imm13,
                         bool verbose = false) {
   bool error = false;
-  b_type cmd;
-  cmd.set_value(instruction);
+  BType cmd;
+  cmd.SetValue(instruction);
   error |= check_equal("cmd", cmd.opcode, opcode, verbose);
   error |= check_equal("funct3", cmd.funct3, funct3);
   error |= check_equal("rs1", cmd.rs1, rs1, verbose);
   error |= check_equal("rs2", cmd.rs2, rs2, verbose);
-  error |= check_equal("imm13", sext(cmd.imm13, 13), imm13 & (~0b01), verbose);
+  error |= check_equal("imm13", SignExtend(cmd.imm13, 13), imm13 & (~0b01), verbose);
   return error;
 }
 
@@ -146,11 +146,11 @@ bool test_b_type_decode_quiet(uint32_t instruction, uint8_t opcode,
 bool test_j_type_decode(uint32_t instruction, uint8_t opcode, uint8_t rd,
                         int32_t imm21, bool verbose = false) {
   bool error = false;
-  j_type cmd;
-  cmd.set_value(instruction);
+  JType cmd;
+  cmd.SetValue(instruction);
   error |= check_equal("cmd", cmd.opcode, opcode, verbose);
   error |= check_equal("rd", cmd.rd, rd, verbose);
-  error |= check_equal("imm21", sext(cmd.imm21, 21), imm21 & (~1), verbose);
+  error |= check_equal("imm21", SignExtend(cmd.imm21, 21), imm21 & (~1), verbose);
   return error;
 }
 
@@ -169,13 +169,13 @@ bool test_s_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
                         uint8_t rs1, uint8_t rs2, int16_t imm12,
                         bool verbose = false) {
   bool error = false;
-  s_type cmd;
-  cmd.set_value(instruction);
+  SType cmd;
+  cmd.SetValue(instruction);
   error |= check_equal("cmd", cmd.opcode, opcode, verbose);
   error |= check_equal("funct3", cmd.funct3, funct3);
   error |= check_equal("rs1", cmd.rs1, rs1, verbose);
   error |= check_equal("rs2", cmd.rs2, rs2, verbose);
-  error |= check_equal("imm12", sext(cmd.imm12, 12), imm12, verbose);
+  error |= check_equal("imm12", SignExtend(cmd.imm12, 12), imm12, verbose);
   return error;
 }
 
@@ -320,37 +320,37 @@ bool test_r_type(bool verbose = false) {
       uint8_t rs2 = rnd() % 32;
       switch (testcase) {
         case TEST_ADD:
-          cmd = asm_add(rd, rs1, rs2);
+          cmd = AsmAdd(rd, rs1, rs2);
           break;
         case TEST_SUB:
-          cmd = asm_sub(rd, rs1, rs2);
+          cmd = AsmSub(rd, rs1, rs2);
           break;
         case TEST_AND:
-          cmd = asm_and(rd, rs1, rs2);
+          cmd = AsmAnd(rd, rs1, rs2);
           break;
         case TEST_OR:
-          cmd = asm_or(rd, rs1, rs2);
+          cmd = AsmOr(rd, rs1, rs2);
           break;
         case TEST_XOR:
-          cmd = asm_xor(rd, rs1, rs2);
+          cmd = AsmXor(rd, rs1, rs2);
           break;
         case TEST_SLL:
-          cmd = asm_sll(rd, rs1, rs2);
+          cmd = AsmSll(rd, rs1, rs2);
           break;
         case TEST_SRL:
-          cmd = asm_srl(rd, rs1, rs2);
+          cmd = AsmSrl(rd, rs1, rs2);
           break;
         case TEST_SRA:
-          cmd = asm_sra(rd, rs1, rs2);
+          cmd = AsmSra(rd, rs1, rs2);
           break;
         case TEST_SLT:
-          cmd = asm_slt(rd, rs1, rs2);
+          cmd = AsmSlt(rd, rs1, rs2);
           break;
         case TEST_SLTU:
-          cmd = asm_sltu(rd, rs1, rs2);
+          cmd = AsmSltu(rd, rs1, rs2);
           break;
         case TEST_MRET:
-          cmd = asm_mret();
+          cmd = AsmMret();
           rd = rs1 = 0;
           rs2 = 0b00010;
           break;
@@ -503,97 +503,97 @@ bool test_i_type(bool verbose = false) {
       int16_t imm12 = (rnd() % (1 << 12)) - (1 << 11);
       switch (test_case) {
         case TEST_ADDI:
-          cmd = asm_addi(rd, rs1, imm12);
+          cmd = AsmAddi(rd, rs1, imm12);
           break;
         case TEST_ANDI:
-          cmd = asm_andi(rd, rs1, imm12);
+          cmd = AsmAndi(rd, rs1, imm12);
           break;
         case TEST_ORI:
-          cmd = asm_ori(rd, rs1, imm12);
+          cmd = AsmOri(rd, rs1, imm12);
           break;
         case TEST_XORI:
-          cmd = asm_xori(rd, rs1, imm12);
+          cmd = AsmXori(rd, rs1, imm12);
           break;
         case TEST_SLLI:
-          cmd = asm_slli(rd, rs1, imm12);
+          cmd = AsmSlli(rd, rs1, imm12);
           // SLLI immediate is 6 bit.
           imm12 &= 0b0111111;
           break;
         case TEST_SRLI:
-          cmd = asm_srli(rd, rs1, imm12);
+          cmd = AsmSrli(rd, rs1, imm12);
           // SRLI immediate is 6 bit.
           imm12 &= 0b0111111;
           break;
         case TEST_SRAI:
-          cmd = asm_srai(rd, rs1, imm12);
+          cmd = AsmSrai(rd, rs1, imm12);
           // SRAI immediate is 6 bit.
           imm12 &= 0b0111111;
           break;
         case TEST_SLTI:
-          cmd = asm_slti(rd, rs1, imm12);
+          cmd = AsmSlti(rd, rs1, imm12);
           break;
         case TEST_SLTIU:
-          cmd = asm_sltiu(rd, rs1, imm12);
+          cmd = AsmSltiu(rd, rs1, imm12);
           break;
         case TEST_LB:
-          cmd = asm_lb(rd, rs1, imm12);
+          cmd = AsmLb(rd, rs1, imm12);
           break;
         case TEST_LBU:
-          cmd = asm_lbu(rd, rs1, imm12);
+          cmd = AsmLbu(rd, rs1, imm12);
           break;
         case TEST_LH:
-          cmd = asm_lh(rd, rs1, imm12);
+          cmd = AsmLh(rd, rs1, imm12);
           break;
         case TEST_LHU:
-          cmd = asm_lhu(rd, rs1, imm12);
+          cmd = AsmLhu(rd, rs1, imm12);
           break;
         case TEST_LW:
-          cmd = asm_lw(rd, rs1, imm12);
+          cmd = AsmLw(rd, rs1, imm12);
           break;
         case TEST_JALR:
-          cmd = asm_jalr(rd, rs1, imm12);
+          cmd = AsmJalr(rd, rs1, imm12);
           break;
         case TEST_EBREAK:
-          cmd = asm_ebreak();
+          cmd = AsmEbreak();
           rd = 0;
           rs1 = 0;
           imm12 = 1;
           break;
         case TEST_ECALL:
-          cmd = asm_ecall();
+          cmd = AsmEcall();
           rd = 0;
           rs1 = 0;
           imm12 = 0;
           break;
         case TEST_CSRRC:
-          cmd = asm_csrrc(rd, rs1, imm12);
+          cmd = AsmCsrrc(rd, rs1, imm12);
           break;
         case TEST_CSRRCI:
-          cmd = asm_csrrci(rd, rs1, imm12);
+          cmd = AsmCsrrci(rd, rs1, imm12);
           break;
         case TEST_CSRRS:
-          cmd = asm_csrrs(rd, rs1, imm12);
+          cmd = AsmCsrrs(rd, rs1, imm12);
           break;
         case TEST_CSRRSI:
-          cmd = asm_csrrsi(rd, rs1, imm12);
+          cmd = AsmCsrrsi(rd, rs1, imm12);
           break;
         case TEST_CSRRW:
-          cmd = asm_csrrw(rd, rs1, imm12);
+          cmd = AsmCsrrw(rd, rs1, imm12);
           break;
         case TEST_CSRRWI:
-          cmd = asm_csrrwi(rd, rs1, imm12);
+          cmd = AsmCsrrwi(rd, rs1, imm12);
           break;
         case TEST_FENCE: {
           uint32_t pred = (imm12 >> 4) & 0x0F;
           uint32_t succ = imm12 & 0x0F;
           imm12 &= 0x0FF;
-          cmd = asm_fence(pred, succ);
+          cmd = AsmFence(pred, succ);
           rd = rs1 = 0;
         }
           break;
         case TEST_FENCEI:
           rd = rs1 = 0; imm12 = 0;
-          cmd = asm_fencei();
+          cmd = AsmFencei();
           break;
         default:
           break;
@@ -661,22 +661,22 @@ bool test_b_type(bool verbose = false) {
       int16_t imm13 = (rnd() % (1 << 13)) - (1 << 12);
       switch (testcase) {
         case TEST_BEQ:
-          cmd = asm_beq(rs1, rs2, imm13);
+          cmd = AsmBeq(rs1, rs2, imm13);
           break;
         case TEST_BGE:
-          cmd = asm_bge(rs1, rs2, imm13);
+          cmd = AsmBge(rs1, rs2, imm13);
           break;
         case TEST_BGEU:
-          cmd = asm_bgeu(rs1, rs2, imm13);
+          cmd = AsmBgeu(rs1, rs2, imm13);
           break;
         case TEST_BLT:
-          cmd = asm_blt(rs1, rs2, imm13);
+          cmd = AsmBlt(rs1, rs2, imm13);
           break;
         case TEST_BLTU:
-          cmd = asm_bltu(rs1, rs2, imm13);
+          cmd = AsmBltu(rs1, rs2, imm13);
           break;
         case TEST_BNE:
-          cmd = asm_bne(rs1, rs2, imm13);
+          cmd = AsmBne(rs1, rs2, imm13);
           break;
         default:
           break;
@@ -722,7 +722,7 @@ bool test_j_type(bool verbose = false) {
       int32_t imm21 = (rnd() % (1 << 21)) - (1 << 20);
       switch (testcase) {
         case TEST_JAL:
-          cmd = asm_jal(rd, imm21);
+          cmd = AsmJal(rd, imm21);
           break;
         default:
           break;
@@ -777,13 +777,13 @@ bool test_s_type(bool verbose = false) {
       int32_t imm12 = (rnd() % (1 << 12)) - (1 << 11);
       switch (testcase) {
         case TEST_SW:
-          cmd = asm_sw(rs1, rs2, imm12);
+          cmd = AsmSw(rs1, rs2, imm12);
           break;
         case TEST_SH:
-          cmd = asm_sh(rs1, rs2, imm12);
+          cmd = AsmSh(rs1, rs2, imm12);
           break;
         case TEST_SB:
-          cmd = asm_sb(rs1, rs2, imm12);
+          cmd = AsmSb(rs1, rs2, imm12);
           break;
         default:
           break;
@@ -806,11 +806,11 @@ bool test_u_type_decode(uint32_t instruction, uint8_t opcode,
                         uint8_t rd, int32_t imm20,
                         bool verbose = false) {
   bool error = false;
-  u_type cmd;
-  cmd.set_value(instruction);
+  UType cmd;
+  cmd.SetValue(instruction);
   error |= check_equal("cmd", cmd.opcode, opcode, verbose);
   error |= check_equal("rd", cmd.rd, rd, verbose);
-  error |= check_equal("imm20", sext(cmd.imm20, 20), imm20, verbose);
+  error |= check_equal("imm20", SignExtend(cmd.imm20, 20), imm20, verbose);
   return error;
 }
 
@@ -866,10 +866,10 @@ bool test_u_type(bool verbose = false) {
       int32_t imm20 = (rnd() % (1 << 20)) - (1 << 19);
       switch (testcase) {
         case TEST_LUI:
-          cmd = asm_lui(rd, imm20);
+          cmd = AsmLui(rd, imm20);
           break;
         case TEST_AUIPC:
-          cmd = asm_auipc(rd, imm20);
+          cmd = AsmAuipc(rd, imm20);
         default:
           break;
       }
@@ -886,7 +886,7 @@ bool test_u_type(bool verbose = false) {
   return total_error;
 }
 
-bool run_all_test() {
+bool RunAllTests() {
   init_random();
   bool verbose = true;
   bool error = false;
@@ -908,5 +908,5 @@ bool run_all_test() {
 } // namespace load_assembler_test
 
 int main() {
-  return load_assembler_test::run_all_test();
+  return load_assembler_test::RunAllTests();
 }

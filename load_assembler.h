@@ -5,7 +5,7 @@
 #include "memory_wrapper.h"
 #include <vector>
 
-memory_wrapper_iterator load_assembler_sum(memory_wrapper_iterator &mem);
-memory_wrapper_iterator load_assembler_sort(memory_wrapper_iterator &mem);
+MemorWrapperIterator LoadAssemblerSum(MemorWrapperIterator &mem);
+MemorWrapperIterator LoadAssemblerSort(MemorWrapperIterator &mem);
 
 #endif // LOAD_ASSEMBLER_H
