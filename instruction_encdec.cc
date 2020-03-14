@@ -148,7 +148,7 @@ int32_t GetStypeImm12(uint32_t ir) {
 }
 
 uint32_t GetShamt(uint32_t ir) {
-  uint32_t shamt = bitcrop(ir, 5, 20);
+  uint32_t shamt = bitcrop(ir, 6, 20);
   return shamt;
 }
 

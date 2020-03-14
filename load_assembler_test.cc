@@ -41,7 +41,7 @@ bool check_equal(const std::string &text, uint32_t value, uint32_t exp,
     if (!error) {
       printf(" - Pass\n");
     } else {
-      printf(" - Error (");
+      printf(" - Error (expected: ");
       print_binary(exp);
       printf(")\n");
     }

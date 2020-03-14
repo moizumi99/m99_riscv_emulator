@@ -39,14 +39,14 @@ void RandomizeRegisters(RiscvCpu &cpu) {
 }
 
 // Commonly used helper function for error message.
-void PrintErrorMessage(const std::string &text, bool error, int32_t expected, int32_t actual) {
+void PrintErrorMessage(const std::string &text, bool error, int64_t expected, int64_t actual) {
   if (error) {
     printf("%s test failed.", text.c_str());
   } else {
     printf("%s test passed.", text.c_str());
 
   }
-  printf(" Expected %08x, Actual %08x\n", expected, actual);
+  printf(" Expected %016lx, Actual %016lx\n", expected, actual);
   printf(" Expected %d, Actual %d\n", expected, actual);
 }
 
@@ -84,6 +84,7 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
   if (rs1 == 0) {
     value = 0;
   }
+  constexpr uint32_t kShiftMask = kXlen == 64 ? 0b0111111 : 0b0011111;
   switch (test_type) {
     case TEST_ADDI:
       AddCmd(pointer, AsmAddi(rd, rs1, imm12));
@@ -106,19 +107,19 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
       test_case = "XORI";
       break;
     case TEST_SLLI:
-      imm12 = imm12 & 0b0011111;
+      imm12 = imm12 & kShiftMask;
       AddCmd(pointer, AsmSlli(rd, rs1, imm12));
-      expected = value << imm12;
+      expected = static_cast<uint64_t>(value) << imm12;
       test_case = "SLLI";
       break;
     case TEST_SRLI:
-      imm12 = imm12 & 0b0011111;
+      imm12 = imm12 & kShiftMask;
       AddCmd(pointer, AsmSrli(rd, rs1, imm12));
-      expected = static_cast<uint32_t>(value) >> imm12;
+      expected = static_cast<uint64_t>(value) >> imm12;
       test_case = "SRLI";
       break;
     case TEST_SRAI:
-      imm12 = imm12 & 0b0011111;
+      imm12 = imm12 & kShiftMask;
       AddCmd(pointer, AsmSrai(rd, rs1, imm12));
       expected = value >> imm12;
       test_case = "SRAI";
@@ -214,7 +215,7 @@ bool
 TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t value1, int32_t value2,
           bool verbose) {
   bool error = false;
-  int32_t expected;
+  int64_t expected;
   std::string test_case = "";
 
   auto pointer = memory->begin();
@@ -235,15 +236,16 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t v
   if (rs1 == rs2) {
     value1 = value2;
   }
+  constexpr uint32_t kShiftMask = kXlen == 64 ? 0b0111111 : 0b0011111;
   switch (test_type) {
     case TEST_ADD:
       AddCmd(pointer, AsmAdd(rd, rs1, rs2));
-      expected = value1 + value2;
+      expected = static_cast<int64_t>(value1) + static_cast<int64_t >(value2);
       test_case = "ADD";
       break;
     case TEST_SUB:
       AddCmd(pointer, AsmSub(rd, rs1, rs2));
-      expected = value1 - value2;
+      expected = static_cast<int64_t >(value1) - static_cast<int64_t>(value2);
       test_case = "SUB";
       break;
     case TEST_AND:
@@ -263,17 +265,17 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t v
       break;
     case TEST_SLL:
       AddCmd(pointer, AsmSll(rd, rs1, rs2));
-      expected = value1 << (value2 & 0x1F);
+      expected = static_cast<uint64_t >(value1) << (value2 & kShiftMask);
       test_case = "SLL";
       break;
     case TEST_SRL:
       AddCmd(pointer, AsmSrl(rd, rs1, rs2));
-      expected = static_cast<uint32_t>(value1) >> (value2 & 0x1F);
+      expected = static_cast<uint64_t>(value1) >> (value2 & kShiftMask);
       test_case = "SRL";
       break;
     case TEST_SRA:
       AddCmd(pointer, AsmSra(rd, rs1, rs2));
-      expected = value1 >> (value2 & 0x1F);
+      expected = static_cast<int64_t>(value1) >> (value2 & kShiftMask);
       test_case = "SRA";
       break;
     case TEST_SLT:
@@ -303,7 +305,7 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t v
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   error = cpu.RunCpu(0, verbose) != 0;
-  int return_value = cpu.ReadRegister(A0);
+  uint64_t return_value = cpu.ReadRegister(A0);
   error |= return_value != expected;
   if (error & verbose) {
     printf("RD: %d, RS1: %d, RS2: %d, Value1: %d(%08x), value2: %d(%03x)\n", rd, rs1, rs2, value1, value1,

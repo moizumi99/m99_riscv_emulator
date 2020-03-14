@@ -8,6 +8,8 @@
 #include "bit_tools.h"
 #include "memory_wrapper.h"
 
+constexpr int kXlen = 64;
+
 enum PrivilegeModes {
   USER_LEVEL = 0,
   SUPERVISOR_LEVEL = 1,
@@ -22,39 +24,38 @@ public:
   RiscvCpu();
   ~RiscvCpu() {};
 
-  void SetRegister(uint32_t num, uint32_t value);
-  uint32_t ReadRegister(uint32_t num);
+  void SetRegister(uint32_t num, uint64_t value);
+  uint64_t ReadRegister(uint32_t num);
   void SetMemory(std::shared_ptr<MemoryWrapper> memory);
   void SetCsr(uint32_t index, uint32_t value);
   uint32_t ReadCsr(uint32_t index);
-  int RunCpu(uint32_t start_pc, bool verbose = true);
-  uint32_t VirtualToPhysical(uint32_t virtual_address, bool write_access = false);
-protected:
-  inline bool CheckShiftSign(bool x, const std::string &message_str);
+  int RunCpu(uint64_t start_pc, bool verbose = true);
+  uint64_t VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
 
 private:
-  uint32_t reg_[kRegSize];
-  uint32_t pc_;
+  uint64_t reg_[kRegSize];
+  uint64_t pc_;
   uint8_t privilege_ = MACHINE_LEVEL;
   std::shared_ptr<MemoryWrapper> memory_;
   std::vector<uint32_t> csrs_;
   uint32_t LoadCmd(uint32_t pc);
   uint32_t GetCode(uint32_t ir);
   std::pair<bool, bool> SystemCall();
-  uint32_t LoadWd(uint32_t virtual_address);
-  void StoreWd(uint32_t virtual_address, uint32_t data, int width = 32);
+  uint64_t LoadWd(uint64_t virtual_address, int width = 32);
+  void StoreWd(uint64_t virtual_address, uint64_t data, int width = 32);
   void InstructionPageFault();
   bool page_fault_ = false;
   bool prev_page_fault_ = false;
   bool error_flag_, end_flag_;
+  inline bool CheckShiftSign(bool x, const std::string &message_str);
 
   // Below are for system call emulation
 public:
   void SetWorkMemory(uint32_t top, uint32_t bottom);
 private:
-  uint32_t top_ = 0x80000000;
-  uint32_t bottom_ = 0x40000000;
-  uint32_t brk_ = bottom_;
+  uint64_t top_ = 0x80000000;
+  uint64_t bottom_ = 0x40000000;
+  uint64_t brk_ = bottom_;
 };
 
 enum CsrsAddresses {

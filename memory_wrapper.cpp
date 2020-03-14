@@ -33,11 +33,30 @@ const uint32_t MemoryWrapper::Read32(size_t i) const {
   return (*this)[i] | ((*this)[i + 1] << 8) | ((*this)[i + 2] << 16) | ((*this)[i + 3] << 24);
 }
 
+const uint64_t MemoryWrapper::Read64(size_t i) const {
+  uint64_t read_data = 0;
+  for (int offset = 0; offset < 8; offset++) {
+    read_data = static_cast<uint64_t>((*this)[i + offset] << (offset * 8));
+  }
+  return read_data;
+}
+
 void MemoryWrapper::Write32(size_t i, uint32_t value) {
   (*this)[i] = value & 0xFF;
   (*this)[i + 1] = (value >> 8) & 0xFF;
   (*this)[i + 2] = (value >> 16) & 0xFF;
   (*this)[i + 3] = (value >> 24) & 0xFF;
+}
+
+void MemoryWrapper::Write64(size_t i, uint64_t value) {
+  (*this)[i] = value & 0xFF;
+  (*this)[i + 1] = (value >> 8) & 0xFF;
+  (*this)[i + 2] = (value >> 16) & 0xFF;
+  (*this)[i + 3] = (value >> 24) & 0xFF;
+  (*this)[i + 4] = (value >> 32) & 0xFF;
+  (*this)[i + 5] = (value >> 40) & 0xFF;
+  (*this)[i + 6] = (value >> 48) & 0xFF;
+  (*this)[i + 7] = (value >> 56) & 0xFF;
 }
 
 bool MemoryWrapper::operator==(MemoryWrapper &r) {

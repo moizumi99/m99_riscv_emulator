@@ -33,7 +33,9 @@ public:
   uint8_t &operator[]( size_t i);
   const uint8_t operator[]( size_t i) const;
   const uint32_t Read32(size_t i) const;
+  const uint64_t Read64(size_t i) const;
   void Write32(size_t i, uint32_t value);
+  void Write64(size_t i, uint64_t value);
   MemorWrapperIterator begin();
   MemorWrapperIterator end();
   bool operator==(MemoryWrapper &r);

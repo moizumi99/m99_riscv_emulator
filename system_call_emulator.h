@@ -45,7 +45,7 @@ size_t MemoryWrapperStrlen(const MemoryWrapper &mem, size_t address, size_t max 
 
 char *MemoryWrapperCopy(const MemoryWrapper &mem, size_t address, size_t length, char *dst);
 
-std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint32_t *reg, const uint32_t top,
-                                          uint32_t *break_address, bool debug = false);
+std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg, const uint64_t top,
+                                          uint64_t *break_address, bool debug = false);
 
 #endif //ASSEMBLER_TEST_SYSTEM_CALL_EMULATOR_H

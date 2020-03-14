@@ -24,7 +24,7 @@ public:
 
 class IType : public BitField {
 public:
-  uint16_t imm12 : 12;
+  int16_t imm12 : 12;
   uint32_t GetValue();
   void SetValue(uint32_t value) override;
 };

@@ -96,8 +96,8 @@ char *MemoryWrapperCopy(const MemoryWrapper &mem, size_t address, size_t length,
   return dst;
 }
 
-std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint32_t *reg, const uint32_t top,
-                                          uint32_t *break_address, bool debug) {
+std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg, const uint64_t top,
+                                          uint64_t *break_address, bool debug) {
   auto &brk = *break_address;
   auto &mem = *memory;
   bool end_flag = false;
