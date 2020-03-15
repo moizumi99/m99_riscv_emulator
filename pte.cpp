@@ -19,6 +19,7 @@ Pte::Pte(uint32_t pte_value) : pte_(pte_value) {}
 
 Pte& Pte::operator=(uint32_t pte_value) {
   this->pte_ = pte_value;
+  return (*this);
 }
 
 uint32_t Pte::GetValue() const {

@@ -27,8 +27,8 @@ public:
   void SetRegister(uint32_t num, uint64_t value);
   uint64_t ReadRegister(uint32_t num);
   void SetMemory(std::shared_ptr<MemoryWrapper> memory);
-  void SetCsr(uint32_t index, uint32_t value);
-  uint32_t ReadCsr(uint32_t index);
+  void SetCsr(uint32_t index, uint64_t value);
+  uint64_t ReadCsr(uint32_t index);
   int RunCpu(uint64_t start_pc, bool verbose = true);
   uint64_t VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
 

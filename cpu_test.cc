@@ -47,7 +47,7 @@ void PrintErrorMessage(const std::string &text, bool error, int64_t expected, in
 
   }
   printf(" Expected %016lx, Actual %016lx\n", expected, actual);
-  printf(" Expected %d, Actual %d\n", expected, actual);
+  printf(" Expected %ld, Actual %ld\n", expected, actual);
 }
 
 // A helper function to split 32 bit GetValue to 20 bit and singed 12 bit immediates.
@@ -305,7 +305,7 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t v
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   error = cpu.RunCpu(0, verbose) != 0;
-  uint64_t return_value = cpu.ReadRegister(A0);
+  int64_t return_value = static_cast<int64_t>(cpu.ReadRegister(A0));
   error |= return_value != expected;
   if (error & verbose) {
     printf("RD: %d, RS1: %d, RS2: %d, Value1: %d(%08x), value2: %d(%03x)\n", rd, rs1, rs2, value1, value1,
@@ -736,7 +736,7 @@ TestBType(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, ui
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   error = cpu.RunCpu(start_point, verbose) != 0;
-  int return_value = cpu.ReadRegister(A0);
+  int64_t return_value = static_cast<int64_t>(cpu.ReadRegister(A0));
   error |= return_value != expected;
   if (error & verbose) {
     printf("RS1: %d, RS2: %d, value1: %d(%08x), value2: %d(%08x), offset: %d(%03x)\n",
@@ -823,7 +823,7 @@ bool TestJalrType(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, bo
   AddCmd(pointer, AsmAddi(A0, ZERO, 1));
   AddCmd(pointer, AsmXor(RA, RA, RA));
   AddCmd(pointer, AsmJalr(ZERO, RA, 0));
-  pointer = memory->begin() + (value + SignExtend(offset, 12) & ~1);
+  pointer = memory->begin() + ((value + SignExtend(offset, 12)) & ~1);
   AddCmd(pointer, AsmAddi(A0, ZERO, 2));
   AddCmd(pointer, AsmXor(RA, RA, RA));
   AddCmd(pointer, AsmJalr(ZERO, RA, 0));
@@ -832,7 +832,7 @@ bool TestJalrType(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, bo
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   bool error = cpu.RunCpu(start_point, verbose) != 0;
-  int return_value = cpu.ReadRegister(A0);
+  int64_t return_value = static_cast<int64_t>(cpu.ReadRegister(A0));
   error |= return_value != expected;
   if (rd != 0 && rd != RA && rd!= A0) {
     uint32_t expect = start_point + 12;

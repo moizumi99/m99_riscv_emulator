@@ -108,11 +108,11 @@ uint64_t RiscvCpu::ReadRegister(uint32_t num) {
   return reg_[num];
 }
 
-void RiscvCpu::SetCsr(uint32_t index, uint32_t value) {
+void RiscvCpu::SetCsr(uint32_t index, uint64_t value) {
   csrs_[index] = value;
 }
 
-uint32_t RiscvCpu::ReadCsr(uint32_t index) {
+uint64_t RiscvCpu::ReadCsr(uint32_t index) {
   return csrs_[index];
 }
 

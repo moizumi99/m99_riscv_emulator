@@ -51,10 +51,10 @@ T BitShift(T val, int width, int offset, int distpos){
 }
 
 template<class T>
-T bitcrop(T val, int width, int offset){
-  val >>= offset;
-  val &= mask[width];
-  return val;
+T bitcrop(const T& val, const int width, const int offset) {
+  T target_bits = val >> offset;
+  target_bits &= mask[width];
+  return target_bits;
 }
 
 template<class T>

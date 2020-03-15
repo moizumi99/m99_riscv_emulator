@@ -310,7 +310,9 @@ int main(int argc, char *argv[]) {
   cpu.SetRegister(GP, global_pointer);
   SetDefaultMmuTable(mmu_level1, mmu_level0, memory);
   // Enable paging by setting mode (31st bit).
-  uint32_t satp = (mmu_level1 >> 12) | (1 << 31);
+  // uint32_t satp = (mmu_level1 >> 12) | (1 << 31);
+  // Don't use SATP.
+  uint64_t satp = 0;
   cpu.SetCsr(SATP, satp);
   cpu.SetMemory(memory);
   cpu.SetWorkMemory(kTop, kBottom);
