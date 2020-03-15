@@ -30,8 +30,8 @@ void IType::SetValue(uint32_t value) {
   opcode = bitcrop(value, 7, 0);
   funct3 = bitcrop(value, 3, 12);
   imm12 = GetImm12(value);
-  // For SLLI, SRLI, SRAI, only the lower 6 bits are relevant.
-  if (opcode == OPCODE_ARITHLOG_I && (funct3 == FUNC3_SR || funct3 == FUNC3_SL)) {
+  // For SLLIW, SRLIW, SRAIW, only the lower 6 bits are relevant.
+  if ((opcode == OPCODE_ARITHLOG_I || opcode == OPCODE_ARITHLOG_I64) && (funct3 == FUNC3_SR || funct3 == FUNC3_SL)) {
     imm12 &= 0b0111111;
   }
   rs1 = bitcrop(value, 5, 15);

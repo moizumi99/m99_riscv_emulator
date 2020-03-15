@@ -250,11 +250,12 @@ void print_error_result(std::string &cmdname, int num_test, bool error,
 bool test_r_type(bool verbose = false) {
   enum TEST_LIST {
     TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU, TEST_MRET,
+    TEST_SLLW, TEST_SRAW, TEST_SRLW, TEST_SUBW, TEST_ADDW
   };
   bool total_error = false;
 
   TEST_LIST test_set[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
-                          TEST_SLTU, TEST_MRET};
+                          TEST_SLTU, TEST_MRET, TEST_SLLW, TEST_SRAW, TEST_SRLW, TEST_SUBW, TEST_ADDW};
   for (TEST_LIST testcase : test_set) {
     bool error = false;
     uint32_t base;
@@ -264,9 +265,17 @@ bool test_r_type(bool verbose = false) {
         base = 0b00000000000000000000000000110011;
         cmdname = "ADD";
         break;
+      case TEST_ADDW:
+        base = 0b00000000000000000000000000111011;
+        cmdname = "ADDW";
+        break;
       case TEST_SUB:
         base = 0b01000000000000000000000000110011;
         cmdname = "SUB";
+        break;
+      case TEST_SUBW:
+        base = 0b01000000000000000000000000111011;
+        cmdname = "SUBW";
         break;
       case TEST_AND:
         base = 0b00000000000000000111000000110011;
@@ -284,13 +293,25 @@ bool test_r_type(bool verbose = false) {
         base = 0b00000000000000000001000000110011;
         cmdname = "SLL";
         break;
+      case TEST_SLLW:
+        base = 0b00000000000000000001000000111011;
+        cmdname = "SLLW";
+        break;
       case TEST_SRL:
         base = 0b00000000000000000101000000110011;
+        cmdname = "SRL";
+        break;
+      case TEST_SRLW:
+        base = 0b00000000000000000101000000111011;
         cmdname = "SRL";
         break;
       case TEST_SRA:
         base = 0b01000000000000000101000000110011;
         cmdname = "SRA";
+        break;
+      case TEST_SRAW:
+        base = 0b01000000000000000101000000111011;
+        cmdname = "SRAW";
         break;
       case TEST_SLT:
         base = 0b00000000000000000010000000110011;
@@ -322,8 +343,14 @@ bool test_r_type(bool verbose = false) {
         case TEST_ADD:
           cmd = AsmAdd(rd, rs1, rs2);
           break;
+        case TEST_ADDW:
+          cmd = AsmAddw(rd, rs1, rs2);
+          break;
         case TEST_SUB:
           cmd = AsmSub(rd, rs1, rs2);
+          break;
+        case TEST_SUBW:
+          cmd = AsmSubw(rd, rs1, rs2);
           break;
         case TEST_AND:
           cmd = AsmAnd(rd, rs1, rs2);
@@ -337,11 +364,20 @@ bool test_r_type(bool verbose = false) {
         case TEST_SLL:
           cmd = AsmSll(rd, rs1, rs2);
           break;
+        case TEST_SLLW:
+          cmd = AsmSllw(rd, rs1, rs2);
+          break;
         case TEST_SRL:
           cmd = AsmSrl(rd, rs1, rs2);
           break;
+        case TEST_SRLW:
+          cmd = AsmSrlw(rd, rs1, rs2);
+          break;
         case TEST_SRA:
           cmd = AsmSra(rd, rs1, rs2);
+          break;
+        case TEST_SRAW:
+          cmd = AsmSraw(rd, rs1, rs2);
           break;
         case TEST_SLT:
           cmd = AsmSlt(rd, rs1, rs2);
@@ -375,6 +411,7 @@ bool test_i_type(bool verbose = false) {
     TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW,
     TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLTI, TEST_SLTIU, TEST_EBREAK, TEST_ECALL,
     TEST_CSRRC, TEST_CSRRCI, TEST_CSRRS, TEST_CSRRSI, TEST_CSRRW, TEST_CSRRWI, TEST_FENCE, TEST_FENCEI,
+    TEST_ADDIW, TEST_LD, TEST_LWU, TEST_SLLIW, TEST_SRAIW, TEST_SRLIW
   };
   bool total_error = false;
   TEST_LIST test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB, TEST_LBU, TEST_LH, TEST_LHU,
@@ -382,6 +419,7 @@ bool test_i_type(bool verbose = false) {
                           TEST_EBREAK, TEST_ECALL,
                           TEST_CSRRC, TEST_CSRRCI, TEST_CSRRS, TEST_CSRRSI, TEST_CSRRW, TEST_CSRRWI,
                           TEST_FENCE, TEST_FENCEI,
+                          TEST_ADDIW, TEST_LD, TEST_LWU, TEST_SLLIW, TEST_SRAIW, TEST_SRLIW
                           };
   for (TEST_LIST test_case : test_set) {
     bool error = false;
@@ -392,17 +430,33 @@ bool test_i_type(bool verbose = false) {
         base = 0b00000000000000000000000000010011;
         cmdname = "ADDI";
         break;
+      case TEST_ADDIW:
+        base = 0b00000000000000000000000000011011;
+        cmdname = "ADDIW";
+        break;
       case TEST_SLLI:
         base = 0b00000000000000000001000000010011;
         cmdname = "SLLI";
+        break;
+      case TEST_SLLIW:
+        base = 0b00000000000000000001000000011011;
+        cmdname = "SLLIW";
         break;
       case TEST_SRLI:
         base = 0b00000000000000000101000000010011;
         cmdname = "SRLI";
         break;
+      case TEST_SRLIW:
+        base = 0b00000000000000000101000000011011;
+        cmdname = "SRLIW";
+        break;
       case TEST_SRAI:
         base = 0b01000000000000000101000000010011;
         cmdname = "SRAI";
+        break;
+      case TEST_SRAIW:
+        base = 0b01000000000000000101000000011011;
+        cmdname = "SRAIW";
         break;
       case TEST_ANDI:
         base = 0b00000000000000000111000000010011;
@@ -443,6 +497,14 @@ bool test_i_type(bool verbose = false) {
       case TEST_LW:
         base = 0b00000000000000000010000000000011;
         cmdname = "LW";
+        break;
+      case TEST_LD:
+        base = 0b00000000000000000011000000000011;
+        cmdname = "LD";
+        break;
+      case TEST_LWU:
+        base = 0b00000000000000000110000000000011;
+        cmdname = "LD";
         break;
       case TEST_JALR:
         base = 0b00000000000000000000000001100111;
@@ -505,6 +567,9 @@ bool test_i_type(bool verbose = false) {
         case TEST_ADDI:
           cmd = AsmAddi(rd, rs1, imm12);
           break;
+        case TEST_ADDIW:
+          cmd = AsmAddiw(rd, rs1, imm12);
+          break;
         case TEST_ANDI:
           cmd = AsmAndi(rd, rs1, imm12);
           break;
@@ -519,13 +584,28 @@ bool test_i_type(bool verbose = false) {
           // SLLI immediate is 6 bit.
           imm12 &= 0b0111111;
           break;
+        case TEST_SLLIW:
+          cmd = AsmSlliw(rd, rs1, imm12);
+          // SLLI immediate is 6 bit.
+          imm12 &= 0b0111111;
+          break;
         case TEST_SRLI:
           cmd = AsmSrli(rd, rs1, imm12);
           // SRLI immediate is 6 bit.
           imm12 &= 0b0111111;
           break;
+        case TEST_SRLIW:
+          cmd = AsmSrliw(rd, rs1, imm12);
+          // SRLI immediate is 6 bit.
+          imm12 &= 0b0111111;
+          break;
         case TEST_SRAI:
           cmd = AsmSrai(rd, rs1, imm12);
+          // SRAI immediate is 6 bit.
+          imm12 &= 0b0111111;
+          break;
+        case TEST_SRAIW:
+          cmd = AsmSraiw(rd, rs1, imm12);
           // SRAI immediate is 6 bit.
           imm12 &= 0b0111111;
           break;
@@ -549,6 +629,12 @@ bool test_i_type(bool verbose = false) {
           break;
         case TEST_LW:
           cmd = AsmLw(rd, rs1, imm12);
+          break;
+        case TEST_LD:
+          cmd = AsmLd(rd, rs1, imm12);
+          break;
+        case TEST_LWU:
+          cmd = AsmLwu(rd, rs1, imm12);
           break;
         case TEST_JALR:
           cmd = AsmJalr(rd, rs1, imm12);
@@ -741,11 +827,11 @@ bool test_j_type(bool verbose = false) {
 
 bool test_s_type(bool verbose = false) {
   enum TEST_LIST {
-    TEST_SW, TEST_SH, TEST_SB
+    TEST_SW, TEST_SH, TEST_SB, TEST_SD
   };
   bool total_error = false;
 
-  for (TEST_LIST testcase : {TEST_SW, TEST_SH, TEST_SB}) {
+  for (TEST_LIST testcase : {TEST_SW, TEST_SH, TEST_SB, TEST_SD}) {
     bool error = false;
     uint32_t base;
     std::string cmdname;
@@ -761,6 +847,10 @@ bool test_s_type(bool verbose = false) {
       case TEST_SB:
         base = 0b00000000000000000000000000100011;
         cmdname = "SB";
+        break;
+      case TEST_SD:
+        base = 0b00000000000000000011000000100011;
+        cmdname = "SD";
         break;
       default:
         printf("Test case is not defined yet\n");
@@ -784,6 +874,9 @@ bool test_s_type(bool verbose = false) {
           break;
         case TEST_SB:
           cmd = AsmSb(rs1, rs2, imm12);
+          break;
+        case TEST_SD:
+          cmd = AsmSd(rs1, rs2, imm12);
           break;
         default:
           break;

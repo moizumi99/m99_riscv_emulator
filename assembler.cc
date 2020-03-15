@@ -16,10 +16,32 @@ uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   return cmd.GetValue();
 }
 
+uint32_t AsmAddw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_NORM;
+  cmd.opcode = OPCODE_ARITHLOG_64;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_ADDSUB;
+  return cmd.GetValue();
+}
+
 uint32_t AsmSub(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   RType cmd;
   cmd.funct7 = FUNC_ALT;
   cmd.opcode = OPCODE_ARITHLOG;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_ADDSUB;
+  return cmd.GetValue();
+}
+
+uint32_t AsmSubw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_ALT;
+  cmd.opcode = OPCODE_ARITHLOG_64;
   cmd.rs2 = rs2;
   cmd.rs1 = rs1;
   cmd.rd = rd;
@@ -71,6 +93,17 @@ uint32_t AsmSll(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   return cmd.GetValue();
 }
 
+uint32_t AsmSllw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_NORM;
+  cmd.opcode = OPCODE_ARITHLOG_64;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_SL;
+  return cmd.GetValue();
+}
+
 uint32_t AsmSrl(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   RType cmd;
   cmd.funct7 = FUNC_NORM;
@@ -82,10 +115,32 @@ uint32_t AsmSrl(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   return cmd.GetValue();
 }
 
+uint32_t AsmSrlw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_NORM;
+  cmd.opcode = OPCODE_ARITHLOG_64;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_SR;
+  return cmd.GetValue();
+}
+
 uint32_t AsmSra(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   RType cmd;
   cmd.funct7 = FUNC_ALT;
   cmd.opcode = OPCODE_ARITHLOG;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_SR;
+  return cmd.GetValue();
+}
+
+uint32_t AsmSraw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_ALT;
+  cmd.opcode = OPCODE_ARITHLOG_64;
   cmd.rs2 = rs2;
   cmd.rs1 = rs1;
   cmd.rd = rd;
@@ -137,6 +192,16 @@ uint32_t AsmAddi(uint32_t rd, uint32_t rs1, int32_t imm12) {
   return cmd.GetValue();
 }
 
+uint32_t AsmAddiw(uint32_t rd, uint32_t rs1, int32_t imm12) {
+  IType cmd;
+  cmd.imm12 = imm12 & 0xFFF;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.opcode = OPCODE_ARITHLOG_I64;
+  cmd.funct3 = FUNC3_ADDSUB;
+  return cmd.GetValue();
+}
+
 uint32_t AsmAndi(uint32_t rd, uint32_t rs1, int32_t imm12) {
   IType cmd;
   cmd.imm12 = imm12 & 0xFFF;
@@ -179,6 +244,18 @@ uint32_t AsmSlli(uint32_t rd, uint32_t rs1, int32_t imm12) {
   return cmd.GetValue();
 }
 
+uint32_t AsmSlliw(uint32_t rd, uint32_t rs1, int32_t imm12) {
+  IType cmd;
+  // SLLI immediate is 6 bit wide.
+  imm12 &= 0b0111111;
+  cmd.imm12 = imm12 & 0b0111111;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.opcode = OPCODE_ARITHLOG_I64;
+  cmd.funct3 = FUNC3_SL;
+  return cmd.GetValue();
+}
+
 uint32_t AsmSrli(uint32_t rd, uint32_t rs1, int32_t imm12) {
   IType cmd;
   // SRLI immediate is 6 bit wide.
@@ -186,6 +263,17 @@ uint32_t AsmSrli(uint32_t rd, uint32_t rs1, int32_t imm12) {
   cmd.rd = rd;
   cmd.rs1 = rs1;
   cmd.opcode = OPCODE_ARITHLOG_I;
+  cmd.funct3 = FUNC3_SR;
+  return cmd.GetValue();
+}
+
+uint32_t AsmSrliw(uint32_t rd, uint32_t rs1, int32_t imm12) {
+  IType cmd;
+  // SRLI immediate is 6 bit wide.
+  cmd.imm12 = imm12 & 0b0111111;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.opcode = OPCODE_ARITHLOG_I64;
   cmd.funct3 = FUNC3_SR;
   return cmd.GetValue();
 }
@@ -200,6 +288,20 @@ uint32_t AsmSrai(uint32_t rd, uint32_t rs1, int32_t imm12) {
   cmd.rd = rd;
   cmd.rs1 = rs1;
   cmd.opcode = OPCODE_ARITHLOG_I;
+  cmd.funct3 = FUNC3_SR;
+  return cmd.GetValue();
+}
+
+uint32_t AsmSraiw(uint32_t rd, uint32_t rs1, int32_t imm12) {
+  IType cmd;
+  // SRAIW immediate is 6 bit wide.
+  imm12 &= 0b0111111;
+  // SRAIW imm12 top 6 bit is same as funct7
+  imm12 |= (FUNC_ALT >> 1) << 6;
+  cmd.imm12 = imm12;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.opcode = OPCODE_ARITHLOG_I64;
   cmd.funct3 = FUNC3_SR;
   return cmd.GetValue();
 }
@@ -387,6 +489,26 @@ uint32_t AsmLw(uint32_t rd, uint32_t rs1, int32_t offset12) {
   return cmd.GetValue();
 }
 
+uint32_t AsmLd(uint32_t rd, uint32_t rs1, int32_t offset12) {
+  IType cmd;
+  cmd.opcode = OPCODE_LD;
+  cmd.funct3 = FUNC3_LSD;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.imm12 = offset12;
+  return cmd.GetValue();
+}
+
+uint32_t AsmLwu(uint32_t rd, uint32_t rs1, int32_t offset12) {
+  IType cmd;
+  cmd.opcode = OPCODE_LD;
+  cmd.funct3 = FUNC3_LSWU;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.imm12 = offset12;
+  return cmd.GetValue();
+}
+
 // B TYPE
 uint32_t AsmBeq(uint32_t rs1, uint32_t rs2, int32_t offset13) {
   BType cmd;
@@ -482,6 +604,16 @@ uint32_t AsmSb(uint32_t rs1, uint32_t rs2, int32_t offset12) {
   SType cmd;
   cmd.opcode = OPCODE_S;
   cmd.funct3 = FUNC3_LSB;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.imm12 = offset12;
+  return cmd.GetValue();
+}
+
+uint32_t AsmSd(uint32_t rs1, uint32_t rs2, int32_t offset12) {
+  SType cmd;
+  cmd.opcode = OPCODE_S;
+  cmd.funct3 = FUNC3_LSD;
   cmd.rs2 = rs2;
   cmd.rs1 = rs1;
   cmd.imm12 = offset12;

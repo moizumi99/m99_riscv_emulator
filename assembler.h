@@ -9,7 +9,11 @@ MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd);
 
 uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
+uint32_t AsmAddw(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
 uint32_t AsmSub(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmSubw(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
 uint32_t AsmAnd(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
@@ -19,9 +23,15 @@ uint32_t AsmXor(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
 uint32_t AsmSll(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
+uint32_t AsmSllw(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
 uint32_t AsmSrl(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
+uint32_t AsmSrlw(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
 uint32_t AsmSra(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmSraw(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
 uint32_t AsmSlt(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
@@ -31,6 +41,8 @@ uint32_t AsmMret();
 
 uint32_t AsmAddi(uint32_t rd, uint32_t rs1, int32_t imm12);
 
+uint32_t AsmAddiw(uint32_t rd, uint32_t rs1, int32_t imm12);
+
 uint32_t AsmAndi(uint32_t rd, uint32_t rs1, int32_t imm12);
 
 uint32_t AsmOri(uint32_t rd, uint32_t rs1, int32_t imm12);
@@ -39,9 +51,15 @@ uint32_t AsmXori(uint32_t rd, uint32_t rs1, int32_t imm12);
 
 uint32_t AsmSlli(uint32_t rd, uint32_t rs1, int32_t imm12);
 
+uint32_t AsmSlliw(uint32_t rd, uint32_t rs1, int32_t imm12);
+
 uint32_t AsmSrli(uint32_t rd, uint32_t rs1, int32_t imm12);
 
+uint32_t AsmSrliw(uint32_t rd, uint32_t rs1, int32_t imm12);
+
 uint32_t AsmSrai(uint32_t rd, uint32_t rs1, int32_t imm12);
+
+uint32_t AsmSraiw(uint32_t rd, uint32_t rs1, int32_t imm12);
 
 uint32_t AsmSlti(uint32_t rd, uint32_t rs1, int32_t imm12);
 
@@ -71,11 +89,17 @@ uint32_t AsmLhu(uint32_t rd, uint32_t rs1, int32_t offset12);
 
 uint32_t AsmLw(uint32_t rd, uint32_t rs1, int32_t offset12);
 
+uint32_t AsmLd(uint32_t rd, uint32_t rs1, int32_t offset12);
+
+uint32_t AsmLwu(uint32_t rd, uint32_t rs1, int32_t offset12);
+
 uint32_t AsmSw(uint32_t rs1, uint32_t rs2, int32_t offset12);
 
 uint32_t AsmSh(uint32_t rs1, uint32_t rs2, int32_t offset12);
 
 uint32_t AsmSb(uint32_t rs1, uint32_t rs2, int32_t offset12);
+
+uint32_t AsmSd(uint32_t rs1, uint32_t rs2, int32_t offset12);
 
 uint32_t AsmJalr(uint32_t rd, uint32_t rs1, int32_t offset12);
 
