@@ -37,7 +37,7 @@ private:
   uint64_t pc_;
   uint8_t privilege_ = MACHINE_LEVEL;
   std::shared_ptr<MemoryWrapper> memory_;
-  std::vector<uint32_t> csrs_;
+  std::vector<uint64_t> csrs_;
   uint32_t LoadCmd(uint32_t pc);
   uint32_t GetCode(uint32_t ir);
   std::pair<bool, bool> SystemCall();
@@ -47,7 +47,7 @@ private:
   bool page_fault_ = false;
   bool prev_page_fault_ = false;
   bool error_flag_, end_flag_;
-  inline bool CheckShiftSign(bool x, const std::string &message_str);
+  inline bool CheckShiftSign(uint8_t shamt, uint8_t instruction, const std::string &message_str);
 
   // Below are for system call emulation
 public:
@@ -193,22 +193,31 @@ enum op_funct3 {
 enum instruction {
   INST_ERROR,
   INST_ADD,
+  INST_ADDW,
   INST_AND,
   INST_SUB,
+  INST_SUBW,
   INST_OR,
   INST_XOR,
   INST_SLL,
+  INST_SLLW,
   INST_SRL,
+  INST_SRLW,
   INST_SRA,
+  INST_SRAW,
   INST_SLT,
   INST_SLTU,
   INST_ADDI,
+  INST_ADDIW,
   INST_ANDI,
   INST_ORI,
   INST_XORI,
   INST_SLLI,
+  INST_SLLIW,
   INST_SRLI,
+  INST_SRLIW,
   INST_SRAI,
+  INST_SRAIW,
   INST_SLTI,
   INST_SLTIU,
   INST_BEQ,
@@ -224,9 +233,12 @@ enum instruction {
   INST_LH,
   INST_LHU,
   INST_LW,
-  INST_SW,
-  INST_SH,
+  INST_LWU,
+  INST_LD,
   INST_SB,
+  INST_SH,
+  INST_SW,
+  INST_SD,
   INST_LUI,
   INST_AUIPC,
   INST_SYSTEM,

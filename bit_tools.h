@@ -67,4 +67,6 @@ T SignExtend(T value, int width){
   return value;
 }
 
+constexpr uint64_t BitMask(int width);
+
 #endif // BIT_TOOLS_H

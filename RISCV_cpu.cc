@@ -84,10 +84,12 @@ uint64_t RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access
 }
 
 // A helper function to record shift sign error.
-bool RiscvCpu::CheckShiftSign(bool x, const std::string &message_str) {
-  if (kXlen == 32 && !x) {
-    std::cerr << message_str << " Shift sign error." << std::endl;
-    return true;
+bool RiscvCpu::CheckShiftSign(uint8_t shamt, uint8_t instruction, const std::string &message_str) {
+  if (kXlen == 32 || instruction == INST_SLLIW || instruction == INST_SRAIW || instruction == INST_SRLIW) {
+    if (shamt >> 5) {
+      std::cerr << message_str << " Shift value (shamt) error. shamt = " << static_cast<int>(shamt) << std::endl;
+      return true;
+    }
   }
   return false;
 }
@@ -142,13 +144,13 @@ void RiscvCpu::StoreWd(uint64_t virtual_address, uint64_t data, int width) {
   uint64_t physical_address = VirtualToPhysical(virtual_address, true);
   switch (width) {
     case 64:
-      mem[physical_address + 4] = (data >> 32) & 0xFF;
-      mem[physical_address + 5] = (data >> 40) & 0xFF;
-      mem[physical_address + 6] = (data >> 48) & 0xFF;
       mem[physical_address + 7] = (data >> 56) & 0xFF;
-    case 32:
-      mem[physical_address + 2] = (data >> 16) & 0xFF;
+      mem[physical_address + 6] = (data >> 48) & 0xFF;
+      mem[physical_address + 5] = (data >> 40) & 0xFF;
+      mem[physical_address + 4] = (data >> 32) & 0xFF;
+   case 32:
       mem[physical_address + 3] = (data >> 24) & 0xFF;
+      mem[physical_address + 2] = (data >> 16) & 0xFF;
     case 16:
       mem[physical_address + 1] = (data >> 8) & 0xFF;
     case 8:
@@ -242,15 +244,31 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
 
     constexpr uint32_t kShiftMask = kXlen == 64 ? 0b0111111 : 0b0011111;
     switch (instruction) {
-      uint32_t t;
+      uint64_t t;
+      uint64_t temp64;
       case INST_ADD:
         reg_[rd] = reg_[rs1] + reg_[rs2];
+        break;
+      case INST_ADDW:
+        assert(kXlen == 64);
+        temp64 = (reg_[rs1] + reg_[rs2]) & 0xFFFFFFFF;
+        if (temp64 >> 31) {
+          temp64 |= 0xFFFFFFFF00000000;
+        }
+        reg_[rd] = temp64;
         break;
       case INST_AND:
         reg_[rd] = reg_[rs1] & reg_[rs2];
         break;
       case INST_SUB:
         reg_[rd] = reg_[rs1] - reg_[rs2];
+        break;
+      case INST_SUBW:
+        temp64 = (reg_[rs1] - reg_[rs2]) & 0xFFFFFFFF;
+        if (temp64 >> 31) {
+          temp64 |= 0xFFFFFFFF00000000;
+        }
+        reg_[rd] = temp64;
         break;
       case INST_OR:
         reg_[rd] = reg_[rs1] | reg_[rs2];
@@ -261,11 +279,28 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_SLL:
         reg_[rd] = reg_[rs1] << (reg_[rs2] & kShiftMask);
         break;
+      case INST_SLLW:
+        temp64 = (reg_[rs1] << (reg_[rs2] & 0b011111)) & 0x0FFFFFFFF;
+        if (temp64 >> 31) {
+          temp64 |= 0xFFFFFFFF00000000;
+        }
+        reg_[rd] = temp64;
+        break;
       case INST_SRL:
         reg_[rd] = reg_[rs1] >> (reg_[rs2] & kShiftMask);
         break;
+      case INST_SRLW:
+        temp64 = (reg_[rs1] & 0xFFFFFFFF) >> (reg_[rs2] & 0b011111);
+        if (temp64 >> 31) {
+          temp64 |= 0xFFFFFFFF00000000;
+        }
+        reg_[rd] = temp64;
+        break;
       case INST_SRA:
         reg_[rd] = static_cast<int64_t>(reg_[rs1]) >> (reg_[rs2] & kShiftMask);
+        break;
+      case INST_SRAW:
+        reg_[rd] = static_cast<int32_t>(reg_[rs1]) >> (reg_[rs2] & 0b011111);
         break;
       case INST_SLT:
         reg_[rd] = (static_cast<int64_t>(reg_[rs1]) < static_cast<int64_t>(reg_[rs2])) ? 1 : 0;
@@ -275,6 +310,15 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         break;
       case INST_ADDI:
         reg_[rd] = reg_[rs1] + imm12;
+        break;
+      case INST_ADDIW:
+        // Add instruction set check.
+        assert(kXlen == 64);
+        temp64 = (reg_[rs1] + imm12) & 0xFFFFFFFF;
+        if (temp64 >> 31) {
+          temp64 |= 0xFFFFFFFF00000000;
+        }
+        reg_[rd] = temp64;
         break;
       case INST_ANDI:
         reg_[rd] = reg_[rs1] & imm12;
@@ -287,15 +331,31 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         break;
       case INST_SLLI:
         reg_[rd] = reg_[rs1] << shamt;
-        CheckShiftSign((shamt >> 5 & 1) == 0, "SLLI");
+        CheckShiftSign(shamt, instruction, "SLLI");
+        break;
+      case INST_SLLIW:
+        temp64 = (reg_[rs1] << shamt) & 0xFFFFFFFF;
+        if (temp64 >> 31) {
+          temp64 |= 0xFFFFFFFF00000000;
+        }
+        reg_[rd] = temp64;
+        CheckShiftSign(shamt, instruction, "SLLIW");
         break;
       case INST_SRLI:
         reg_[rd] = reg_[rs1] >> shamt;
-        CheckShiftSign((shamt >> 5 & 1) == 0, "SRLI");
+        CheckShiftSign(shamt, instruction, "SRLI");
+        break;
+      case INST_SRLIW:
+        reg_[rd] = (reg_[rs1] & 0xFFFFFFFF) >> shamt;
+        CheckShiftSign(shamt, instruction, "SRLIW");
         break;
       case INST_SRAI:
+        reg_[rd] = static_cast<int64_t>(reg_[rs1]) >> shamt;
+        CheckShiftSign(shamt, instruction, "SRAI");
+        break;
+      case INST_SRAIW:
         reg_[rd] = static_cast<int32_t>(reg_[rs1]) >> shamt;
-        CheckShiftSign((shamt >> 5 & 1) == 0, "SRAI");
+        CheckShiftSign(shamt, instruction, "SRAI");
         break;
       case INST_SLTI:
         reg_[rd] = static_cast<int64_t>(reg_[rs1]) < imm12 ? 1 : 0;
@@ -367,17 +427,29 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         address = reg_[rs1] + imm12;
         reg_[rd] = SignExtend(LoadWd(address), 32);
         break;
-      case INST_SW:
-        address = reg_[rs1] + imm12_stype;
-        StoreWd(address, reg_[rs2]);
+      case INST_LWU:
+        address = reg_[rs1] + imm12;
+        reg_[rd] = LoadWd(address);
         break;
-      case INST_SH:
-        address = reg_[rs1] + imm12_stype;
-        StoreWd(address, reg_[rs2], 16);
+      case INST_LD:
+        address = reg_[rs1] + imm12;
+        reg_[rd] = LoadWd(address, 64);
         break;
       case INST_SB:
         address = reg_[rs1] + imm12_stype;
         StoreWd(address, reg_[rs2], 8);
+        break;
+     case INST_SH:
+        address = reg_[rs1] + imm12_stype;
+        StoreWd(address, reg_[rs2], 16);
+        break;
+      case INST_SW:
+        address = reg_[rs1] + imm12_stype;
+        StoreWd(address, reg_[rs2], 32);
+        break;
+      case INST_SD:
+        address = reg_[rs1] + imm12_stype;
+        StoreWd(address, reg_[rs2], 64);
         break;
       case INST_LUI:
         reg_[rd] = imm20 << 12;
@@ -472,13 +544,30 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
       } else if (funct3 == FUNC3_XOR) {
         instruction = INST_XOR;
       } else if (funct3 == FUNC3_SR) {
-        instruction = (funct7 == FUNC_NORM) ? INST_SRL : INST_SRA;
+        if (funct7  == 0b0000000) {
+          instruction = INST_SRL;
+        } else if (funct7 == 0b0100000) {
+          instruction = INST_SRA;
+        }
       } else if (funct3 == FUNC3_SL) {
         instruction = INST_SLL;
       } else if (funct3 == FUNC3_SLT) {
         instruction = INST_SLT;
       } else if (funct3 == FUNC3_SLTU) {
         instruction = INST_SLTU;
+      }
+      break;
+    case OPCODE_ARITHLOG_64:
+      if (funct3 == FUNC3_ADDSUB) {
+        instruction = (funct7 == FUNC_NORM) ? INST_ADDW : INST_SUBW;
+      } else if (funct3 == FUNC3_SL) {
+        instruction = INST_SLLW;
+      } else if (funct3 == FUNC3_SR) {
+        if (funct7  == 0b000000) {
+          instruction = INST_SRLW;
+        } else if (funct7 == 0b0100000) {
+          instruction = INST_SRAW;
+        }
       }
       break;
     case OPCODE_ARITHLOG_I: // ADDI, SUBI
@@ -503,6 +592,19 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
         instruction = INST_SLTI;
       } else if (funct3 == FUNC3_SLTU) {
         instruction = INST_SLTIU;
+      }
+      break;
+    case OPCODE_ARITHLOG_I64:
+      if (funct3 == FUNC3_ADDSUB) {
+        instruction = INST_ADDIW;
+      } else if (funct3 == FUNC3_SL) {
+        instruction = INST_SLLIW;
+      } else if (funct3 == FUNC3_SR) {
+        if ((funct7 >> 1) == 0b000000) {
+          instruction = INST_SRLIW;
+        } else if ((funct7 >> 1) == 0b010000) {
+          instruction = INST_SRAIW;
+        }
       }
       break;
     case OPCODE_B: // beq, bltu, bge, bne
@@ -539,15 +641,21 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
         instruction = INST_LHU;
       } else if (funct3 == FUNC3_LSW) {
         instruction = INST_LW;
+      } else if (funct3 == FUNC3_LSWU) {
+        instruction = INST_LWU;
+      } else if (funct3 == FUNC3_LSD) {
+        instruction = INST_LD;
       }
       break;
     case OPCODE_S: // SW
-      if (funct3 == FUNC3_LSW) {
-        instruction = INST_SW;
+      if (funct3 == FUNC3_LSB) {
+        instruction = INST_SB;
       } else if (funct3 == FUNC3_LSH) {
         instruction = INST_SH;
-      } else if (funct3 == FUNC3_LSB) {
-        instruction = INST_SB;
+      } else if (funct3 == FUNC3_LSW) {
+        instruction = INST_SW;
+      } else if (funct3 == FUNC3_LSD) {
+        instruction = INST_SD;
       }
       break;
     case OPCODE_LUI: // LUI

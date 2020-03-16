@@ -36,7 +36,7 @@ const uint32_t MemoryWrapper::Read32(size_t i) const {
 const uint64_t MemoryWrapper::Read64(size_t i) const {
   uint64_t read_data = 0;
   for (int offset = 0; offset < 8; offset++) {
-    read_data = static_cast<uint64_t>((*this)[i + offset] << (offset * 8));
+    read_data |= static_cast<uint64_t>((*this)[i + offset]) << offset * 8;
   }
   return read_data;
 }
