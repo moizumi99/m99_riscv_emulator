@@ -85,7 +85,7 @@ uint64_t RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access
 
 // A helper function to record shift sign error.
 bool RiscvCpu::CheckShiftSign(uint8_t shamt, uint8_t instruction, const std::string &message_str) {
-  if (kXlen == 32 || instruction == INST_SLLIW || instruction == INST_SRAIW || instruction == INST_SRLIW) {
+  if (xlen == 32 || instruction == INST_SLLIW || instruction == INST_SRAIW || instruction == INST_SRLIW) {
     if (shamt >> 5) {
       std::cerr << message_str << " Shift value (shamt) error. shamt = " << static_cast<int>(shamt) << std::endl;
       return true;
@@ -242,7 +242,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     int32_t imm20 = GetImm20(ir);
     uint32_t address;
 
-    constexpr uint32_t kShiftMask = kXlen == 64 ? 0b0111111 : 0b0011111;
+    uint32_t shift_mask = xlen == 64 ? 0b0111111 : 0b0011111;
     switch (instruction) {
       uint64_t t;
       uint64_t temp64;
@@ -250,7 +250,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         reg_[rd] = reg_[rs1] + reg_[rs2];
         break;
       case INST_ADDW:
-        assert(kXlen == 64);
+        assert(xlen == 64);
         temp64 = (reg_[rs1] + reg_[rs2]) & 0xFFFFFFFF;
         if (temp64 >> 31) {
           temp64 |= 0xFFFFFFFF00000000;
@@ -277,7 +277,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         reg_[rd] = reg_[rs1] ^ reg_[rs2];
         break;
       case INST_SLL:
-        reg_[rd] = reg_[rs1] << (reg_[rs2] & kShiftMask);
+        reg_[rd] = reg_[rs1] << (reg_[rs2] & shift_mask);
         break;
       case INST_SLLW:
         temp64 = (reg_[rs1] << (reg_[rs2] & 0b011111)) & 0x0FFFFFFFF;
@@ -287,7 +287,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         reg_[rd] = temp64;
         break;
       case INST_SRL:
-        reg_[rd] = reg_[rs1] >> (reg_[rs2] & kShiftMask);
+        reg_[rd] = reg_[rs1] >> (reg_[rs2] & shift_mask);
         break;
       case INST_SRLW:
         temp64 = (reg_[rs1] & 0xFFFFFFFF) >> (reg_[rs2] & 0b011111);
@@ -297,7 +297,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         reg_[rd] = temp64;
         break;
       case INST_SRA:
-        reg_[rd] = static_cast<int64_t>(reg_[rs1]) >> (reg_[rs2] & kShiftMask);
+        reg_[rd] = static_cast<int64_t>(reg_[rs1]) >> (reg_[rs2] & shift_mask);
         break;
       case INST_SRAW:
         reg_[rd] = static_cast<int32_t>(reg_[rs1]) >> (reg_[rs2] & 0b011111);
@@ -313,7 +313,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         break;
       case INST_ADDIW:
         // Add instruction set check.
-        assert(kXlen == 64);
+        assert(xlen == 64);
         temp64 = (reg_[rs1] + imm12) & 0xFFFFFFFF;
         if (temp64 >> 31) {
           temp64 |= 0xFFFFFFFF00000000;
@@ -346,7 +346,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         CheckShiftSign(shamt, instruction, "SRLI");
         break;
       case INST_SRLIW:
-        reg_[rd] = (reg_[rs1] & 0xFFFFFFFF) >> shamt;
+        temp64 = (reg_[rs1] & 0xFFFFFFFF) >> shamt;
+        if (temp64 >> 31) {
+          temp64 |= 0xFFFFFFFF00000000;
+        }
+        reg_[rd] = temp64;
         CheckShiftSign(shamt, instruction, "SRLIW");
         break;
       case INST_SRAI:

@@ -8,8 +8,6 @@
 #include "bit_tools.h"
 #include "memory_wrapper.h"
 
-constexpr int kXlen = 64;
-
 enum PrivilegeModes {
   USER_LEVEL = 0,
   SUPERVISOR_LEVEL = 1,
@@ -20,6 +18,7 @@ class RiscvCpu {
   static constexpr int kCsrSize = 4096;
   static constexpr int kRegSize = 32;
   static constexpr int kRegNum = 32;
+  int xlen = 64;
 public:
   RiscvCpu();
   ~RiscvCpu() {};
@@ -31,6 +30,7 @@ public:
   uint64_t ReadCsr(uint32_t index);
   int RunCpu(uint64_t start_pc, bool verbose = true);
   uint64_t VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
+  int GetXlen() {return xlen;}
 
 private:
   uint64_t reg_[kRegSize];

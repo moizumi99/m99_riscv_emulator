@@ -10,6 +10,9 @@
 
 namespace cpu_test {
 
+// CPU address bus width.
+int xlen;
+
 constexpr int kMemSize = 0x0200000;
 std::shared_ptr<MemoryWrapper> memory;
 
@@ -86,7 +89,7 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
   if (rs1 == 0) {
     value = 0;
   }
-  constexpr uint32_t kShiftMask = kXlen == 64 ? 0b0111111 : 0b0011111;
+  uint32_t kShiftMask = xlen == 64 ? 0b0111111 : 0b0011111;
   int32_t temp32;
   switch (test_type) {
     case TEST_ADDI:
@@ -95,7 +98,7 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
       test_case = "ADDI";
       break;
     case TEST_ADDIW:
-      assert(kXlen == 64);
+      assert(xlen == 64);
       AddCmd(pointer, AsmAddiw(rd, rs1, imm12));
       expected = value + SignExtend(imm12 & 0xFFF, 12);
       expected = SignExtend(expected & 0xFFFFFFFF, 32);
@@ -139,6 +142,7 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
       imm12 = imm12 & 0b011111;
       AddCmd(pointer, AsmSrliw(rd, rs1, imm12));
       expected = static_cast<uint64_t>(value & 0xFFFFFFFF) >> imm12;
+      expected = SignExtend(expected, 32);
       test_case = "SRLIW";
       break;
    case TEST_SRAI:
@@ -272,7 +276,7 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t v
   if (rs1 == rs2) {
     value1 = value2;
   }
-  constexpr uint32_t kShiftMask = kXlen == 64 ? 0b0111111 : 0b0011111;
+  uint32_t kShiftMask = xlen == 64 ? 0b0111111 : 0b0011111;
   switch (test_type) {
     case TEST_ADD:
       AddCmd(pointer, AsmAdd(rd, rs1, rs2));
@@ -551,7 +555,7 @@ bool TestLoad(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0, 
       expected = SignExtend(expected, 32);
       break;
     case TEST_LWU:
-      assert(kXlen == 64);
+      assert(xlen == 64);
       AddCmd(pointer, AsmLwu(rd, rs1, offset1));
       expected = val & 0xFFFFFFFF;
       break;
@@ -1074,8 +1078,10 @@ bool TestSortQuiet(bool verbose) {
 
 bool RunTest() {
 
-  bool verbose = true;
+  // CPU address bus width.
+  xlen = 64;
 
+  bool verbose = true;
   bool error = false;
   InitRandom();
 
