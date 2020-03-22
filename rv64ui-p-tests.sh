@@ -55,7 +55,7 @@ test_list=(
 emulater="./RISCV_Emulator"
 for test in "${test_list[@]}"; do
   echo -n "Run ${test} test: "
-  $(eval "${emulater} ${test} 2> /dev/null")
+  $(eval "${emulater} -64 ${test} 2> /dev/null")
   exit_status=$?
   if [[ ${exit_status} -eq 0 ]]; then
     echo "Pass"

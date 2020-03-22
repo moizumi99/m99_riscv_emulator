@@ -386,9 +386,10 @@ uint64_t GetEntryPoint(std::vector<uint8_t> &program) {
   }
 }
 
-std::tuple<bool, std::string, bool> ParseCmd(int argc, char (***argv)) {
+std::tuple<bool, std::string, bool, bool> ParseCmd(int argc, char (***argv)) {
   bool error = false;
   bool verbose = false;
+  bool address64bit = false;
   std::string filename = "";
   if (argc < 2) {
     error = true;
@@ -397,6 +398,8 @@ std::tuple<bool, std::string, bool> ParseCmd(int argc, char (***argv)) {
       if ((*argv)[i][0] == '-') {
         if ((*argv)[i][1] == 'v') {
           verbose = true;
+        } else if ((*argv)[i][1] == '6' && (*argv)[i][2] == '4') {
+          address64bit = true;
         }
       } else {
         if (filename == "") {
@@ -407,14 +410,16 @@ std::tuple<bool, std::string, bool> ParseCmd(int argc, char (***argv)) {
       }
     }
   }
-  return std::make_tuple(error, filename, verbose);
+  return std::make_tuple(error, filename, verbose, address64bit);
 }
 
 constexpr int kMmuLevelOneSize = 1024; // 1024 x 4 B = 4 KiB.
 constexpr int kMmuLevelZeroSize = 1024; // 1024 x 4 B = 4 KiB.
 constexpr int kPteSize = 4;
 
+// TODO: Add Sv39.
 void SetDefaultMmuTable(uint32_t level1, uint32_t level0, std::shared_ptr<MemoryWrapper> memory) {
+  // Sv32. Physical address = virtual address.
   // Level1.
   Pte pte(0);
   pte.SetV(1);
@@ -445,10 +450,10 @@ void SetDefaultMmuTable(uint32_t level1, uint32_t level0, std::shared_ptr<Memory
 }
 
 int main(int argc, char *argv[]) {
-  bool cmdline_error, verbose;
+  bool cmdline_error, verbose, address64bit;
   std::string filename;
 
-  std::tie(cmdline_error, filename, verbose) = ParseCmd(argc, &argv);
+  std::tie(cmdline_error, filename, verbose, address64bit) = ParseCmd(argc, &argv);
 
   if (cmdline_error) {
     std::cerr << "Uasge: "  << argv[0] << " elf_file" << "[-v]" << std::endl;
@@ -479,7 +484,7 @@ int main(int argc, char *argv[]) {
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
 
-  RiscvCpu cpu;
+  RiscvCpu cpu(address64bit);
   cpu.SetRegister(SP, sp_value);
   cpu.SetRegister(GP, global_pointer);
   SetDefaultMmuTable(mmu_level1, mmu_level0, memory);

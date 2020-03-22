@@ -20,6 +20,7 @@ class RiscvCpu {
   static constexpr int kRegNum = 32;
   int xlen = 64;
 public:
+  RiscvCpu(bool en64bit);
   RiscvCpu();
   ~RiscvCpu() {};
 

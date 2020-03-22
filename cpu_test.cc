@@ -11,6 +11,7 @@
 namespace cpu_test {
 
 // CPU address bus width.
+bool en_64_bit = true;
 int xlen;
 
 constexpr int kMemSize = 0x0200000;
@@ -75,11 +76,15 @@ enum ITYPE_TEST {
 };
 
 bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int32_t imm12, bool verbose) {
+  if (!en_64_bit &&
+      (test_type == TEST_ADDIW || test_type == TEST_SLLIW || test_type == TEST_SRAIW || test_type == TEST_SRLIW)) {
+    return false;
+  }
   int64_t expected;
   std::string test_case = "";
 
   // CPU is instantiated here because some tests need access to cpu register.
-  RiscvCpu cpu;
+  RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   auto pointer = memory->begin();
   uint32_t val20, val12;
@@ -89,7 +94,7 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
   if (rs1 == 0) {
     value = 0;
   }
-  uint32_t kShiftMask = xlen == 64 ? 0b0111111 : 0b0011111;
+  uint32_t shift_mask = xlen == 64 ? 0b0111111 : 0b0011111;
   int32_t temp32;
   switch (test_type) {
     case TEST_ADDI:
@@ -98,7 +103,6 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
       test_case = "ADDI";
       break;
     case TEST_ADDIW:
-      assert(xlen == 64);
       AddCmd(pointer, AsmAddiw(rd, rs1, imm12));
       expected = value + SignExtend(imm12 & 0xFFF, 12);
       expected = SignExtend(expected & 0xFFFFFFFF, 32);
@@ -120,7 +124,7 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
       test_case = "XORI";
       break;
     case TEST_SLLI:
-      imm12 = imm12 & kShiftMask;
+      imm12 = imm12 & shift_mask;
       AddCmd(pointer, AsmSlli(rd, rs1, imm12));
       expected = static_cast<uint64_t>(value) << imm12;
       test_case = "SLLI";
@@ -133,7 +137,7 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
       test_case = "SLLIW";
       break;
     case TEST_SRLI:
-      imm12 = imm12 & kShiftMask;
+      imm12 = imm12 & shift_mask;
       AddCmd(pointer, AsmSrli(rd, rs1, imm12));
       expected = static_cast<uint64_t>(value) >> imm12;
       test_case = "SRLI";
@@ -145,8 +149,8 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
       expected = SignExtend(expected, 32);
       test_case = "SRLIW";
       break;
-   case TEST_SRAI:
-      imm12 = imm12 & kShiftMask;
+    case TEST_SRAI:
+      imm12 = imm12 & shift_mask;
       AddCmd(pointer, AsmSrai(rd, rs1, imm12));
       expected = static_cast<int64_t>(value) >> imm12;
       test_case = "SRAI";
@@ -201,20 +205,20 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value, int
 }
 
 void PrintITypeInstructionMessage(ITYPE_TEST test_case, bool error) {
-  std::map<ITYPE_TEST, const std::string> test_name = {{TEST_ADDI,  "ADDI"},
-                                                       {TEST_ANDI,  "ANDI"},
-                                                       {TEST_ORI,   "ORI"},
-                                                       {TEST_XORI,  "XORI"},
-                                                       {TEST_SLLI,  "SLLI"},
-                                                       {TEST_SRLI,  "SRLI"},
-                                                       {TEST_SRAI,  "SRAI"},
-                                                       {TEST_SLTI,  "SLTI"},
-                                                       {TEST_SLTIU, "SLTIU"},
+  std::map<ITYPE_TEST, const std::string> test_name = {{TEST_ADDI,   "ADDI"},
+                                                       {TEST_ANDI,   "ANDI"},
+                                                       {TEST_ORI,    "ORI"},
+                                                       {TEST_XORI,   "XORI"},
+                                                       {TEST_SLLI,   "SLLI"},
+                                                       {TEST_SRLI,   "SRLI"},
+                                                       {TEST_SRAI,   "SRAI"},
+                                                       {TEST_SLTI,   "SLTI"},
+                                                       {TEST_SLTIU,  "SLTIU"},
                                                        {TEST_EBREAK, "EBREAK"},
-                                                       {TEST_ADDIW, "ADDIW"},
-                                                       {TEST_SLLIW, "SLLIW"},
-                                                       { TEST_SRAIW, "SRAIW"},
-                                                       {TEST_SRLIW, "SRLIW"}
+                                                       {TEST_ADDIW,  "ADDIW"},
+                                                       {TEST_SLLIW,  "SLLIW"},
+                                                       {TEST_SRAIW,  "SRAIW"},
+                                                       {TEST_SRLIW,  "SRLIW"}
   };
   printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
 }
@@ -254,6 +258,12 @@ enum R_TYPE_TEST {
 bool
 TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t value1, int32_t value2,
           bool verbose) {
+  if (!en_64_bit &&
+      (test_type == TEST_ADDW || test_type == TEST_SLLW || test_type == TEST_SRAW || test_type == TEST_SRLW ||
+       test_type == TEST_SUBW)) {
+    return false;
+  }
+
   bool error = false;
   int64_t expected;
   std::string test_case = "";
@@ -376,7 +386,7 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2, int32_t v
   if (rd == 0) {
     expected = 0;
   }
-  RiscvCpu cpu;
+  RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   error = cpu.RunCpu(0, verbose) != 0;
@@ -453,7 +463,7 @@ bool TestAuipc(int32_t rd, int32_t val, int32_t offset, bool verbose) {
   if (rd == 0) {
     expected = 0;
   }
-  RiscvCpu cpu;
+  RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   bool error = cpu.RunCpu(0, verbose) != 0;
@@ -494,7 +504,7 @@ bool TestLui(int32_t val, bool verbose) {
   AddCmd(pointer, AsmJalr(ZERO, RA, 0));
 
   int32_t expected = val & 0xFFFFF000;
-  RiscvCpu cpu;
+  RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   bool error = cpu.RunCpu(0, verbose) != 0;
@@ -530,6 +540,9 @@ enum LOAD_TEST {
 
 bool TestLoad(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0, uint32_t offset1, uint64_t val,
               bool verbose) {
+  if (!en_64_bit && (test_type == TEST_LWU || test_type == TEST_LD)) {
+    return false;
+  }
   bool error = false;
   std::string test_case = "";
 
@@ -592,7 +605,7 @@ bool TestLoad(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0, 
   AddCmd(pointer, AsmJalr(ZERO, RA, 0));
   expected = (rd == ZERO) ? 0 : expected;
 
-  RiscvCpu cpu;
+  RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   error = cpu.RunCpu(0, verbose) != 0;
@@ -617,8 +630,8 @@ void PrintLoadInstructionMessage(LOAD_TEST test_case, bool error, bool verbose =
                                                       {TEST_LHU, "LHU"},
                                                       {TEST_LW,  "LW"},
                                                       {TEST_LWU, "LWU"},
-                                                      {TEST_LD, "LD"},
-                                                      };
+                                                      {TEST_LD,  "LD"},
+  };
   printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
 }
 
@@ -707,7 +720,7 @@ TestStore(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0, ui
   AddCmd(pointer, AsmJalr(ZERO, RA, 0));
   expected = (rs2 == ZERO) ? 0 : expected;
 
-  RiscvCpu cpu;
+  RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   error = cpu.RunCpu(0, verbose) != 0;
@@ -837,7 +850,7 @@ TestBType(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1, ui
   AddCmd(pointer, AsmJalr(ZERO, RA, 0));
 
 
-  RiscvCpu cpu;
+  RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   error = cpu.RunCpu(start_point, verbose) != 0;
@@ -933,13 +946,13 @@ bool TestJalrType(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value, bo
   AddCmd(pointer, AsmXor(RA, RA, RA));
   AddCmd(pointer, AsmJalr(ZERO, RA, 0));
   uint32_t expected = 2;
-  RiscvCpu cpu;
+  RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   bool error = cpu.RunCpu(start_point, verbose) != 0;
   int64_t return_value = static_cast<int64_t>(cpu.ReadRegister(A0));
   error |= return_value != expected;
-  if (rd != 0 && rd != RA && rd!= A0) {
+  if (rd != 0 && rd != RA && rd != A0) {
     uint32_t expect = start_point + 12;
     uint32_t actual = cpu.ReadRegister(rd);
     error |= actual != expect;
@@ -987,7 +1000,7 @@ bool TestSum(bool verbose) {
   auto pointer = memory->begin();
   LoadAssemblerSum(pointer);
   constexpr int kExpectedValue = 55;
-  RiscvCpu cpu;
+  RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
   bool error = cpu.RunCpu(0, verbose) != 0;
@@ -1032,7 +1045,7 @@ bool TestSort(bool verbose) {
     std::cout << std::endl;
   }
 
-  RiscvCpu cpu;
+  RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   cpu.SetRegister(A0, kArrayAddress);
   cpu.SetRegister(A1, kArraySize);
@@ -1079,24 +1092,33 @@ bool TestSortQuiet(bool verbose) {
 bool RunTest() {
 
   // CPU address bus width.
-  xlen = 64;
 
   bool verbose = true;
   bool error = false;
   InitRandom();
 
   MemInit();
-  error |= TestITypeLoop(verbose);
-  error |= TestRTypeLoop(verbose);
-  error |= TestLuiLoop(verbose);
-  error |= TestAuipcLoop(verbose);
-  error |= TestLoadLoop(verbose);
-  error |= TestStoreLoop(verbose);
-  error |= TestBTypeLoop(verbose);
-  error |= TestJalrTypeLoop(verbose);
-  error |= TestSumQuiet(verbose);
-  error |= TestSortQuiet(verbose);
-  // Add test for MRET
+  for (int i = 0; i < 2; i++) {
+    en_64_bit = i == 0 ? false : true;
+    if (en_64_bit) {
+      xlen = 64;
+      std::cout << "64bit test start." << std::endl;
+    } else {
+      xlen = 32;
+      std::cout << "32bit test start." << std::endl;
+    }
+    error |= TestITypeLoop(verbose);
+    error |= TestRTypeLoop(verbose);
+    error |= TestLuiLoop(verbose);
+    error |= TestAuipcLoop(verbose);
+    error |= TestLoadLoop(verbose);
+    error |= TestStoreLoop(verbose);
+    error |= TestBTypeLoop(verbose);
+    error |= TestJalrTypeLoop(verbose);
+    error |= TestSumQuiet(verbose);
+    error |= TestSortQuiet(verbose);
+    // Add test for MRET
+  }
 
   if (error) {
     printf("\nCPU Test failed.\n");

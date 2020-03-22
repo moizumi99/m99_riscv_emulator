@@ -9,12 +9,15 @@
 #include <stdint.h>
 #include <cassert>
 
-RiscvCpu::RiscvCpu() {
+RiscvCpu::RiscvCpu(bool en64bit) : xlen(en64bit ? 64 : 32) {
   for (int i = 0; i < kRegNum; i++) {
     reg_[i] = 0;
   }
   csrs_.resize(kCsrSize, 0);
 }
+
+RiscvCpu::RiscvCpu() : RiscvCpu(false) {}
+
 
 constexpr int kPageSize = 4096;
 constexpr int kMmuLevels = 2;
