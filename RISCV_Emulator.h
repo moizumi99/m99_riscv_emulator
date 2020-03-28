@@ -19,10 +19,15 @@ constexpr uint32_t kTop = 0x80000000;
 constexpr uint32_t kBottom = 0x40000000;
 
 /*
+ * 32 bit MMU table
  * 0xC0000000 - 0xC0100000 : Level 0
  * 0xC0100000 - 0xC0101000 : Level 1
  */
-constexpr uint32_t mmu_level1 = 0xC0000000;
-constexpr uint32_t mmu_level0 = 0xC0001000;
+constexpr uint32_t k32BitMmuLevel1 = 0xC0000000; // Size = 2 ^ 10 x 4B.
+constexpr uint32_t k32BitMmuLevel0 = k32BitMmuLevel1 + (1 << 10) * 4;
+
+constexpr uint64_t k64BitMmuLevel2 = 0xC0000000; // Size = 2 ^ 9 x 8B. Only 4 is valid.
+constexpr uint64_t k64BitMmuLevel1 = k64BitMmuLevel2 + (1 << 9) * 8; // Size = 4 x 2 ^ 9 x 8B.
+constexpr uint64_t k64BitMMuLevel0 = k64BitMmuLevel1 + 4 * (1 << 9) * 8;
 
 #endif // RISCV_EMULATOR_H

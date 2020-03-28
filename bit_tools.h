@@ -3,7 +3,26 @@
 
 #include <cstdint>
 
+template<typename T>
+constexpr T GenMask(int size, int shift) {
+  T mask = 0;
+  for (int i = 0; i < size; ++i) {
+    mask = (mask << 1) | 1;
+  }
+  return mask << shift;
+}
+
+template<typename T>
+T SetBit(T data, int value, int pos) {
+  if (value) {
+    return data | (1 << pos);
+  } else {
+    return data & ~(1 << pos);
+  }
+}
+
 namespace {
+
 uint64_t mask[] = {0x0, 0x01, 0x03, 0x07, 0x0F,
                    0x01F, 0x03F, 0x07F, 0x0FF, 0x01FF,
                    0x03FF, 0x07FF, 0x0FFF, 0x01FFF, 0x03FFF,
@@ -18,7 +37,7 @@ uint64_t mask[] = {0x0, 0x01, 0x03, 0x07, 0x0F,
                    0x01FFFFFFFFFFFF, 0x03FFFFFFFFFFFF, 0x07FFFFFFFFFFFF, 0x0FFFFFFFFFFFFF,
                    0x01FFFFFFFFFFFFF, 0x03FFFFFFFFFFFFF, 0x07FFFFFFFFFFFFF, 0x0FFFFFFFFFFFFFF,
                    0x01FFFFFFFFFFFFFF, 0x03FFFFFFFFFFFFFF, 0x07FFFFFFFFFFFFFF, 0x0FFFFFFFFFFFFFFF,
-                   0x01FFFFFFFFFFFFFFF, 0x03FFFFFFFFFFFFFFF, 0x07FFFFFFFFFFFFFFF, 0x0FFFFFFFFFFFFFFFF,
+                   0x01FFFFFFFFFFFFFFF, 0x03FFFFFFFFFFFFFFF, 0x07FFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
 };
 
 uint64_t sign_mask[] = {
@@ -66,7 +85,5 @@ T SignExtend(T value, int width){
   }
   return value;
 }
-
-constexpr uint64_t BitMask(int width);
 
 #endif // BIT_TOOLS_H

@@ -418,10 +418,10 @@ constexpr int kMmuLevelZeroSize = 1024; // 1024 x 4 B = 4 KiB.
 constexpr int kPteSize = 4;
 
 // TODO: Add Sv39.
-void SetDefaultMmuTable(uint32_t level1, uint32_t level0, std::shared_ptr<MemoryWrapper> memory) {
+void SetDefaultMmuTable32(uint32_t level1, uint32_t level0, std::shared_ptr<MemoryWrapper> memory) {
   // Sv32. Physical address = virtual address.
   // Level1.
-  Pte pte(0);
+  Pte32 pte(0);
   pte.SetV(1);
   for (int i = 0; i < kMmuLevelOneSize; ++i) {
     uint32_t address = level1 + i * kPteSize;
@@ -447,7 +447,16 @@ void SetDefaultMmuTable(uint32_t level1, uint32_t level0, std::shared_ptr<Memory
   return;
 }
 
+
+void SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory) {
+  if (address64bit) {
+    std::cerr << "64bit MMU table is not ready." << std::endl;
+  } else {
+    SetDefaultMmuTable32(k32BitMmuLevel1, k32BitMmuLevel0, memory);
+  }
 }
+
+} // anonymous namespace.
 
 int main(int argc, char *argv[]) {
   bool cmdline_error, verbose, address64bit;
@@ -487,7 +496,7 @@ int main(int argc, char *argv[]) {
   RiscvCpu cpu(address64bit);
   cpu.SetRegister(SP, sp_value);
   cpu.SetRegister(GP, global_pointer);
-  SetDefaultMmuTable(mmu_level1, mmu_level0, memory);
+  SetDefaultMmuTable(address64bit, memory);
   // Enable paging by setting mode (31st bit).
   // uint32_t satp = (mmu_level1 >> 12) | (1 << 31);
 

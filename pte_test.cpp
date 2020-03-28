@@ -31,7 +31,7 @@ uint32_t GetRandom32() {
 }
 
 bool CheckPte(uint32_t value) {
-  Pte pte(value);
+  Pte32 pte(value);
   bool result = true;
   uint32_t d = (value >> 7) & 1;
   uint32_t a = (value >> 6) & 1;
@@ -76,7 +76,7 @@ bool CheckPte(uint32_t value) {
 }
 
 bool CheckValidAndLeaf() {
-  Pte pte;
+  Pte32 pte;
   bool result = true;
   for (int i = 0; i <= 0b1111; ++i) {
     int v = i & 1;
@@ -100,7 +100,7 @@ bool CheckValidAndLeaf() {
 }
 
 bool WriteTest() {
-  Pte pte;
+  Pte32 pte;
   bool result = true;
   for (int i = 0; i < 0b1111; ++i) {
     uint32_t access_before = i & 1;

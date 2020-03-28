@@ -31,6 +31,8 @@ public:
   uint64_t ReadCsr(uint32_t index);
   int RunCpu(uint64_t start_pc, bool verbose = true);
   uint64_t VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
+  uint64_t VirtualToPhysical32(uint64_t virtual_address, bool write_access = false);
+  uint64_t VirtualToPhysical64(uint64_t virtual_address, bool write_access = false);
   int GetXlen() {return xlen;}
 
 private:

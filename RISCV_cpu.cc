@@ -19,11 +19,89 @@ RiscvCpu::RiscvCpu(bool en64bit) : xlen(en64bit ? 64 : 32) {
 RiscvCpu::RiscvCpu() : RiscvCpu(false) {}
 
 
-constexpr int kPageSize = 4096;
+constexpr int kPageSize = 1 << 12; // PAGESIZE is 2^12.
 constexpr int kMmuLevels = 2;
-constexpr int kPteSize = 4;
 
 uint64_t RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
+  if (xlen == 32) {
+    return VirtualToPhysical32(virtual_address, write_access);
+  } else if (xlen == 64) {
+    return VirtualToPhysical64(virtual_address, write_access);
+  }
+}
+
+uint64_t RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_access) {
+  // TODO: Implement v48 MMU emulation.
+  constexpr int kPteSize = 8;
+  uint64_t physical_address = virtual_address;
+  MemoryWrapper& mem = *memory_;
+  uint64_t satp = csrs_[SATP];
+  uint8_t mode = bitcrop(satp, 4, 60);
+  if (mode == 0) {
+    return physical_address;
+  } else if (mode != 8) {
+    std::cerr << "Unsupported virtual address translation mode (" << mode << ")" << std::endl;
+    page_fault_ = true;
+    return physical_address;
+  }
+  // uint16_t asid = bitcrop(sptbr, 9, 22);
+  uint64_t ppn = bitcrop(satp, 44, 0);
+  uint64_t vpn[3];
+  vpn[2] = bitcrop(virtual_address, 9, 30);
+  vpn[1] = bitcrop(virtual_address, 9, 21);
+  vpn[0] = bitcrop(virtual_address, 9, 12);
+  uint16_t offset = bitcrop(virtual_address, 12, 0);
+  Pte64 pte;
+  int level;
+  uint64_t pte_address;
+  for (level = kMmuLevels - 1; level >= 0; --level) {
+    pte_address = ppn * kPageSize + vpn[level] * kPteSize;
+    uint64_t pte_value = mem.Read64(pte_address);
+    pte = pte_value;
+    if (!pte.IsValid()) {
+      // TODO: Do page-fault exception.
+      std::cerr << "PTE not valid." << std::endl;
+      std::cerr << "PTE = " << std::hex << pte.GetValue() << std::endl;
+      std::cerr << "virtual_address = " << virtual_address << std::endl;
+      std::cerr << "PTE entry address = " << pte_address << std::endl;
+      page_fault_ = true;
+      return physical_address;
+    }
+    if (pte.IsLeaf()) {
+      break;
+    }
+    if (level == 0) {
+      std::cerr << "Non-leaf block in level 0." << std::endl;
+      page_fault_ = true;
+      return physical_address;
+    }
+    ppn = pte.GetPpn();
+  }
+  if ((level > 0 && pte.GetPpn0() != 0) || (level > 1 && pte.GetPpn1() != 0)) {
+    // Misaligned superpage.
+    // TODO: Do page-fault exception.
+    std::cerr << "Misaligned super page." << std::endl;
+    page_fault_ = true;
+    return physical_address;
+  }
+  // Access and Dirty bit process;
+  pte.SetA(1);
+  if (write_access) {
+    pte.SetD(1);
+  }
+  mem.Write64(pte_address, pte.GetValue());
+  // TODO: Add PMP check. (Page 70 of RISC-V Privileged Architectures Manual Vol. II.)
+  uint64_t ppn2 = pte.GetPpn2();
+  uint64_t ppn1 = (level > 1) ? vpn[1] : pte.GetPpn1();
+  uint32_t ppn0 = (level > 0) ? vpn[0] : pte.GetPpn0();
+  physical_address = (ppn2 << 30) | (ppn1 << 21) | (ppn0 << 12) | offset;
+
+  uint64_t physical_address_64bit = static_cast<uint64_t >(physical_address & GenMask<int64_t>(56, 0));
+  return physical_address_64bit;
+}
+
+uint64_t RiscvCpu::VirtualToPhysical32(uint64_t virtual_address, bool write_access) {
+  constexpr int kPteSize = 4;
   uint64_t physical_address = virtual_address;
   MemoryWrapper& mem = *memory_;
   uint32_t satp = csrs_[SATP];
@@ -36,7 +114,7 @@ uint64_t RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access
   uint16_t vpn1 = bitcrop(virtual_address, 10, 22);
   uint16_t vpn0 = bitcrop(virtual_address, 10, 12);
   uint16_t offset = bitcrop(virtual_address, 12, 0);
-  Pte pte;
+  Pte32 pte;
   int level;
   uint32_t vpn = vpn1;
   uint32_t pte_address;
@@ -105,7 +183,7 @@ void RiscvCpu::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
 
 uint32_t RiscvCpu::LoadCmd(uint32_t pc) {
   auto &mem = *memory_;
-  uint32_t physical_address = VirtualToPhysical(pc);
+  uint64_t physical_address = VirtualToPhysical(pc);
   return mem.Read32(physical_address);
 }
 
