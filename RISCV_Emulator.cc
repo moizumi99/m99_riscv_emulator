@@ -386,10 +386,11 @@ uint64_t GetEntryPoint(std::vector<uint8_t> &program) {
   }
 }
 
-std::tuple<bool, std::string, bool, bool> ParseCmd(int argc, char (***argv)) {
+std::tuple<bool, std::string, bool, bool, bool> ParseCmd(int argc, char (***argv)) {
   bool error = false;
   bool verbose = false;
   bool address64bit = false;
+  bool paging = false;
   std::string filename = "";
   if (argc < 2) {
     error = true;
@@ -400,6 +401,8 @@ std::tuple<bool, std::string, bool, bool> ParseCmd(int argc, char (***argv)) {
           verbose = true;
         } else if ((*argv)[i][1] == '6' && (*argv)[i][2] == '4') {
           address64bit = true;
+        } else if ((*argv)[i][1] == 'p') {
+          paging = true;
         }
       } else {
         if (filename == "") {
@@ -410,22 +413,23 @@ std::tuple<bool, std::string, bool, bool> ParseCmd(int argc, char (***argv)) {
       }
     }
   }
-  return std::make_tuple(error, filename, verbose, address64bit);
+  return std::make_tuple(error, filename, verbose, address64bit, paging);
 }
 
-constexpr int kMmuLevelOneSize = 1024; // 1024 x 4 B = 4 KiB.
-constexpr int kMmuLevelZeroSize = 1024; // 1024 x 4 B = 4 KiB.
-constexpr int kPteSize = 4;
+constexpr int k32BitMmuLevelOneSize = 1024; // 1024 x 4 B = 4 KiB.
+constexpr int k32BitMmuLevelZeroSize = 1024; // 1024 x 4 B = 4 KiB.
+constexpr int k32BitPteSize = 4;
 
-// TODO: Add Sv39.
-void SetDefaultMmuTable32(uint32_t level1, uint32_t level0, std::shared_ptr<MemoryWrapper> memory) {
+void SetDefaultMmuTable32(std::shared_ptr<MemoryWrapper> memory) {
+  uint32_t level1 = k32BitMmuLevel1;
+  uint32_t level0 = k32BitMmuLevel0;
   // Sv32. Physical address = virtual address.
   // Level1.
   Pte32 pte(0);
   pte.SetV(1);
-  for (int i = 0; i < kMmuLevelOneSize; ++i) {
-    uint32_t address = level1 + i * kPteSize;
-    uint32_t ppn = (level0 + i * kMmuLevelZeroSize * kPteSize) >> 12;
+  for (int i = 0; i < k32BitMmuLevelOneSize; ++i) {
+    uint32_t address = level1 + i * k32BitPteSize;
+    uint32_t ppn = (level0 + i * k32BitMmuLevelZeroSize * k32BitPteSize) >> 12;
     pte.SetPpn(ppn);
     uint32_t pte_value = pte.GetValue();
     memory->Write32(address, pte_value);
@@ -434,11 +438,11 @@ void SetDefaultMmuTable32(uint32_t level1, uint32_t level0, std::shared_ptr<Memo
   pte.SetX(1);
   pte.SetW(1);
   pte.SetR(1);
-  for (int j = 0; j < kMmuLevelOneSize; ++j) {
-    for (int i = 0; i < kMmuLevelZeroSize; ++i) {
-      uint32_t ppn = j * kMmuLevelZeroSize + i;
-      uint32_t address = level0 + ppn * kPteSize;
-      assert(address < level1 || level1 + kMmuLevelOneSize * kPteSize <= address);
+  for (int j = 0; j < k32BitMmuLevelOneSize; ++j) {
+    for (int i = 0; i < k32BitMmuLevelZeroSize; ++i) {
+      uint32_t ppn = j * k32BitMmuLevelZeroSize + i;
+      uint32_t address = level0 + ppn * k32BitPteSize;
+      assert(address < level1 || level1 + k32BitMmuLevelOneSize * k32BitPteSize <= address);
       // ((ppn << 12) + offset) will be the physical address. So, x4096 is not needed here.
       pte.SetPpn(ppn);
       memory->Write32(address, pte.GetValue());
@@ -447,22 +451,83 @@ void SetDefaultMmuTable32(uint32_t level1, uint32_t level0, std::shared_ptr<Memo
   return;
 }
 
+constexpr uint64_t k64BitMmuLevelTwoSize = 512; // 512 x 8 B = 4 KiB.
+constexpr uint64_t k64BitMmuLevelOneSize = 512; // 512 x 8 B = 4 KiB.
+constexpr uint64_t k64BitMmuLevelZeroSize = 512; // 512 x 8 B = 4 KiB.
+constexpr int k64BitPteSize = 8;
+
+void SetDefaultMmuTable64(std::shared_ptr<MemoryWrapper> memory) {
+  uint64_t level2 = k64BitMmuLevel2;
+  uint64_t level1 = k64BitMmuLevel1;
+  uint64_t level0 = k64BitMmuLevel0;
+  // Sv32. Physical address = virtual address.
+  Pte32 pte(0);
+  // Level2. Map only 32bit range = 4 entry at level 2.
+  int kLevel2ValidEntry = 4;
+  for (int i = 0; i < k64BitMmuLevelTwoSize; i++) {
+    uint32_t address = level2 + i * k64BitPteSize;
+    if (i < kLevel2ValidEntry) {
+      pte.SetV(1);
+      uint64_t ppn = (level1 + i * k64BitMmuLevelOneSize * k64BitPteSize) >> 12;
+      pte.SetPpn(ppn);
+    } else {
+      pte.SetPpn(0);
+    }
+    uint64_t pte_value = pte.GetValue();
+    memory->Write64(address, pte_value);
+  }
+  // Level1.
+  pte.SetV(1);
+  for (int j = 0; j < kLevel2ValidEntry; ++j) {
+    for (int i = 0; i < k64BitMmuLevelOneSize; ++i) {
+      uint32_t address = level1 + j * k64BitMmuLevelOneSize * k64BitPteSize + i * k64BitPteSize;
+      uint64_t ppn = (level0 + j * k64BitMmuLevelOneSize * k64BitMmuLevelZeroSize * k64BitPteSize +
+        i * k64BitMmuLevelZeroSize * k64BitPteSize) >> 12;
+      pte.SetPpn(ppn);
+      uint64_t pte_value = pte.GetValue();
+      memory->Write64(address, pte_value);
+    }
+  }
+  // Level0.
+  pte.SetX(1);
+  pte.SetW(1);
+  pte.SetR(1);
+  for (int k = 0; k < kLevel2ValidEntry; ++k) {
+    for (int j = 0; j < k64BitMmuLevelOneSize; ++j) {
+      for (int i = 0; i < k64BitMmuLevelZeroSize; ++i) {
+        // ((ppn << 12) + offset) will be the physical address. So, x4096 is not needed for ppn.
+        uint64_t ppn = k * k64BitMmuLevelOneSize * k64BitMmuLevelZeroSize + j * k64BitMmuLevelZeroSize + i;
+        uint32_t address = level0 + ppn * k64BitPteSize;
+        pte.SetPpn(ppn);
+        memory->Write64(address, pte.GetValue());
+      }
+    }
+  }
+  return;
+}
+
 
 void SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory) {
   if (address64bit) {
-    std::cerr << "64bit MMU table is not ready." << std::endl;
+    SetDefaultMmuTable64(memory);
   } else {
-    SetDefaultMmuTable32(k32BitMmuLevel1, k32BitMmuLevel0, memory);
+    SetDefaultMmuTable32(memory);
   }
 }
 
 } // anonymous namespace.
 
 int main(int argc, char *argv[]) {
-  bool cmdline_error, verbose, address64bit;
+  bool cmdline_error, verbose, address64bit, paging;
   std::string filename;
 
-  std::tie(cmdline_error, filename, verbose, address64bit) = ParseCmd(argc, &argv);
+  auto options =  ParseCmd(argc, &argv);
+  cmdline_error = std::get<0>(options);
+  filename = std::get<1>(options);
+  verbose = std::get<2>(options);
+  address64bit = std::get<3>(options);
+  paging = std::get<4>(options);
+
 
   if (cmdline_error) {
     std::cerr << "Uasge: "  << argv[0] << " elf_file" << "[-v]" << std::endl;
@@ -497,11 +562,15 @@ int main(int argc, char *argv[]) {
   cpu.SetRegister(SP, sp_value);
   cpu.SetRegister(GP, global_pointer);
   SetDefaultMmuTable(address64bit, memory);
-  // Enable paging by setting mode (31st bit).
-  // uint32_t satp = (mmu_level1 >> 12) | (1 << 31);
-
-  // Don't use SATP.
-  uint64_t satp = 0;
+  uint64_t  satp = 0;
+  if (paging) {
+    std::cerr << "Paging enabled." << std::endl;
+    if (address64bit) {
+      satp = (k64BitMmuLevel2 >> 12) | (static_cast<uint64_t>(8) << 60);
+    } else {
+      satp = (k32BitMmuLevel1 >> 12) | (1 << 31);
+    }
+  }
   cpu.SetCsr(SATP, satp);
   cpu.SetMemory(memory);
   cpu.SetWorkMemory(kTop, kBottom);

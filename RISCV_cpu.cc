@@ -54,7 +54,8 @@ uint64_t RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_acce
   Pte64 pte;
   int level;
   uint64_t pte_address;
-  for (level = kMmuLevels - 1; level >= 0; --level) {
+  constexpr int k64BitMmuLevels = 3;
+  for (level = k64BitMmuLevels - 1; level >= 0; --level) {
     pte_address = ppn * kPageSize + vpn[level] * kPteSize;
     uint64_t pte_value = mem.Read64(pte_address);
     pte = pte_value;
