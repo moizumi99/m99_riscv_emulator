@@ -34,7 +34,7 @@ uint64_t RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_acce
   // TODO: Implement v48 MMU emulation.
   constexpr int kPteSize = 8;
   uint64_t physical_address = virtual_address;
-  MemoryWrapper& mem = *memory_;
+  MemoryWrapper &mem = *memory_;
   uint64_t satp = csrs_[SATP];
   uint8_t mode = bitcrop(satp, 4, 60);
   if (mode == 0) {
@@ -104,7 +104,7 @@ uint64_t RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_acce
 uint64_t RiscvCpu::VirtualToPhysical32(uint64_t virtual_address, bool write_access) {
   constexpr int kPteSize = 4;
   uint64_t physical_address = virtual_address;
-  MemoryWrapper& mem = *memory_;
+  MemoryWrapper &mem = *memory_;
   uint32_t satp = csrs_[SATP];
   uint8_t mode = bitcrop(satp, 1, 31);
   if (mode == 0) {
@@ -213,24 +213,22 @@ std::pair<bool, bool> RiscvCpu::SystemCall() {
   return SystemCallEmulation(memory_, reg_, top_, &brk_);
 }
 
-uint64_t RiscvCpu::LoadWd(uint64_t virtual_address, int width) {
+uint64_t RiscvCpu::LoadWd(uint64_t physical_address, int width) {
   assert(width == 32 || width == 64);
   auto &mem = *memory_;
-  uint64_t physical_address = VirtualToPhysical(virtual_address);
   uint64_t result = (width == 32) ? mem.Read32(physical_address) : mem.Read64(physical_address);
   return result;
 }
 
-void RiscvCpu::StoreWd(uint64_t virtual_address, uint64_t data, int width) {
+void RiscvCpu::StoreWd(uint64_t physical_address, uint64_t data, int width) {
   auto &mem = *memory_;
-  uint64_t physical_address = VirtualToPhysical(virtual_address, true);
   switch (width) {
     case 64:
       mem[physical_address + 7] = (data >> 56) & 0xFF;
       mem[physical_address + 6] = (data >> 48) & 0xFF;
       mem[physical_address + 5] = (data >> 40) & 0xFF;
       mem[physical_address + 4] = (data >> 32) & 0xFF;
-   case 32:
+    case 32:
       mem[physical_address + 3] = (data >> 24) & 0xFF;
       mem[physical_address + 2] = (data >> 16) & 0xFF;
     case 16:
@@ -305,7 +303,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
              reg_[17], reg_[18], reg_[19], reg_[20], reg_[21], reg_[22], reg_[23], reg_[24],
              reg_[25], reg_[26], reg_[27], reg_[28], reg_[29], reg_[30], reg_[31]
       );
-   }
+    }
 
     // Change this line when C is supported.
     next_pc = pc_ + 4;
@@ -324,6 +322,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     int32_t imm20 = GetImm20(ir);
     uint32_t address;
 
+    uint64_t load_data;
     uint32_t shift_mask = xlen == 64 ? 0b0111111 : 0b0011111;
     switch (instruction) {
       uint64_t t;
@@ -494,48 +493,50 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         }
         break;
       case INST_LB:
-        address = reg_[rs1] + imm12;
-        reg_[rd] = SignExtend(LoadWd(address) & 0xFF, 8);
-        break;
       case INST_LBU:
-        address = reg_[rs1] + imm12;
-        reg_[rd] = LoadWd(address) & 0xFF;
-        break;
       case INST_LH:
-        address = reg_[rs1] + imm12;
-        reg_[rd] = SignExtend(LoadWd(address) & 0xFFFF, 16);
-        break;
       case INST_LHU:
-        address = reg_[rs1] + imm12;
-        reg_[rd] = LoadWd(address) & 0xFFFF;
-        break;
       case INST_LW:
-        address = reg_[rs1] + imm12;
-        reg_[rd] = SignExtend(LoadWd(address), 32);
-        break;
       case INST_LWU:
-        address = reg_[rs1] + imm12;
-        reg_[rd] = LoadWd(address);
-        break;
       case INST_LD:
-        address = reg_[rs1] + imm12;
-        reg_[rd] = LoadWd(address, 64);
+        address = VirtualToPhysical(reg_[rs1] + imm12);
+        if (page_fault_) {
+          break;
+        }
+        if (instruction == INST_LB) {
+          load_data = SignExtend(LoadWd(address) & 0xFF, 8); // LB
+        } else if (instruction == INST_LBU) {
+          load_data = LoadWd(address) & 0xFF; // LBU
+        } else if (instruction == INST_LH) {
+          load_data = SignExtend(LoadWd(address) & 0xFFFF, 16); // LH
+        } else if (instruction == INST_LHU) {
+        load_data = LoadWd(address) & 0xFFFF; // LHU
+        } else if (instruction == INST_LW) {
+          load_data = SignExtend(LoadWd(address), 32); // LW
+        } else if (instruction == INST_LWU) {
+          load_data = LoadWd(address); // LWU
+        } else { // instruction == INST_LD
+          load_data = LoadWd(address, 64); // LD
+        }
+        reg_[rd] = load_data;
         break;
       case INST_SB:
-        address = reg_[rs1] + imm12_stype;
-        StoreWd(address, reg_[rs2], 8);
-        break;
-     case INST_SH:
-        address = reg_[rs1] + imm12_stype;
-        StoreWd(address, reg_[rs2], 16);
-        break;
+      case INST_SH:
       case INST_SW:
-        address = reg_[rs1] + imm12_stype;
-        StoreWd(address, reg_[rs2], 32);
-        break;
       case INST_SD:
-        address = reg_[rs1] + imm12_stype;
-        StoreWd(address, reg_[rs2], 64);
+        address = VirtualToPhysical(reg_[rs1] + imm12_stype, true);
+        if (page_fault_) {
+          break;
+        }
+        if (instruction == INST_SB) {
+          StoreWd(address, reg_[rs2], 8);
+        } else if (instruction == INST_SH) {
+          StoreWd(address, reg_[rs2], 16);
+        } else if (instruction == INST_SW) {
+          StoreWd(address, reg_[rs2], 32);
+        } else { // if instruction === INST_SD.
+          StoreWd(address, reg_[rs2], 64);
+        }
         break;
       case INST_LUI:
         reg_[rd] = imm20 << 12;
@@ -603,12 +604,17 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         error_flag_ = true;
         break;
     }
+    if (page_fault_) {
+      InstructionPageFault();
+      continue;
+    }
     reg_[ZERO] = 0;
     if (pc_ == next_pc) {
       std::cerr << "Infinite loop detected." << std::endl;
       error_flag_ = true;
     }
     pc_ = next_pc & 0xFFFFFFFFFFFFFFFF;
+    continue;
   } while (!error_flag_ && !end_flag_);
 
   return error_flag_;
@@ -630,7 +636,7 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
       } else if (funct3 == FUNC3_XOR) {
         instruction = INST_XOR;
       } else if (funct3 == FUNC3_SR) {
-        if (funct7  == 0b0000000) {
+        if (funct7 == 0b0000000) {
           instruction = INST_SRL;
         } else if (funct7 == 0b0100000) {
           instruction = INST_SRA;
@@ -649,7 +655,7 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
       } else if (funct3 == FUNC3_SL) {
         instruction = INST_SLLW;
       } else if (funct3 == FUNC3_SR) {
-        if (funct7  == 0b000000) {
+        if (funct7 == 0b000000) {
           instruction = INST_SRLW;
         } else if (funct7 == 0b0100000) {
           instruction = INST_SRAW;

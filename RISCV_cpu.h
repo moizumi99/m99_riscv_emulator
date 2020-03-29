@@ -44,8 +44,8 @@ private:
   uint32_t LoadCmd(uint32_t pc);
   uint32_t GetCode(uint32_t ir);
   std::pair<bool, bool> SystemCall();
-  uint64_t LoadWd(uint64_t virtual_address, int width = 32);
-  void StoreWd(uint64_t virtual_address, uint64_t data, int width = 32);
+  uint64_t LoadWd(uint64_t physical_address, int width = 32);
+  void StoreWd(uint64_t physical_address, uint64_t data, int width = 32);
   void InstructionPageFault();
   bool page_fault_ = false;
   bool prev_page_fault_ = false;

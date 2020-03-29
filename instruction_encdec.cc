@@ -134,8 +134,13 @@ int32_t GetImm13(uint32_t ir) {
 
 int32_t GetImm21(uint32_t ir) {
   int32_t imm21 = 0;
-  imm21 |= (bitcrop(ir, 1, 31) << 20) | (bitcrop(ir, 8, 12) << 12);
-  imm21 |= (bitcrop(ir, 1, 20) << 11) | (bitcrop(ir, 10, 21) << 1);
+  uint32_t offset19_12 = bitcrop(ir, 8, 12);
+  uint32_t offset11 = bitcrop(ir, 1, 20);
+  uint32_t offset10_1 = bitcrop(ir, 10, 21);
+  uint32_t offset20 = bitcrop(ir, 1, 31);
+  imm21 = (offset20 << 20) | (offset19_12 << 12) | (offset11 << 11) | (offset10_1 << 1);
+//  imm21 = (bitcrop(ir, 1, 31) << 20) | (bitcrop(ir, 8, 12) << 12);
+//  imm21 |= (bitcrop(ir, 1, 20) << 11) | (bitcrop(ir, 10, 21) << 1);
 
   imm21 = SignExtend(imm21, 21);
   return imm21;
