@@ -299,18 +299,20 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
 
   // MTVAL, STVAL, and UTVAL.
   uint64_t tval = 0;
-  if (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT) {
+  if (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT ||
+      cause == STORE_PAGE_FAULT) {
     tval = faulting_address;
   } else if (cause == ILLEGAL_INSTRUCTION) {
-    tval = (*memory_)[pc_] | ((*memory_)[pc_ + 1] << 8) | ((*memory_)[pc_ + 2] << 16) | ((*memory_)[pc_ + 3] << 24);
+    tval = (*memory_)[pc_] | ((*memory_)[pc_ + 1] << 8) |
+           ((*memory_)[pc_ + 2] << 16) | ((*memory_)[pc_ + 3] << 24);
   }
   // TODO: Implement other tval cases.
 
   // Check delegation status.
-  bool machine_exception_delegation = csrs_[MEDELEG] >> cause == 1;
-  bool machine_interrupt_delegation = csrs_[MIDELEG] >> cause == 1;
-  bool sv_exception_delegation = csrs_[SEDELEG] >> cause == 1;
-  bool sv_interrupt_delegation = csrs_[SIDELEG] >> cause == 1;
+  bool machine_exception_delegation = (csrs_[MEDELEG] >> cause) & 1 == 1;
+  bool machine_interrupt_delegation = (csrs_[MIDELEG] >> cause) & 1 == 1;
+  bool sv_exception_delegation = (csrs_[SEDELEG] >> cause) & 1 == 1;
+  bool sv_interrupt_delegation = (csrs_[SIDELEG] >> cause) & 1 == 1;
 
   bool sv_delegation = (interrupt && machine_interrupt_delegation) ||
                        (!interrupt && machine_exception_delegation);
@@ -413,6 +415,7 @@ uint64_t RiscvCpu::Sext32bit(uint64_t data32bit) {
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   error_flag_ = false;
   end_flag_ = false;
+  bool host_write = false;
 
   next_pc_ = start_pc;
   do {
@@ -741,6 +744,9 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         if (page_fault_) {
           Trap(ExceptionCode::STORE_PAGE_FAULT);
         }
+        if (address == kToHost) {
+          host_write = true;
+        }
         break;
       case INST_LUI:
         temp64 = imm20 << 12;
@@ -832,12 +838,62 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       error_flag_ = true;
     }
     reg_[ZERO] = 0;
+
+    if (host_emulation_ && host_write) {
+      HostEmulation();
+      host_write = false;
+    }
+
   } while (!error_flag_ && !end_flag_);
 
   if (error_flag_ && verbose) {
     DumpCpuStatus();
   }
   return error_flag_;
+}
+
+
+void RiscvCpu::HostEmulation() {
+  uint64_t payload;
+  uint8_t device;
+  uint32_t command;
+  uint64_t value = 0;
+  if (mxl_ == 1) {
+    // This address should be physical.
+    payload = memory_->Read32(kToHost);
+    device = 0;
+    command = 0;
+  } else {
+    payload = memory_->Read64(kToHost);
+    device = (payload >> 56) & 0xFF;
+    command = (payload >> 48) & 0x3FFFF;
+  }
+  if (device == 0) {
+    if (command == 0) {
+      value = payload & 0xFFFFFFFFFFFF;
+      if ((value & 1) == 0) {
+        // Syscall emulation
+        std::cerr << "Syscall Emulation Not Implemented Yet." << std::endl;
+      } else {
+        value = value >> 1;
+        reg_[A0] = value;
+        end_flag_ = true;
+      }
+    } else {
+      std::cerr << "Unsupported Host command " << command << " for Device 0" << std::endl;
+    }
+  } else if (device == 1) {
+    if (command == 1) {
+      char character = value & 0xFF;
+      std::cout << character;
+    } else if (command == 0) {
+      // TODO: Implement Read.
+    } else {
+      std::cerr << "Unsupported host command " << command << " for Device 1" << std::endl;
+    }
+  } else {
+    std::cerr << "Unsupported Host Device " << device << std::endl;
+  }
 }
 
 void RiscvCpu::Ecall() {

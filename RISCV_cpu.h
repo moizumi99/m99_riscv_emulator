@@ -68,12 +68,17 @@ private:
   PrivilegeMode ToPrivilegeMode(int value);
   void DumpCpuStatus();
   void UpdateMstatus(int16_t csr);
-  // Below are for system call emulation
+  // Below are for system call and host emulation
 public:
   void SetWorkMemory(uint64_t top, uint64_t bottom);
   void SetEcallEmulationEnable(bool ecall_emulation) { ecall_emulation_ = ecall_emulation;};
+  void SetHostEmulationEnable(bool host_emulation) {host_emulation_ = host_emulation;};
 private:
+  void HostEmulation();
+  static constexpr uint64_t kToHost = 0x80001000;
+  static constexpr uint64_t kFromHost = 0x80001040;
   bool ecall_emulation_ = false;
+  bool host_emulation_ = false;
   uint64_t top_ = 0x80000000;
   uint64_t bottom_ = 0x40000000;
   uint64_t brk_ = bottom_;
