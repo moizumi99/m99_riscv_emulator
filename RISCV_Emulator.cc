@@ -386,11 +386,12 @@ uint64_t GetEntryPoint(std::vector<uint8_t> &program) {
   }
 }
 
-std::tuple<bool, std::string, bool, bool, bool> ParseCmd(int argc, char (***argv)) {
+std::tuple<bool, std::string, bool, bool, bool, bool> ParseCmd(int argc, char (***argv)) {
   bool error = false;
   bool verbose = false;
   bool address64bit = false;
   bool paging = false;
+  bool ecall_emulation = false;
   std::string filename = "";
   if (argc < 2) {
     error = true;
@@ -403,6 +404,8 @@ std::tuple<bool, std::string, bool, bool, bool> ParseCmd(int argc, char (***argv
           address64bit = true;
         } else if ((*argv)[i][1] == 'p') {
           paging = true;
+        } else if ((*argv)[i][1] == 'e') {
+          ecall_emulation = true;
         }
       } else {
         if (filename == "") {
@@ -413,7 +416,7 @@ std::tuple<bool, std::string, bool, bool, bool> ParseCmd(int argc, char (***argv
       }
     }
   }
-  return std::make_tuple(error, filename, verbose, address64bit, paging);
+  return std::make_tuple(error, filename, verbose, address64bit, paging, ecall_emulation);
 }
 
 constexpr int k32BitMmuLevelOneSize = 1024; // 1024 x 4 B = 4 KiB.
@@ -518,7 +521,7 @@ void SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory
 } // anonymous namespace.
 
 int main(int argc, char *argv[]) {
-  bool cmdline_error, verbose, address64bit, paging;
+  bool cmdline_error, verbose, address64bit, paging, ecall_emulation;
   std::string filename;
 
   auto options =  ParseCmd(argc, &argv);
@@ -527,11 +530,15 @@ int main(int argc, char *argv[]) {
   verbose = std::get<2>(options);
   address64bit = std::get<3>(options);
   paging = std::get<4>(options);
+  ecall_emulation = std::get<5>(options);
 
 
   if (cmdline_error) {
-    std::cerr << "Uasge: "  << argv[0] << " elf_file" << "[-v]" << std::endl;
+    std::cerr << "Uasge: "  << argv[0] << " elf_file" << "[-v][-64][-p][-e]" << std::endl;
     std::cerr << "-v: Verbose" << std::endl;
+    std::cerr << "-e: System Call Emulation" << std::endl;
+    std::cerr << "-p: Paging Enabled from Start" << std::endl;
+    std::cerr << "-64: 64 bit (RV64I) (default is 32 bit mode, RV32I)" << std::endl;
     return -1;
   }
 
@@ -559,6 +566,7 @@ int main(int argc, char *argv[]) {
   std::cerr << "Execution start" << std::endl;
 
   RiscvCpu cpu(address64bit);
+  cpu.SetEcallEmulationEnable(ecall_emulation);
   cpu.SetRegister(SP, sp_value);
   cpu.SetRegister(GP, global_pointer);
   SetDefaultMmuTable(address64bit, memory);

@@ -102,7 +102,7 @@ std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory,
   auto &mem = *memory;
   bool end_flag = false;
   bool error_flag = false;
-  if (reg[A7] == 93) {
+  if (reg[A7] == 93 ) {
     // Exit system call.
     if (debug)
       std::cerr << "Exit System Call" << std::endl;

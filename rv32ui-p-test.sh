@@ -41,9 +41,10 @@ test_list=(
   "target/share/riscv-tests/isa/rv32ui-p-lw"
 )
 emulater="./RISCV_Emulator"
+flag="-e"
 for test in "${test_list[@]}"; do
   echo -n "Run ${test} test: "
-  $(eval "${emulater} ${test} 2> /dev/null")
+  $(eval "${emulater} ${flag} ${test} 2> /dev/null")
   exit_status=$?
   if [[ ${exit_status} -eq 0 ]]; then
     echo "Pass"

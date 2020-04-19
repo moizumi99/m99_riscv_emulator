@@ -8,11 +8,12 @@
 #include "bit_tools.h"
 #include "memory_wrapper.h"
 
-enum PrivilegeModes {
-  USER_LEVEL = 0,
-  SUPERVISOR_LEVEL = 1,
-  MACHINE_LEVEL = 3
+enum class PrivilegeMode {
+  USER_MODE = 0,
+  SUPERVISOR_MODE = 1,
+  MACHINE_MODE = 3
 };
+
 
 class RiscvCpu {
   static constexpr int kCsrSize = 4096;
@@ -22,7 +23,9 @@ class RiscvCpu {
 public:
   RiscvCpu(bool en64bit);
   RiscvCpu();
-  ~RiscvCpu() {};
+  ~RiscvCpu() {
+
+  };
 
   void SetRegister(uint32_t num, uint64_t value);
   uint64_t ReadRegister(uint32_t num);
@@ -34,36 +37,77 @@ public:
   uint64_t VirtualToPhysical32(uint64_t virtual_address, bool write_access = false);
   uint64_t VirtualToPhysical64(uint64_t virtual_address, bool write_access = false);
   int GetXlen() {return xlen;}
+  void Ecall();
+private:
+  uint64_t Sext32bit(uint64_t data32bit);
 
 private:
   uint64_t reg_[kRegSize];
   uint64_t pc_;
-  uint8_t privilege_ = MACHINE_LEVEL;
+  uint64_t next_pc_;
+  uint64_t mstatus_;
+  PrivilegeMode privilege_;
   std::shared_ptr<MemoryWrapper> memory_;
   std::vector<uint64_t> csrs_;
-  uint32_t LoadCmd(uint32_t pc);
+  void Mret();
+  void Sret();
+  uint32_t LoadCmd(uint64_t pc);
   uint32_t GetCode(uint32_t ir);
   std::pair<bool, bool> SystemCall();
   uint64_t LoadWd(uint64_t physical_address, int width = 32);
   void StoreWd(uint64_t physical_address, uint64_t data, int width = 32);
-  void InstructionPageFault();
+  void Exception(int cause = 0);
   bool page_fault_ = false;
   bool prev_page_fault_ = false;
+  uint64_t prev_faulting_address_ = 0;
   bool error_flag_, end_flag_;
+  uint64_t faulting_address;
   inline bool CheckShiftSign(uint8_t shamt, uint8_t instruction, const std::string &message_str);
-
+  PrivilegeMode ToPrivilegeMode(int value);
+  void DumpCpuStatus();
+  void UpdateMstatus(int16_t csr);
   // Below are for system call emulation
 public:
-  void SetWorkMemory(uint32_t top, uint32_t bottom);
+  void SetWorkMemory(uint64_t top, uint64_t bottom);
+  void SetEcallEmulationEnable(bool ecall_emulation) { ecall_emulation_ = ecall_emulation;};
 private:
+  bool ecall_emulation_ = false;
   uint64_t top_ = 0x80000000;
   uint64_t bottom_ = 0x40000000;
   uint64_t brk_ = bottom_;
 };
 
+enum ExceptionCode {
+  ECALL_UMODE = 8,
+  ECALL_SMODE = 9,
+  ECALL_MMODE = 11,
+  INSTRUCTION_PAGE_FAULT = 12,
+  LOAD_PAGE_FAULT = 13,
+  STORE_PAGE_FAULT = 15
+};
+
 enum CsrsAddresses {
-  // Supervisor Trap Handling
+  // User Trap Handling
+  USTATUS = 0x000, // User status register.
+  UIE = 0x004, // User interrupt-enable register.
+  UTVEC = 0x005, // User trap handler base address.
+  USCRATCH = 0x040, // Scratch register for user trap handlers.
+  UEPC = 0x041, // User exception program counter.
+  UCAUSE = 0x042, // User trap cause.
+  UTVAL = 0x43, // User bad address or instruction.
+  UIP = 0x44, // User interrupt pending.
+  // Supervisor Trap Handling.
+  SSTATUS = 0x100, // Supervisor status register.
+  SEDELEG = 0x102, // Supervisor exception delegation register.
+  SIDELEG = 0X103, // Supervisor interrupt delegation register.
+  SIE = 0x104, // Supervisor interrupt-enable register.
+  STVEC = 0x105, // Supervisor trap handler base address.
+  SCOUNTEREN = 0x106, // Supervisor counter enable.
+  SSCRATCH = 0x140, // Scratch register for supervisor trap handlers.
   SEPC = 0x141, // Supervisor exception program counter.
+  SCAUSE = 0x142, // Supervisor trap cause,
+  STVAL = 0x143, // Supervisor bad address or instruction.
+  SIP = 0x144, // Supervisor interrupt pending.
   // Super visor Protection and Translation.
   SATP = 0x180, // Page-table base register. Former satp register.
   // Machine Trap Setup

@@ -3,7 +3,7 @@ CPPFLAGS = -Wall -g
 TARGET = RISCV_Emulator
 CPU_OBJS = RISCV_cpu.o load_assembler.o assembler.o bit_tools.o instruction_encdec.o memory_wrapper.o system_call_emulator.o pte.o
 OBJS = RISCV_Emulator.o $(CPU_OBJS)
-TEST_TARGETS = load_assembler_test cpu_test pte_test
+TEST_TARGETS = load_assembler_test cpu_test pte_test memory_wrapper_test
 
 .PHONY: all
 	all: $(TARGET) $(TEST_TARGETS)
