@@ -78,7 +78,7 @@ T bitcrop(const T& val, const int width, const int offset) {
 
 template<class T>
 T SignExtend(T value, int width){
-  if (value & (1 << (width - 1))) {
+  if ((value >> (width - 1)) & 1) {
     value |= sign_mask[width - 1];
   } else {
     value &= ~sign_mask[width - 1];

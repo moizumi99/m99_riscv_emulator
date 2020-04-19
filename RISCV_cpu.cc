@@ -535,7 +535,9 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         break;
       case INST_SLLI:
         temp64 = reg_[rs1] << shamt;
-        temp64 = Sext32bit(temp64);
+        if (xlen == 32) {
+          temp64 = Sext32bit(temp64);
+        }
         reg_[rd] = temp64;
         CheckShiftSign(shamt, instruction, "SLLI");
         break;
