@@ -360,7 +360,7 @@ uint32_t GetElf64GlobalPointer(std::vector<uint8_t> &program) {
   return -1;
 }
 
-uint64_t GetGlobalPointer(std::vector<uint8_t> &program) {
+int64_t GetGlobalPointer(std::vector<uint8_t> &program) {
   if (flag_64bit) {
     return GetElf32GlobalPointer(program);
   } else {
@@ -466,8 +466,8 @@ void SetDefaultMmuTable64(std::shared_ptr<MemoryWrapper> memory) {
   // Sv32. Physical address = virtual address.
   Pte32 pte(0);
   // Level2. Map only 32bit range = 4 entry at level 2.
-  int kLevel2ValidEntry = 4;
-  for (int i = 0; i < k64BitMmuLevelTwoSize; i++) {
+  unsigned kLevel2ValidEntry = 4;
+  for (unsigned i = 0; i < k64BitMmuLevelTwoSize; i++) {
     uint32_t address = level2 + i * k64BitPteSize;
     if (i < kLevel2ValidEntry) {
       pte.SetV(1);
@@ -481,8 +481,8 @@ void SetDefaultMmuTable64(std::shared_ptr<MemoryWrapper> memory) {
   }
   // Level1.
   pte.SetV(1);
-  for (int j = 0; j < kLevel2ValidEntry; ++j) {
-    for (int i = 0; i < k64BitMmuLevelOneSize; ++i) {
+  for (unsigned j = 0; j < kLevel2ValidEntry; ++j) {
+    for (unsigned i = 0; i < k64BitMmuLevelOneSize; ++i) {
       uint32_t address = level1 + j * k64BitMmuLevelOneSize * k64BitPteSize + i * k64BitPteSize;
       uint64_t ppn = (level0 + j * k64BitMmuLevelOneSize * k64BitMmuLevelZeroSize * k64BitPteSize +
         i * k64BitMmuLevelZeroSize * k64BitPteSize) >> 12;
@@ -495,9 +495,9 @@ void SetDefaultMmuTable64(std::shared_ptr<MemoryWrapper> memory) {
   pte.SetX(1);
   pte.SetW(1);
   pte.SetR(1);
-  for (int k = 0; k < kLevel2ValidEntry; ++k) {
-    for (int j = 0; j < k64BitMmuLevelOneSize; ++j) {
-      for (int i = 0; i < k64BitMmuLevelZeroSize; ++i) {
+  for (unsigned k = 0; k < kLevel2ValidEntry; ++k) {
+    for (unsigned j = 0; j < k64BitMmuLevelOneSize; ++j) {
+      for (unsigned i = 0; i < k64BitMmuLevelZeroSize; ++i) {
         // ((ppn << 12) + offset) will be the physical address. So, x4096 is not needed for ppn.
         uint64_t ppn = k * k64BitMmuLevelOneSize * k64BitMmuLevelZeroSize + j * k64BitMmuLevelZeroSize + i;
         uint32_t address = level0 + ppn * k64BitPteSize;
@@ -554,7 +554,7 @@ int main(int argc, char *argv[]) {
   uint32_t entry_point = GetEntryPoint(program);
   std::cerr << "Entry point is 0x" << std::hex << entry_point << std::dec << std::endl;
 
-  uint32_t global_pointer = GetGlobalPointer(program);
+  int64_t global_pointer = GetGlobalPointer(program);
   if (global_pointer == -1) {
     global_pointer = entry_point;
   }

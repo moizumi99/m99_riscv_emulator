@@ -704,7 +704,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
           Mret();
         } else if (imm12 == 0b000100000010) {
           Sret();
-        } else if (imm12 >> 5 == 0b0001001 & rd == 0b00000) {
+        } else if (((imm12 >> 5) == 0b0001001) && (rd == 0b00000)) {
           // sfence.vma.
           // TODO: Implement this function.
           ;
