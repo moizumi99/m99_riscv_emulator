@@ -19,7 +19,8 @@ class RiscvCpu {
   static constexpr int kCsrSize = 4096;
   static constexpr int kRegSize = 32;
   static constexpr int kRegNum = 32;
-  int xlen = 64;
+  int xlen_;
+  int mxl_ = 1;
 public:
   RiscvCpu(bool en64bit);
   RiscvCpu();
@@ -36,7 +37,7 @@ public:
   uint64_t VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
   uint64_t VirtualToPhysical32(uint64_t virtual_address, bool write_access = false);
   uint64_t VirtualToPhysical64(uint64_t virtual_address, bool write_access = false);
-  int GetXlen() {return xlen;}
+  int GetXlen() {return xlen_;}
   void Ecall();
 private:
   uint64_t Sext32bit(uint64_t data32bit);
@@ -49,6 +50,7 @@ private:
   PrivilegeMode privilege_;
   std::shared_ptr<MemoryWrapper> memory_;
   std::vector<uint64_t> csrs_;
+  void InitializeCsrs();
   void Mret();
   void Sret();
   uint32_t LoadCmd(uint64_t pc);
@@ -56,7 +58,7 @@ private:
   std::pair<bool, bool> SystemCall();
   uint64_t LoadWd(uint64_t physical_address, int width = 32);
   void StoreWd(uint64_t physical_address, uint64_t data, int width = 32);
-  void Exception(int cause = 0);
+  void Trap(int cause = 0, bool interrupt = false);
   bool page_fault_ = false;
   bool prev_page_fault_ = false;
   uint64_t prev_faulting_address_ = 0;
@@ -78,6 +80,14 @@ private:
 };
 
 enum ExceptionCode {
+  INSTRUCTION_ADDRESS_MISALIGNED = 0,
+  INSTRUCTION_ACCESS_FAULT = 1,
+  ILLEGAL_INSTRUCTION = 2,
+  BREAK_POINT = 3,
+  LOAD_ADDRESS_MISALIGNED = 4,
+  LOAD_ACCESS_FAULT = 5,
+  STORE_ADDRESS_MISALIGNED = 6,
+  STORE_ACCESS_FAULT = 7,
   ECALL_UMODE = 8,
   ECALL_SMODE = 9,
   ECALL_MMODE = 11,

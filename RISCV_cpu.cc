@@ -9,26 +9,41 @@
 #include <stdint.h>
 #include <cassert>
 
-RiscvCpu::RiscvCpu(bool en64bit) : xlen(en64bit ? 64 : 32) {
+RiscvCpu::RiscvCpu(bool en64bit) {
+  mxl_ = en64bit ? 2 : 1;
+  xlen_ = en64bit ? 64 : 32;
   privilege_ = PrivilegeMode::MACHINE_MODE;
   mstatus_ = 0;
   for (int i = 0; i < kRegNum; i++) {
     reg_[i] = 0;
   }
-  csrs_.resize(kCsrSize, 0);
+  InitializeCsrs();
+
 }
 
 RiscvCpu::RiscvCpu() : RiscvCpu(false) {}
 
+void RiscvCpu::InitializeCsrs() {
+  csrs_.resize(kCsrSize, 0);
+  // U: User mode, S: Supervisor mode, N: User-level Interrupts, I: RV32I/RV64I base ISA.
+  const uint32_t extensions = 0b00000101000010000100000000;
+  csrs_[MISA] = (mxl_ << (xlen_ - 2)) | extensions;
+  if (mxl_ == 2) {
+    // For 64 bit mode, sxl and uxl are the same as mxl.
+    csrs_[MSTATUS] = (mxl_ << 34) | (mxl_ << 32);
+  }
+}
 
 constexpr int kPageSize = 1 << 12; // PAGESIZE is 2^12.
 constexpr int kMmuLevels = 2;
 
-uint64_t RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
-  if (privilege_ != PrivilegeMode::USER_MODE && privilege_ != PrivilegeMode::SUPERVISOR_MODE) {
+uint64_t
+RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
+  if (privilege_ != PrivilegeMode::USER_MODE &&
+      privilege_ != PrivilegeMode::SUPERVISOR_MODE) {
     return virtual_address;
   }
-  if (xlen == 32) {
+  if (xlen_ == 32) {
     return VirtualToPhysical32(virtual_address, write_access);
   } else {
     // if (xlen == 64) {
@@ -36,7 +51,8 @@ uint64_t RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access
   }
 }
 
-uint64_t RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_access) {
+uint64_t
+RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_access) {
   // TODO: Implement v48 MMU emulation.
   constexpr int kPteSize = 8;
   uint64_t physical_address = virtual_address;
@@ -46,7 +62,8 @@ uint64_t RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_acce
   if (mode == 0) {
     return physical_address;
   } else if (mode != 8) {
-    std::cerr << "Unsupported virtual address translation mode (" << mode << ")" << std::endl;
+    std::cerr << "Unsupported virtual address translation mode (" << mode << ")"
+              << std::endl;
     page_fault_ = true;
     faulting_address = virtual_address;
     return physical_address;
@@ -105,11 +122,14 @@ uint64_t RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_acce
   uint32_t ppn0 = (level > 0) ? vpn[0] : pte.GetPpn0();
   physical_address = (ppn2 << 30) | (ppn1 << 21) | (ppn0 << 12) | offset;
 
-  uint64_t physical_address_64bit = static_cast<uint64_t >(physical_address & GenMask<int64_t>(56, 0));
+  uint64_t physical_address_64bit = static_cast<uint64_t >(physical_address &
+                                                           GenMask<int64_t>(56,
+                                                                            0));
   return physical_address_64bit;
 }
 
-uint64_t RiscvCpu::VirtualToPhysical32(uint64_t virtual_address, bool write_access) {
+uint64_t
+RiscvCpu::VirtualToPhysical32(uint64_t virtual_address, bool write_access) {
   constexpr int kPteSize = 4;
   uint64_t physical_address = virtual_address;
   MemoryWrapper &mem = *memory_;
@@ -172,15 +192,19 @@ uint64_t RiscvCpu::VirtualToPhysical32(uint64_t virtual_address, bool write_acce
   uint32_t ppn0 = (level == 1) ? vpn0 : pte.GetPpn0();
   physical_address = (ppn1 << 22) | (ppn0 << 12) | offset;
 
-  uint64_t physical_address_64bit = static_cast<uint64_t >(physical_address & 0xFFFFFFFF);
+  uint64_t physical_address_64bit = static_cast<uint64_t >(physical_address &
+                                                           0xFFFFFFFF);
   return physical_address_64bit;
 }
 
 // A helper function to record shift sign error.
-bool RiscvCpu::CheckShiftSign(uint8_t shamt, uint8_t instruction, const std::string &message_str) {
-  if (xlen == 32 || instruction == INST_SLLIW || instruction == INST_SRAIW || instruction == INST_SRLIW) {
+bool RiscvCpu::CheckShiftSign(uint8_t shamt, uint8_t instruction,
+                              const std::string &message_str) {
+  if (xlen_ == 32 || instruction == INST_SLLIW || instruction == INST_SRAIW ||
+      instruction == INST_SRLIW) {
     if (shamt >> 5) {
-      std::cerr << message_str << " Shift value (shamt) error. shamt = " << static_cast<int>(shamt) << std::endl;
+      std::cerr << message_str << " Shift value (shamt) error. shamt = "
+                << static_cast<int>(shamt) << std::endl;
       return true;
     }
   }
@@ -227,7 +251,8 @@ std::pair<bool, bool> RiscvCpu::SystemCall() {
 uint64_t RiscvCpu::LoadWd(uint64_t physical_address, int width) {
   assert(width == 32 || width == 64);
   auto &mem = *memory_;
-  uint64_t result = (width == 32) ? mem.Read32(physical_address) : mem.Read64(physical_address);
+  uint64_t result = (width == 32) ? mem.Read32(physical_address) : mem.Read64(
+    physical_address);
   return result;
 }
 
@@ -252,15 +277,19 @@ void RiscvCpu::StoreWd(uint64_t physical_address, uint64_t data, int width) {
   }
 }
 
-void RiscvCpu::Exception(int cause) {
+void RiscvCpu::Trap(int cause, bool interrupt) {
   // Currently supported exceptions: page fault (12, 13, 15) and ecall (8, 9, 11).
   assert(
-    cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT || cause == ECALL_UMODE ||
+    cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT ||
+    cause == STORE_PAGE_FAULT || cause == ECALL_UMODE ||
     cause == ECALL_SMODE || cause == ECALL_MMODE);
   // Page fault specific processing.
-  if (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT) {
+  if (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT ||
+      cause == STORE_PAGE_FAULT) {
     if (prev_page_fault_ && prev_faulting_address_ == faulting_address) {
-      std::cerr << "This is a page fault right after another fault at the same address. Exit." << std::endl;
+      std::cerr
+        << "This is a page fault right after another fault at the same address. Exit."
+        << std::endl;
       error_flag_ = true;
     }
     prev_page_fault_ = page_fault_;
@@ -268,39 +297,66 @@ void RiscvCpu::Exception(int cause) {
     page_fault_ = false;
   }
 
-  // TODO: Fix trap level. Current implementation always treat them as machine-exception.
+  // MTVAL, STVAL, and UTVAL.
+  uint64_t tval = 0;
+  if (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT) {
+    tval = faulting_address;
+  } else if (cause == ILLEGAL_INSTRUCTION) {
+    tval = (*memory_)[pc_] | ((*memory_)[pc_ + 1] << 8) | ((*memory_)[pc_ + 2] << 16) | ((*memory_)[pc_ + 3] << 24);
+  }
+  // TODO: Implement other tval cases.
+
   // Check delegation status.
-  if (((csrs_[MEDELEG] >> cause) & 1) && ((csrs_[SEDELEG] >> cause) & 1)) {
+  bool machine_exception_delegation = csrs_[MEDELEG] >> cause == 1;
+  bool machine_interrupt_delegation = csrs_[MIDELEG] >> cause == 1;
+  bool sv_exception_delegation = csrs_[SEDELEG] >> cause == 1;
+  bool sv_interrupt_delegation = csrs_[SIDELEG] >> cause == 1;
+
+  bool sv_delegation = (interrupt && machine_interrupt_delegation) ||
+                       (!interrupt && machine_exception_delegation);
+  bool user_delegation = (interrupt && sv_interrupt_delegation) ||
+                         (!interrupt && sv_exception_delegation);
+
+  sv_delegation = sv_delegation &&
+                  (privilege_ == PrivilegeMode::SUPERVISOR_MODE ||
+                   privilege_ == PrivilegeMode::USER_MODE);
+  user_delegation =
+    user_delegation && (privilege_ == PrivilegeMode::USER_MODE) &&
+    sv_delegation;
+
+  if (user_delegation) {
     // Delegate to U-Mode.
     csrs_[UCAUSE] = cause;
     csrs_[UEPC] = pc_;
     uint64_t tvec = csrs_[UTVAL];
     uint8_t mode = tvec & 0b11;
-    if (mode == 0) {
+    if (mode == 0 || interrupt) {
       next_pc_ = tvec & ~0b11;
     } else {
-      next_pc_ = (tvec & ~0b11) + 4 * (csrs_[UCAUSE] & GenMask<uint64_t>(xlen - 1, 0));
+      next_pc_ =
+        (tvec & ~0b11) + 4 * (csrs_[UCAUSE] & GenMask<uint64_t>(xlen_ - 1, 0));
 
     }
-    csrs_[UTVAL] = faulting_address;
+    csrs_[UTVAL] = tval;
     // Copy old UIE (#0) to UPIE ($4). Then, disable UIE (#0)
     const uint64_t uie = bitcrop(mstatus_, 1, 0);
     mstatus_ = bitset(mstatus_, 1, 4, uie);
     uint64_t new_uie = 0;
     mstatus_ = bitset(mstatus_, 1, 0, new_uie);
     privilege_ = PrivilegeMode::USER_MODE;
-  } else if ((csrs_[MEDELEG] >> cause) & 1) {
+  } else if (sv_delegation) {
     // Delegated to S-Mode.
     csrs_[SCAUSE] = cause;
     csrs_[SEPC] = pc_;
     uint64_t tvec = csrs_[STVEC];
     uint8_t mode = tvec & 0b11;
-    if (mode == 0) {
+    if (mode == 0 || interrupt) {
       next_pc_ = tvec & ~0b11;
     } else {
-      next_pc_ = (tvec & ~0b11) + 4 * (csrs_[SCAUSE] & GenMask<uint64_t>(xlen - 1, 0));
+      next_pc_ =
+        (tvec & ~0b11) + 4 * (csrs_[SCAUSE] & GenMask<uint64_t>(xlen_ - 1, 0));
     }
-    csrs_[STVAL] = faulting_address;
+    csrs_[STVAL] = tval;
 
     // Copy old SIE (#1) to SPIE (#5). Then, disable SIE (#1).
     const uint64_t sie = bitcrop(mstatus_, 1, 1);
@@ -317,13 +373,14 @@ void RiscvCpu::Exception(int cause) {
     csrs_[MEPC] = pc_;
     uint64_t tvec = csrs_[MTVEC];
     uint8_t mode = tvec & 0b11;
-    if (mode == 0) {
+    if (mode == 0 || interrupt) {
       next_pc_ = tvec & ~0b11;
     } else {
-      next_pc_ = (tvec & ~0b11) + 4 * (csrs_[MCAUSE] & GenMask<uint64_t>(xlen - 1, 0));
+      next_pc_ =
+        (tvec & ~0b11) + 4 * (csrs_[MCAUSE] & GenMask<uint64_t>(xlen_ - 1, 0));
     }
     // Store the faulting address to MTVAL.
-    csrs_[MTVAL] = faulting_address;
+    csrs_[MTVAL] = tval;
 
     // Copy old MIE (#3) to MPIE (#7). Then, disable MIE.
     const uint64_t mie = bitcrop(mstatus_, 1, 3);
@@ -336,8 +393,8 @@ void RiscvCpu::Exception(int cause) {
     mstatus_ = bitset(mstatus_, 2, 11, new_mpp);
     privilege_ = PrivilegeMode::MACHINE_MODE;
   }
-  const uint64_t sstatus_mask = (1 << (xlen - 1) & 0b11011110000100110011);
-  const uint64_t ustatus_mask = (1 << (xlen - 1) & 0b11011110000000010001);
+  const uint64_t sstatus_mask = (1 << (xlen_ - 1) & 0b11011110000100110011);
+  const uint64_t ustatus_mask = (1 << (xlen_ - 1) & 0b11011110000000010001);
   csrs_[USTATUS] = mstatus_ & ustatus_mask;
   csrs_[SSTATUS] = mstatus_ & sstatus_mask;
   csrs_[MSTATUS] = mstatus_;
@@ -364,29 +421,37 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
 
     ir = LoadCmd(pc_);
     if (page_fault_) {
-      Exception(ExceptionCode::INSTRUCTION_PAGE_FAULT);
+      Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
       continue;
     }
     if (verbose) {
-      printf("PC: %016lx, cmd: %016lx, privilege: %d\n", pc_, ir, static_cast<int>(privilege_)
+      printf("PC: %016lx, cmd: %016lx, privilege: %d\n", pc_, ir,
+             static_cast<int>(privilege_)
       );
-      std::cout << "           X1/RA            X2/SP            X3/GP            X4/TP            "
-                   "X5/T0            X6/T1            X7/T2            X8/S0/FP         "
-                   "X9/S1            X10/A0           X11/A1           X12/A2           "
-                   "X13/A3           X14/A4           X15/A5           X16/A6 " << std::endl;
+      std::cout
+        << "           X1/RA            X2/SP            X3/GP            X4/TP            "
+           "X5/T0            X6/T1            X7/T2            X8/S0/FP         "
+           "X9/S1            X10/A0           X11/A1           X12/A2           "
+           "X13/A3           X14/A4           X15/A5           X16/A6 "
+        << std::endl;
       printf("%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx "
              "%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx\n",
-             reg_[1], reg_[2], reg_[3], reg_[4], reg_[5], reg_[6], reg_[7], reg_[8],
-             reg_[9], reg_[10], reg_[11], reg_[12], reg_[13], reg_[14], reg_[15], reg_[16]
+             reg_[1], reg_[2], reg_[3], reg_[4], reg_[5], reg_[6], reg_[7],
+             reg_[8],
+             reg_[9], reg_[10], reg_[11], reg_[12], reg_[13], reg_[14],
+             reg_[15], reg_[16]
       );
-      std::cout << "          X17/A7           X18/S2           X19/S3           X20/S4           "
-                   "X21/S5           X22/S6           X23/S7           X24/S8           "
-                   "X25/S9           X26/S10          X27/S11          X28/T3           "
-                   "X29/T4           X30/T5           X31/T6" << std::endl;
+      std::cout
+        << "          X17/A7           X18/S2           X19/S3           X20/S4           "
+           "X21/S5           X22/S6           X23/S7           X24/S8           "
+           "X25/S9           X26/S10          X27/S11          X28/T3           "
+           "X29/T4           X30/T5           X31/T6" << std::endl;
       printf("%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx "
              "%016lx %016lx %016lx %016lx %016lx %016lx %016lx\n",
-             reg_[17], reg_[18], reg_[19], reg_[20], reg_[21], reg_[22], reg_[23], reg_[24],
-             reg_[25], reg_[26], reg_[27], reg_[28], reg_[29], reg_[30], reg_[31]
+             reg_[17], reg_[18], reg_[19], reg_[20], reg_[21], reg_[22],
+             reg_[23], reg_[24],
+             reg_[25], reg_[26], reg_[27], reg_[28], reg_[29], reg_[30],
+             reg_[31]
       );
     }
 
@@ -408,33 +473,33 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     uint32_t address;
 
     uint64_t load_data;
-    uint32_t shift_mask = xlen == 64 ? 0b0111111 : 0b0011111;
+    uint32_t shift_mask = xlen_ == 64 ? 0b0111111 : 0b0011111;
     switch (instruction) {
       uint64_t t;
       uint64_t temp64;
       case INST_ADD:
         temp64 = reg_[rs1] + reg_[rs2];
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_ADDW:
-        assert(xlen == 64);
+        assert(xlen_ == 64);
         temp64 = (reg_[rs1] + reg_[rs2]) & 0xFFFFFFFF;
         temp64 = Sext32bit(temp64);
         reg_[rd] = temp64;
         break;
       case INST_AND:
         temp64 = reg_[rs1] & reg_[rs2];
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_SUB:
         temp64 = reg_[rs1] - reg_[rs2];
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
@@ -446,21 +511,21 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         break;
       case INST_OR:
         temp64 = reg_[rs1] | reg_[rs2];
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_XOR:
         temp64 = reg_[rs1] ^ reg_[rs2];
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_SLL:
         temp64 = reg_[rs1] << (reg_[rs2] & shift_mask);
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
@@ -472,11 +537,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         break;
       case INST_SRL:
         temp64 = reg_[rs1];
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 &= ~kUpper32bitMask;
         }
         temp64 = temp64 >> (reg_[rs2] & shift_mask);
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
@@ -493,49 +558,50 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         reg_[rd] = static_cast<int32_t>(reg_[rs1]) >> (reg_[rs2] & 0b011111);
         break;
       case INST_SLT:
-        reg_[rd] = (static_cast<int64_t>(reg_[rs1]) < static_cast<int64_t>(reg_[rs2])) ? 1 : 0;
+        reg_[rd] = (static_cast<int64_t>(reg_[rs1]) <
+                    static_cast<int64_t>(reg_[rs2])) ? 1 : 0;
         break;
       case INST_SLTU:
         reg_[rd] = (reg_[rs1] < reg_[rs2]) ? 1 : 0;
         break;
       case INST_ADDI:
         temp64 = reg_[rs1] + imm12;
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_ADDIW:
         // Add instruction set check.
-        assert(xlen == 64);
+        assert(xlen_ == 64);
         temp64 = (reg_[rs1] + imm12) & 0xFFFFFFFF;
         temp64 = Sext32bit(temp64);
         reg_[rd] = temp64;
         break;
       case INST_ANDI:
         temp64 = reg_[rs1] & imm12;
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_ORI:
         temp64 = reg_[rs1] | imm12;
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_XORI:
         temp64 = reg_[rs1] ^ imm12;
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_SLLI:
         temp64 = reg_[rs1] << shamt;
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
@@ -549,11 +615,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         break;
       case INST_SRLI:
         temp64 = reg_[rs1];
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 &= ~kUpper32bitMask;
         }
         temp64 = temp64 >> shamt;
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
@@ -585,7 +651,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         }
         break;
       case INST_BGE:
-        if (static_cast<int64_t>(reg_[rs1]) >= static_cast<int64_t>(reg_[rs2])) {
+        if (static_cast<int64_t>(reg_[rs1]) >=
+            static_cast<int64_t>(reg_[rs2])) {
           next_pc_ = pc_ + imm13;
         }
         break;
@@ -651,7 +718,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         }
         reg_[rd] = load_data;
         if (page_fault_) {
-          Exception(ExceptionCode::LOAD_PAGE_FAULT);
+          Trap(ExceptionCode::LOAD_PAGE_FAULT);
         }
         break;
       case INST_SB:
@@ -672,19 +739,19 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
           StoreWd(address, reg_[rs2], 64);
         }
         if (page_fault_) {
-          Exception(ExceptionCode::STORE_PAGE_FAULT);
+          Trap(ExceptionCode::STORE_PAGE_FAULT);
         }
         break;
       case INST_LUI:
         temp64 = imm20 << 12;
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_AUIPC:
         temp64 = pc_ + (imm20 << 12);
-        if (xlen == 32) {
+        if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
@@ -787,15 +854,15 @@ void RiscvCpu::Ecall() {
       cause = ECALL_UMODE;
       break;
   }
-  Exception(cause);
+  Trap(cause);
 }
 
 void RiscvCpu::UpdateMstatus(const int16_t csr) {
   if (csr != USTATUS && csr != SSTATUS && csr != MSTATUS) {
     return;
   }
-  const uint64_t sstatus_mask = (1 << (xlen - 1) & 0b11011110000100110011);
-  const uint64_t ustatus_mask = (1 << (xlen - 1) & 0b11011110000000010001);
+  const uint64_t sstatus_mask = (1 << (xlen_ - 1) & 0b11011110000100110011);
+  const uint64_t ustatus_mask = (1 << (xlen_ - 1) & 0b11011110000000010001);
   if (csr == USTATUS) {
     const uint64_t ustatus = (csrs_[USTATUS] & ustatus_mask);
     mstatus_ = (mstatus_ & ~ustatus_mask) | ustatus;
@@ -812,7 +879,8 @@ void RiscvCpu::UpdateMstatus(const int16_t csr) {
 }
 
 void RiscvCpu::DumpCpuStatus() {
-  std::cout << "CPU Privilege Mode = " << static_cast<int>(privilege_) << std::endl;
+  std::cout << "CPU Privilege Mode = " << static_cast<int>(privilege_)
+            << std::endl;
   std::cout << "CSR[MSTATUS] = " << std::hex << csrs_[MSTATUS] << std::endl;
   std::cout << "PC = " << std::hex << pc_ << std::endl;
 }
@@ -826,7 +894,8 @@ PrivilegeMode RiscvCpu::ToPrivilegeMode(int value) {
     case 3:
       return PrivilegeMode::MACHINE_MODE;
     default:
-      throw std::out_of_range("Value " + std::to_string(value) + " is not appropriate privilege level");
+      throw std::out_of_range("Value " + std::to_string(value) +
+                              " is not appropriate privilege level");
   }
 }
 
