@@ -30,7 +30,7 @@ void RiscvCpu::InitializeCsrs() {
   csrs_[MISA] = (mxl_ << (xlen_ - 2)) | extensions;
   if (mxl_ == 2) {
     // For 64 bit mode, sxl and uxl are the same as mxl.
-    csrs_[MSTATUS] = (mxl_ << 34) | (mxl_ << 32);
+    csrs_[MSTATUS] = (static_cast<uint64_t >(mxl_) << 34) | (static_cast<uint64_t>(mxl_) << 32);
   }
 }
 
@@ -65,7 +65,7 @@ RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_access) {
     std::cerr << "Unsupported virtual address translation mode (" << mode << ")"
               << std::endl;
     page_fault_ = true;
-    faulting_address = virtual_address;
+    faulting_address_ = virtual_address;
     return physical_address;
   }
   // uint16_t asid = bitcrop(sptbr, 9, 22);
@@ -89,7 +89,7 @@ RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_access) {
       std::cerr << "virtual_address = " << virtual_address << std::endl;
       std::cerr << "PTE entry address = " << pte_address << std::endl;
       page_fault_ = true;
-      faulting_address = virtual_address;
+      faulting_address_ = virtual_address;
       return physical_address;
     }
     if (pte.IsLeaf()) {
@@ -98,7 +98,7 @@ RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_access) {
     if (level == 0) {
       std::cerr << "Non-leaf block in level 0." << std::endl;
       page_fault_ = true;
-      faulting_address = virtual_address;
+      faulting_address_ = virtual_address;
       return physical_address;
     }
     ppn = pte.GetPpn();
@@ -107,7 +107,7 @@ RiscvCpu::VirtualToPhysical64(uint64_t virtual_address, bool write_access) {
     // Misaligned superpage.
     std::cerr << "Misaligned super page." << std::endl;
     page_fault_ = true;
-    faulting_address = virtual_address;
+    faulting_address_ = virtual_address;
     return physical_address;
   }
   // Access and Dirty bit process;
@@ -158,7 +158,7 @@ RiscvCpu::VirtualToPhysical32(uint64_t virtual_address, bool write_access) {
       std::cerr << "virtual_address = " << virtual_address << std::endl;
       std::cerr << "PTE entry address = " << pte_address << std::endl;
       page_fault_ = true;
-      faulting_address = virtual_address;
+      faulting_address_ = virtual_address;
       return physical_address;
     }
     if (pte.IsLeaf()) {
@@ -167,7 +167,7 @@ RiscvCpu::VirtualToPhysical32(uint64_t virtual_address, bool write_access) {
     if (level == 0) {
       std::cerr << "Non-leaf block in level 0." << std::endl;
       page_fault_ = true;
-      faulting_address = virtual_address;
+      faulting_address_ = virtual_address;
       return physical_address;
     }
     ppn = pte.GetPpn();
@@ -178,7 +178,7 @@ RiscvCpu::VirtualToPhysical32(uint64_t virtual_address, bool write_access) {
     // TODO: Do page-fault exception.
     std::cerr << "Misaligned super page." << std::endl;
     page_fault_ = true;
-    faulting_address = virtual_address;
+    faulting_address_ = virtual_address;
     return physical_address;
   }
   // Access and Dirty bit process;
@@ -286,14 +286,14 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   // Page fault specific processing.
   if (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT ||
       cause == STORE_PAGE_FAULT) {
-    if (prev_page_fault_ && prev_faulting_address_ == faulting_address) {
+    if (prev_page_fault_ && prev_faulting_address_ == faulting_address_) {
       std::cerr
         << "This is a page fault right after another fault at the same address. Exit."
         << std::endl;
       error_flag_ = true;
     }
     prev_page_fault_ = page_fault_;
-    prev_faulting_address_ = faulting_address;
+    prev_faulting_address_ = faulting_address_;
     page_fault_ = false;
   }
 
@@ -301,7 +301,7 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   uint64_t tval = 0;
   if (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT ||
       cause == STORE_PAGE_FAULT) {
-    tval = faulting_address;
+    tval = faulting_address_;
   } else if (cause == ILLEGAL_INSTRUCTION) {
     tval = (*memory_)[pc_] | ((*memory_)[pc_ + 1] << 8) |
            ((*memory_)[pc_ + 2] << 16) | ((*memory_)[pc_ + 3] << 24);
@@ -309,10 +309,10 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   // TODO: Implement other tval cases.
 
   // Check delegation status.
-  bool machine_exception_delegation = (csrs_[MEDELEG] >> cause) & 1 == 1;
-  bool machine_interrupt_delegation = (csrs_[MIDELEG] >> cause) & 1 == 1;
-  bool sv_exception_delegation = (csrs_[SEDELEG] >> cause) & 1 == 1;
-  bool sv_interrupt_delegation = (csrs_[SIDELEG] >> cause) & 1 == 1;
+  bool machine_exception_delegation = ((csrs_[MEDELEG] >> cause) & 1) == 1;
+  bool machine_interrupt_delegation = ((csrs_[MIDELEG] >> cause) & 1) == 1;
+  bool sv_exception_delegation = ((csrs_[SEDELEG] >> cause) & 1) == 1;
+  bool sv_interrupt_delegation = ((csrs_[SIDELEG] >> cause) & 1) == 1;
 
   bool sv_delegation = (interrupt && machine_interrupt_delegation) ||
                        (!interrupt && machine_exception_delegation);
@@ -395,11 +395,7 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     mstatus_ = bitset(mstatus_, 2, 11, new_mpp);
     privilege_ = PrivilegeMode::MACHINE_MODE;
   }
-  const uint64_t sstatus_mask = (1 << (xlen_ - 1) & 0b11011110000100110011);
-  const uint64_t ustatus_mask = (1 << (xlen_ - 1) & 0b11011110000000010001);
-  csrs_[USTATUS] = mstatus_ & ustatus_mask;
-  csrs_[SSTATUS] = mstatus_ & sstatus_mask;
-  csrs_[MSTATUS] = mstatus_;
+  ApplyMstatusToCsr();
 }
 
 uint64_t kUpper32bitMask = 0xFFFFFFFF00000000;
@@ -423,42 +419,16 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     uint64_t ir;
 
     ir = LoadCmd(pc_);
-    if (page_fault_) {
-      Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
-      continue;
-    }
     if (verbose) {
       printf("PC: %016lx, cmd: %016lx, privilege: %d\n", pc_, ir,
              static_cast<int>(privilege_)
       );
-      std::cout
-        << "           X1/RA            X2/SP            X3/GP            X4/TP            "
-           "X5/T0            X6/T1            X7/T2            X8/S0/FP         "
-           "X9/S1            X10/A0           X11/A1           X12/A2           "
-           "X13/A3           X14/A4           X15/A5           X16/A6 "
-        << std::endl;
-      printf("%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx "
-             "%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx\n",
-             reg_[1], reg_[2], reg_[3], reg_[4], reg_[5], reg_[6], reg_[7],
-             reg_[8],
-             reg_[9], reg_[10], reg_[11], reg_[12], reg_[13], reg_[14],
-             reg_[15], reg_[16]
-      );
-      std::cout
-        << "          X17/A7           X18/S2           X19/S3           X20/S4           "
-           "X21/S5           X22/S6           X23/S7           X24/S8           "
-           "X25/S9           X26/S10          X27/S11          X28/T3           "
-           "X29/T4           X30/T5           X31/T6" << std::endl;
-      printf("%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx "
-             "%016lx %016lx %016lx %016lx %016lx %016lx %016lx\n",
-             reg_[17], reg_[18], reg_[19], reg_[20], reg_[21], reg_[22],
-             reg_[23], reg_[24],
-             reg_[25], reg_[26], reg_[27], reg_[28], reg_[29], reg_[30],
-             reg_[31]
-      );
     }
-
-    // Change this line when C is supported.
+    if (page_fault_) {
+      Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
+      continue;
+    }
+   // Change this line when C is supported.
     next_pc_ = pc_ + 4;
 
     // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
@@ -476,6 +446,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     uint32_t address;
 
     uint64_t load_data;
+    uint64_t source_address;
     uint32_t shift_mask = xlen_ == 64 ? 0b0111111 : 0b0011111;
     switch (instruction) {
       uint64_t t;
@@ -700,9 +671,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_LW:
       case INST_LWU:
       case INST_LD:
-        address = VirtualToPhysical(reg_[rs1] + imm12);
+        source_address = reg_[rs1] + imm12;
+        address = VirtualToPhysical(source_address);
         if (page_fault_) {
-          break;
+          Trap(ExceptionCode::LOAD_PAGE_FAULT);
+          continue;
         }
         if (instruction == INST_LB) {
           load_data = SignExtend(LoadWd(address) & 0xFF, 8); // LB
@@ -720,9 +693,6 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
           load_data = LoadWd(address, 64); // LD
         }
         reg_[rd] = load_data;
-        if (page_fault_) {
-          Trap(ExceptionCode::LOAD_PAGE_FAULT);
-        }
         break;
       case INST_SB:
       case INST_SH:
@@ -730,7 +700,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_SD:
         address = VirtualToPhysical(reg_[rs1] + imm12_stype, true);
         if (page_fault_) {
-          break;
+          Trap(ExceptionCode::STORE_PAGE_FAULT);
+          continue;
         }
         if (instruction == INST_SB) {
           StoreWd(address, reg_[rs2], 8);
@@ -839,6 +810,34 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     }
     reg_[ZERO] = 0;
 
+    if (verbose) {
+      std::cout
+        << "           X1/RA            X2/SP            X3/GP            X4/TP            "
+           "X5/T0            X6/T1            X7/T2            X8/S0/FP         "
+           "X9/S1            X10/A0           X11/A1           X12/A2           "
+           "X13/A3           X14/A4           X15/A5           X16/A6 "
+        << std::endl;
+      printf("%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx "
+             "%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx\n",
+             reg_[1], reg_[2], reg_[3], reg_[4], reg_[5], reg_[6], reg_[7],
+             reg_[8],
+             reg_[9], reg_[10], reg_[11], reg_[12], reg_[13], reg_[14],
+             reg_[15], reg_[16]
+      );
+      std::cout
+        << "          X17/A7           X18/S2           X19/S3           X20/S4           "
+           "X21/S5           X22/S6           X23/S7           X24/S8           "
+           "X25/S9           X26/S10          X27/S11          X28/T3           "
+           "X29/T4           X30/T5           X31/T6" << std::endl;
+      printf("%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx "
+             "%016lx %016lx %016lx %016lx %016lx %016lx %016lx\n",
+             reg_[17], reg_[18], reg_[19], reg_[20], reg_[21], reg_[22],
+             reg_[23], reg_[24],
+             reg_[25], reg_[26], reg_[27], reg_[28], reg_[29], reg_[30],
+             reg_[31]
+      );
+    }
+
     if (host_emulation_ && host_write) {
       HostEmulation();
       host_write = false;
@@ -852,7 +851,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   return error_flag_;
 }
 
-
+// reference: https://github.com/riscv/riscv-isa-sim/issues/364
 void RiscvCpu::HostEmulation() {
   uint64_t payload;
   uint8_t device;
@@ -881,6 +880,8 @@ void RiscvCpu::HostEmulation() {
       }
     } else {
       std::cerr << "Unsupported Host command " << command << " for Device 0" << std::endl;
+      error_flag_ = true;
+      end_flag_ = true;
     }
   } else if (device == 1) {
     if (command == 1) {
@@ -913,12 +914,26 @@ void RiscvCpu::Ecall() {
   Trap(cause);
 }
 
-void RiscvCpu::UpdateMstatus(const int16_t csr) {
+constexpr uint64_t kSstatusMask_32 = 0b1101'1110'0001'0011'0011;
+constexpr uint64_t kUstatusMask_32 = 0b1101'1110'0000'0001'0001;
+constexpr uint64_t kSstatusMask_64 = 0b11'0000'0000'0000'1101'1110'0001'0011'0011;
+constexpr uint64_t kUstatusMask_64 = 0b00'0000'0000'0000'1101'1110'0000'0001'0001;
+
+void RiscvCpu::ApplyMstatusToCsr() {
+  const uint64_t ustatus_mask = mxl_ == 1 ? kUstatusMask_32 : kUstatusMask_64;
+  const uint64_t sstatus_mask = mxl_ == 1 ? kSstatusMask_32 : kSstatusMask_64;
+
+  csrs_[USTATUS] = mstatus_ & ustatus_mask;
+  csrs_[SSTATUS] = mstatus_ & sstatus_mask;
+  csrs_[MSTATUS] = mstatus_;
+}
+
+void RiscvCpu::UpdateMstatus(int16_t csr) {
   if (csr != USTATUS && csr != SSTATUS && csr != MSTATUS) {
     return;
   }
-  const uint64_t sstatus_mask = (1 << (xlen_ - 1) & 0b11011110000100110011);
-  const uint64_t ustatus_mask = (1 << (xlen_ - 1) & 0b11011110000000010001);
+  const uint64_t ustatus_mask = mxl_ == 1 ? kUstatusMask_32 : kUstatusMask_64;
+  const uint64_t sstatus_mask = mxl_ == 1 ? kSstatusMask_32 : kSstatusMask_64;
   if (csr == USTATUS) {
     const uint64_t ustatus = (csrs_[USTATUS] & ustatus_mask);
     mstatus_ = (mstatus_ & ~ustatus_mask) | ustatus;
@@ -929,9 +944,14 @@ void RiscvCpu::UpdateMstatus(const int16_t csr) {
     // if (csr == MSTATUS)
     mstatus_ = csrs_[MSTATUS];
   }
-  csrs_[USTATUS] = mstatus_ & ustatus_mask;
-  csrs_[SSTATUS] = mstatus_ & sstatus_mask;
-  csrs_[MSTATUS] = mstatus_;
+  // SD, FS, and XS are hardwired to zeros.
+  const uint64_t sd_xs_fs_mask = 1ull << (xlen_ - 1) | 0b011110000000000000;
+  mstatus_ &= ~sd_xs_fs_mask;
+  // set SXLEN, MXLEN
+  if (mxl_ == 2) {
+    mstatus_ = (mstatus_ & ~(0b1111ull << 32)) | (0b1010ull << 32);
+  }
+  ApplyMstatusToCsr();
 }
 
 void RiscvCpu::DumpCpuStatus() {

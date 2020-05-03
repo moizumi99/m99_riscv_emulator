@@ -63,11 +63,12 @@ private:
   bool prev_page_fault_ = false;
   uint64_t prev_faulting_address_ = 0;
   bool error_flag_, end_flag_;
-  uint64_t faulting_address;
+  uint64_t faulting_address_;
   inline bool CheckShiftSign(uint8_t shamt, uint8_t instruction, const std::string &message_str);
   PrivilegeMode ToPrivilegeMode(int value);
   void DumpCpuStatus();
   void UpdateMstatus(int16_t csr);
+  void ApplyMstatusToCsr();
   // Below are for system call and host emulation
 public:
   void SetWorkMemory(uint64_t top, uint64_t bottom);
