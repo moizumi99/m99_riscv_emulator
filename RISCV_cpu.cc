@@ -408,6 +408,72 @@ uint64_t RiscvCpu::Sext32bit(uint64_t data32bit) {
   }
 }
 
+void RiscvCpu::CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd, uint32_t rs1) {
+  uint64_t t = csrs_[csr];
+  switch (instruction) {
+    case INST_CSRRC:
+      csrs_[csr] &= ~reg_[rs1];
+      break;
+    case INST_CSRRCI:
+      csrs_[csr] &= ~rs1;
+      break;
+    case INST_CSRRS:
+      csrs_[csr] |= reg_[rs1];
+      break;
+    case INST_CSRRSI:
+      csrs_[csr] |= rs1;
+      break;
+    case INST_CSRRW:
+      csrs_[csr] = reg_[rs1];
+      break;
+    case INST_CSRRWI:
+      csrs_[csr] = rs1;
+      break;
+    default:
+      ;
+  }
+  reg_[rd] = t;
+  UpdateMstatus(csr);
+}
+
+uint64_t RiscvCpu::Branch(uint32_t instruction, uint32_t rs1, uint32_t rs2, int32_t imm13) {
+  switch (instruction) {
+    case INST_BEQ:
+      if (reg_[rs1] == reg_[rs2]) {
+        next_pc_ = pc_ + imm13;
+      }
+      break;
+    case INST_BGE:
+      if (static_cast<int64_t>(reg_[rs1]) >=
+          static_cast<int64_t>(reg_[rs2])) {
+        next_pc_ = pc_ + imm13;
+      }
+      break;
+    case INST_BGEU:
+      if (reg_[rs1] >= reg_[rs2]) {
+        next_pc_ = pc_ + imm13;
+      }
+      break;
+    case INST_BLT:
+      if (static_cast<int64_t>(reg_[rs1]) < static_cast<int64_t>(reg_[rs2])) {
+        next_pc_ = pc_ + imm13;
+      }
+      break;
+    case INST_BLTU:
+      if (reg_[rs1] < reg_[rs2]) {
+        next_pc_ = pc_ + imm13;
+      }
+      break;
+    case INST_BNE:
+      if (reg_[rs1] != reg_[rs2]) {
+        next_pc_ = pc_ + imm13;
+      }
+      break;
+    default:
+      ;
+  }
+}
+
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   error_flag_ = false;
   end_flag_ = false;
@@ -432,10 +498,10 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     next_pc_ = pc_ + 4;
 
     // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
-    uint8_t instruction = GetCode(ir);
-    uint8_t rd = GetRd(ir);
-    uint8_t rs1 = GetRs1(ir);
-    uint8_t rs2 = GetRs2(ir);
+    uint32_t instruction = GetCode(ir);
+    uint32_t rd = GetRd(ir);
+    uint32_t rs1 = GetRs1(ir);
+    uint32_t rs2 = GetRs2(ir);
     int16_t imm12 = GetImm12(ir);
     int16_t csr = GetCsr(ir);
     uint8_t shamt = GetShamt(ir);
@@ -620,35 +686,12 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         reg_[rd] = reg_[rs1] < static_cast<uint64_t>(imm12) ? 1 : 0;
         break;
       case INST_BEQ:
-        if (reg_[rs1] == reg_[rs2]) {
-          next_pc_ = pc_ + SignExtend(imm13, 13);
-        }
-        break;
       case INST_BGE:
-        if (static_cast<int64_t>(reg_[rs1]) >=
-            static_cast<int64_t>(reg_[rs2])) {
-          next_pc_ = pc_ + imm13;
-        }
-        break;
       case INST_BGEU:
-        if (reg_[rs1] >= reg_[rs2]) {
-          next_pc_ = pc_ + imm13;
-        }
-        break;
       case INST_BLT:
-        if (static_cast<int64_t>(reg_[rs1]) < static_cast<int64_t>(reg_[rs2])) {
-          next_pc_ = pc_ + imm13;
-        }
-        break;
       case INST_BLTU:
-        if (reg_[rs1] < reg_[rs2]) {
-          next_pc_ = pc_ + imm13;
-        }
-        break;
       case INST_BNE:
-        if (reg_[rs1] != reg_[rs2]) {
-          next_pc_ = pc_ + imm13;
-        }
+        Branch(instruction, rs1, rs2, imm13);
         break;
       case INST_JAL:
         reg_[rd] = pc_ + 4;
@@ -660,6 +703,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_JALR:
         next_pc_ = (reg_[rs1] + imm12) & ~1;
         reg_[rd] = pc_ + 4;
+        // Below lines are only for simulation purpose.
+        // Remove once a better solution is found.
         if (rd == ZERO && rs1 == RA && reg_[rs1] == 0 && imm12 == 0) {
           end_flag_ = true;
         }
@@ -765,34 +810,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         UpdateMstatus(csr);
         break;
       case INST_CSRRCI:
-        t = csrs_[csr];
-        csrs_[csr] &= ~rs1;
-        reg_[rd] = t;
-        UpdateMstatus(csr);
-        break;
       case INST_CSRRS:
-        t = csrs_[csr];
-        csrs_[csr] |= reg_[rs1];
-        reg_[rd] = t;
-        UpdateMstatus(csr);
-        break;
       case INST_CSRRSI:
-        t = csrs_[csr];
-        csrs_[csr] |= rs1;
-        reg_[rd] = t;
-        UpdateMstatus(csr);
-        break;
       case INST_CSRRW:
-        t = csrs_[csr];
-        csrs_[csr] = reg_[rs1];
-        reg_[rd] = t;
-        UpdateMstatus(csr);
-        break;
       case INST_CSRRWI:
-        t = csrs_[csr];
-        csrs_[csr] = rs1;
-        reg_[rd] = t;
-        UpdateMstatus(csr);
+        CsrsInstruction(instruction, csr, rd, rs1);
         break;
       case INST_FENCE:
       case INST_FENCEI:

@@ -51,6 +51,8 @@ private:
   std::shared_ptr<MemoryWrapper> memory_;
   std::vector<uint64_t> csrs_;
   void InitializeCsrs();
+  void CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd, uint32_t rs1);
+  uint64_t Branch(uint32_t instruction, uint32_t rs1, uint32_t rs2, int32_t imm13);
   void Mret();
   void Sret();
   uint32_t LoadCmd(uint64_t pc);
