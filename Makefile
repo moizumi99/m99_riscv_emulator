@@ -32,8 +32,10 @@ test:  $(TEST_TARGETS) $(TARGET)
 	./cpu_test
 	./memory_wrapper_test
 	./pte_test
-	./rv32ui-p-test.sh
+	./rv32ui-p-tests.sh
+	./rv32ui-v-tests.sh
 	./rv64ui-p-tests.sh
+	./rv64ui-v-tests.sh
 
 
 .PHONY: clean

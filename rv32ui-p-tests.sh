@@ -41,7 +41,7 @@ test_list=(
   "target/share/riscv-tests/isa/rv32ui-p-lw"
 )
 emulater="./RISCV_Emulator"
-flag="-e"
+flag="-h"
 for test in "${test_list[@]}"; do
   echo -n "Run ${test} test: "
   $(eval "${emulater} ${flag} ${test} 2> /dev/null")
