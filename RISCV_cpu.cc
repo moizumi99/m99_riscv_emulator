@@ -30,7 +30,8 @@ void RiscvCpu::InitializeCsrs() {
   csrs_[MISA] = (mxl_ << (xlen_ - 2)) | extensions;
   if (mxl_ == 2) {
     // For 64 bit mode, sxl and uxl are the same as mxl.
-    csrs_[MSTATUS] = (static_cast<uint64_t >(mxl_) << 34) | (static_cast<uint64_t>(mxl_) << 32);
+    csrs_[MSTATUS] = (static_cast<uint64_t >(mxl_) << 34) |
+                     (static_cast<uint64_t>(mxl_) << 32);
   }
 }
 
@@ -408,7 +409,8 @@ uint64_t RiscvCpu::Sext32bit(uint64_t data32bit) {
   }
 }
 
-void RiscvCpu::CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd, uint32_t rs1) {
+void RiscvCpu::CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd,
+                               uint32_t rs1) {
   uint64_t t = csrs_[csr];
   switch (instruction) {
     case INST_CSRRC:
@@ -429,49 +431,91 @@ void RiscvCpu::CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd, 
     case INST_CSRRWI:
       csrs_[csr] = rs1;
       break;
-    default:
-      ;
+    default:;
   }
   reg_[rd] = t;
   UpdateMstatus(csr);
 }
 
-uint64_t RiscvCpu::Branch(uint32_t instruction, uint32_t rs1, uint32_t rs2, int32_t imm13) {
+uint64_t
+RiscvCpu::BranchInstruction(uint32_t instruction, uint32_t rs1, uint32_t rs2,
+                            int32_t imm13) {
+  bool condition = false;
   switch (instruction) {
     case INST_BEQ:
-      if (reg_[rs1] == reg_[rs2]) {
-        next_pc_ = pc_ + imm13;
-      }
+      condition = reg_[rs1] == reg_[rs2];
       break;
     case INST_BGE:
-      if (static_cast<int64_t>(reg_[rs1]) >=
-          static_cast<int64_t>(reg_[rs2])) {
-        next_pc_ = pc_ + imm13;
-      }
+      condition = static_cast<int64_t>(reg_[rs1]) >=
+                  static_cast<int64_t>(reg_[rs2]);
       break;
     case INST_BGEU:
-      if (reg_[rs1] >= reg_[rs2]) {
-        next_pc_ = pc_ + imm13;
-      }
+      condition = reg_[rs1] >= reg_[rs2];
       break;
     case INST_BLT:
-      if (static_cast<int64_t>(reg_[rs1]) < static_cast<int64_t>(reg_[rs2])) {
-        next_pc_ = pc_ + imm13;
-      }
+      condition =
+        static_cast<int64_t>(reg_[rs1]) < static_cast<int64_t>(reg_[rs2]);
       break;
     case INST_BLTU:
-      if (reg_[rs1] < reg_[rs2]) {
-        next_pc_ = pc_ + imm13;
-      }
+      condition = reg_[rs1] < reg_[rs2];
       break;
     case INST_BNE:
-      if (reg_[rs1] != reg_[rs2]) {
-        next_pc_ = pc_ + imm13;
-      }
+      condition = reg_[rs1] != reg_[rs2];
       break;
-    default:
-      ;
+    default:;
   }
+  return condition ? pc_ + imm13 : next_pc_;
+}
+
+void
+RiscvCpu::OperationInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                               uint32_t rs2) {
+  bool w_instruction = instruction == INST_ADDW || instruction == INST_SUBW ||
+                       instruction == INST_SLLW || instruction == INST_SRLW ||
+                       instruction == INST_SRAW;
+  uint32_t shift_mask = (xlen_ == 32 || w_instruction) ? 0b0011111 : 0b0111111;
+  uint64_t temp64;
+  switch (instruction) {
+    case INST_ADD:
+    case INST_ADDW:
+      temp64 = reg_[rs1] + reg_[rs2];
+      break;
+    case INST_SUB:
+    case INST_SUBW:
+      temp64 = reg_[rs1] - reg_[rs2];
+      break;
+    case INST_AND:
+      temp64 = reg_[rs1] & reg_[rs2];
+      break;
+    case INST_OR:
+      temp64 = reg_[rs1] | reg_[rs2];
+      break;
+    case INST_XOR:
+      temp64 = reg_[rs1] ^ reg_[rs2];
+      break;
+    case INST_SLL:
+    case INST_SLLW:
+      temp64 = reg_[rs1] << (reg_[rs2] & shift_mask);
+      break;
+    case INST_SRL:
+    case INST_SRLW:
+      temp64 = reg_[rs1];
+      if (xlen_ == 32 || instruction == INST_SRLW) {
+        temp64 &= 0xFFFFFFFF;
+      }
+      temp64 = temp64 >> (reg_[rs2] & shift_mask);
+      break;
+    case INST_SRA:
+      temp64 = static_cast<int64_t>(reg_[rs1]) >> (reg_[rs2] & shift_mask);
+      break;
+    case INST_SRAW:
+      temp64 = Sext32bit(reg_[rs1]) >> (reg_[rs2] & shift_mask);
+      break;
+  }
+  if (xlen_ == 32 || w_instruction) {
+    temp64 = Sext32bit(temp64);
+  }
+  reg_[rd] = temp64;
 }
 
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
@@ -494,7 +538,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
       continue;
     }
-   // Change this line when C is supported.
+    // Change this line when C is supported.
     next_pc_ = pc_ + 4;
 
     // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
@@ -513,96 +557,23 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
 
     uint64_t load_data;
     uint64_t source_address;
-    uint32_t shift_mask = xlen_ == 64 ? 0b0111111 : 0b0011111;
     switch (instruction) {
       uint64_t t;
       uint64_t temp64;
       case INST_ADD:
-        temp64 = reg_[rs1] + reg_[rs2];
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        break;
       case INST_ADDW:
-        assert(xlen_ == 64);
-        temp64 = (reg_[rs1] + reg_[rs2]) & 0xFFFFFFFF;
-        temp64 = Sext32bit(temp64);
-        reg_[rd] = temp64;
-        break;
       case INST_AND:
-        temp64 = reg_[rs1] & reg_[rs2];
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        break;
       case INST_SUB:
-        temp64 = reg_[rs1] - reg_[rs2];
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        break;
       case INST_SUBW:
-        temp64 = (reg_[rs1] - reg_[rs2]) & 0xFFFFFFFF;
-        temp64 = Sext32bit(temp64);
-        reg_[rd] = temp64;
-        break;
       case INST_OR:
-        temp64 = reg_[rs1] | reg_[rs2];
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        break;
       case INST_XOR:
-        temp64 = reg_[rs1] ^ reg_[rs2];
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        break;
       case INST_SLL:
-        temp64 = reg_[rs1] << (reg_[rs2] & shift_mask);
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        break;
       case INST_SLLW:
-        temp64 = (reg_[rs1] << (reg_[rs2] & 0b011111)) & 0x0FFFFFFFF;
-        temp64 = Sext32bit(temp64);
-        reg_[rd] = temp64;
-        break;
       case INST_SRL:
-        temp64 = reg_[rs1];
-        if (xlen_ == 32) {
-          temp64 &= ~kUpper32bitMask;
-        }
-        temp64 = temp64 >> (reg_[rs2] & shift_mask);
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        break;
       case INST_SRLW:
-        temp64 = (reg_[rs1] & 0xFFFFFFFF) >> (reg_[rs2] & 0b011111);
-        temp64 = Sext32bit(temp64);
-        reg_[rd] = temp64;
-        break;
       case INST_SRA:
-        reg_[rd] = static_cast<int64_t>(reg_[rs1]) >> (reg_[rs2] & shift_mask);
-        break;
       case INST_SRAW:
-        reg_[rd] = static_cast<int32_t>(reg_[rs1]) >> (reg_[rs2] & 0b011111);
-        break;
-      case INST_SLT:
-        reg_[rd] = (static_cast<int64_t>(reg_[rs1]) <
-                    static_cast<int64_t>(reg_[rs2])) ? 1 : 0;
-        break;
-      case INST_SLTU:
-        reg_[rd] = (reg_[rs1] < reg_[rs2]) ? 1 : 0;
+        OperationInstruction(instruction, rd, rs1, rs2);
         break;
       case INST_ADDI:
         temp64 = reg_[rs1] + imm12;
@@ -679,6 +650,13 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         reg_[rd] = static_cast<int32_t>(reg_[rs1]) >> shamt;
         CheckShiftSign(shamt, instruction, "SRAI");
         break;
+      case INST_SLT:
+        reg_[rd] = (static_cast<int64_t>(reg_[rs1]) <
+                    static_cast<int64_t>(reg_[rs2])) ? 1 : 0;
+        break;
+      case INST_SLTU:
+        reg_[rd] = (reg_[rs1] < reg_[rs2]) ? 1 : 0;
+        break;
       case INST_SLTI:
         reg_[rd] = static_cast<int64_t>(reg_[rs1]) < imm12 ? 1 : 0;
         break;
@@ -691,7 +669,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_BLT:
       case INST_BLTU:
       case INST_BNE:
-        Branch(instruction, rs1, rs2, imm13);
+        next_pc_ = BranchInstruction(instruction, rs1, rs2, imm13);
         break;
       case INST_JAL:
         reg_[rd] = pc_ + 4;
@@ -748,21 +726,18 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
           Trap(ExceptionCode::STORE_PAGE_FAULT);
           continue;
         }
+        int width;
         if (instruction == INST_SB) {
-          StoreWd(address, reg_[rs2], 8);
+          width = 8;
         } else if (instruction == INST_SH) {
-          StoreWd(address, reg_[rs2], 16);
+          width = 16;
         } else if (instruction == INST_SW) {
-          StoreWd(address, reg_[rs2], 32);
+          width = 32;
         } else { // if instruction === INST_SD.
-          StoreWd(address, reg_[rs2], 64);
+          width = 64;
         }
-        if (page_fault_) {
-          Trap(ExceptionCode::STORE_PAGE_FAULT);
-        }
-        if (address == kToHost) {
-          host_write = true;
-        }
+        StoreWd(address, reg_[rs2], width);
+        host_write |= address == kToHost;
         break;
       case INST_LUI:
         temp64 = imm20 << 12;
@@ -901,7 +876,8 @@ void RiscvCpu::HostEmulation() {
         end_flag_ = true;
       }
     } else {
-      std::cerr << "Unsupported Host command " << command << " for Device 0" << std::endl;
+      std::cerr << "Unsupported Host command " << command << " for Device 0"
+                << std::endl;
       error_flag_ = true;
       end_flag_ = true;
     }
@@ -912,7 +888,8 @@ void RiscvCpu::HostEmulation() {
     } else if (command == 0) {
       // TODO: Implement Read.
     } else {
-      std::cerr << "Unsupported host command " << command << " for Device 1" << std::endl;
+      std::cerr << "Unsupported host command " << command << " for Device 1"
+                << std::endl;
     }
   } else {
     std::cerr << "Unsupported Host Device " << device << std::endl;

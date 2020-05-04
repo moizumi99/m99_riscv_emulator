@@ -3,7 +3,8 @@ CPPFLAGS = -Wall -g
 TARGET = RISCV_Emulator
 CPU_OBJS = RISCV_cpu.o load_assembler.o assembler.o bit_tools.o instruction_encdec.o memory_wrapper.o system_call_emulator.o pte.o
 OBJS = RISCV_Emulator.o $(CPU_OBJS)
-TEST_TARGETS = load_assembler_test cpu_test pte_test memory_wrapper_test
+TEST_TARGETS = cpu_test pte_test
+WRAPPER_TESTS = memory_wrapper_test load_assembler_test
 
 .PHONY: all
 	all: $(TARGET) $(TEST_TARGETS)
@@ -26,18 +27,23 @@ pte_test: pte.o pte_test.o bit_tools.o
 .cpp.o:
 	$(CXX) -c $< -o $@ $(CPPFLAGS)
 
-.PHONY: test
-test:  $(TEST_TARGETS) $(TARGET)
-	./load_assembler_test
+.PHONY: core_test
+core_test:  $(TEST_TARGETS) $(TARGET)
 	./cpu_test
-	./memory_wrapper_test
 	./pte_test
 	./rv32ui-p-tests.sh
 	./rv32ui-v-tests.sh
 	./rv64ui-p-tests.sh
 	./rv64ui-v-tests.sh
 
+.PHONY: wrapper_test
+wrapper_test: $(WRAPPER_TESTS)
+	./load_assembler_test
+	./memory_wrapper_test
+
+.PHONY: test
+test: wrapper_test core_test
 
 .PHONY: clean
 clean:
-	rm -rf *.o $(TARGET) $(TEST_TARGETS)
+	rm -rf *.o $(TARGET) $(TEST_TARGETS) $(WRAPPER_TESTS)
