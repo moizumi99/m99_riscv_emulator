@@ -10,33 +10,45 @@
 #include <cstdint>
 #include <array>
 
-class memory_wrapper_iterator; // Forward declaration.
-class memory_wrapper;
+class MemorWrapperIterator; // Forward declaration.
+class MemoryWrapper;
 
-class memory_wrapper {
+constexpr int GenerateBitMask(const int bits) {
+  int mask = 0;
+  for (int i = 0; i < bits; i++) {
+    mask = (mask << 1) | 0b1;
+  }
+  return mask;
+}
+
+class MemoryWrapper {
   static constexpr int kTotalBits = 32;
   static constexpr int kOffsetBits= 20;
-  static constexpr int kOffsetMask= 0x0FFFFF;
+  static constexpr int kOffsetMask= GenerateBitMask(kOffsetBits);
   static constexpr int kEntryBits = kTotalBits - kOffsetBits;
-  static constexpr int kEntryMask = 0x0FFF;
+  static constexpr int kEntryMask = GenerateBitMask(kEntryBits);
   static constexpr int kMapEntry = 1 << kEntryBits;
-  static constexpr size_t kMaxEntry = ((1ull << kTotalBits) - 1);
+  static constexpr size_t kMaxAddress = ((1ull << kTotalBits) - 1);
 public:
   uint8_t &operator[]( size_t i);
   const uint8_t operator[]( size_t i) const;
-  memory_wrapper_iterator begin();
-  memory_wrapper_iterator end();
-  bool operator==(memory_wrapper &r);
-  bool operator!=(memory_wrapper &r);
+  const uint32_t Read32(size_t i) const;
+  const uint64_t Read64(size_t i) const;
+  void Write32(size_t i, uint32_t value);
+  void Write64(size_t i, uint64_t value);
+  MemorWrapperIterator begin();
+  MemorWrapperIterator end();
+  bool operator==(MemoryWrapper &r);
+  bool operator!=(MemoryWrapper &r);
 private:
-  bool check_range(size_t i) const;
+  bool CheckRange(int entry) const;
   std::array<std::vector<uint8_t>, kMapEntry> mapping;
 };
 
-class memory_wrapper_iterator{
+class MemorWrapperIterator{
 public:
-  using iterator = memory_wrapper_iterator;
-  memory_wrapper_iterator(memory_wrapper &, size_t = 0);
+  using iterator = MemorWrapperIterator;
+  MemorWrapperIterator(MemoryWrapper &, size_t = 0);
 
   uint8_t &operator*();
   const uint8_t operator*() const;
@@ -60,8 +72,10 @@ public:
   bool operator>=(const iterator &r);
 private:
   size_t pos;
-  class memory_wrapper *mw;
+  class MemoryWrapper *mw;
 };
 
+uint32_t LoadWd(const MemorWrapperIterator &&address);
+void StoreWd(MemorWrapperIterator &&address, uint32_t data, int width = 32);
 
 #endif //MEMORY_WRAPPER_H

@@ -3,7 +3,7 @@
 
 namespace load_assembler_test {
 
-bool run_all_test();
+bool RunAllTests();
 
 } // load_assembler_test
 

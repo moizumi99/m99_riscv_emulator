@@ -16,8 +16,6 @@ add_executable(assembler_test
         load_assembler.h
         load_assembler_test.cc
         load_assembler_test.h
-        RISCV_cpu.cc
-        RISCV_cpu.h
         memory_wrapper.h
         memory_wrapper.cpp
         )
@@ -34,7 +32,7 @@ add_executable(cpu_test
         cpu_test.cc
         RISCV_cpu.cc
         RISCV_cpu.h
-        memory_wrapper.cpp memory_wrapper.h)
+        memory_wrapper.cpp memory_wrapper.h system_call_emulator.cpp system_call_emulator.h pte.cpp pte.h)
 
 add_executable(RISCV_Emulator
         assembler.cc
@@ -49,10 +47,18 @@ add_executable(RISCV_Emulator
         RISCV_cpu.h
         RISCV_Emulator.cc
         RISCV_Emulator.h
-        memory_wrapper.cpp memory_wrapper.h)
+        memory_wrapper.cpp memory_wrapper.h system_call_emulator.cpp system_call_emulator.h pte.cpp pte.h)
 
 add_executable(memory_wrapper_test
         memory_wrapper.cpp
         memory_wrapper.h
         memory_wrapper_test.cpp
 )
+
+add_executable(pte_test
+        pte.cpp
+        pte.h
+        pte_test.cpp
+        bit_tools.h
+        bit_tools.cc
+        )

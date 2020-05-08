@@ -8,45 +8,140 @@
 #include "bit_tools.h"
 #include "memory_wrapper.h"
 
+enum class PrivilegeMode {
+  USER_MODE = 0,
+  SUPERVISOR_MODE = 1,
+  MACHINE_MODE = 3
+};
+
+
 class RiscvCpu {
   static constexpr int kCsrSize = 4096;
   static constexpr int kRegSize = 32;
   static constexpr int kRegNum = 32;
+  int xlen_;
+  int mxl_ = 1;
 public:
+  RiscvCpu(bool en64bit);
   RiscvCpu();
-  ~RiscvCpu() {};
+  ~RiscvCpu() {
 
-  void set_register(uint32_t num, uint32_t value);
-  uint32_t read_register(uint32_t num);
-  void set_memory(std::shared_ptr<memory_wrapper> memory);
-  int run_cpu(uint32_t start_pc, bool verbose = true);
-protected:
-  inline bool check(bool x);
+  };
+
+  void SetRegister(uint32_t num, uint64_t value);
+  uint64_t ReadRegister(uint32_t num);
+  void SetMemory(std::shared_ptr<MemoryWrapper> memory);
+  void SetCsr(uint32_t index, uint64_t value);
+  uint64_t ReadCsr(uint32_t index);
+  int RunCpu(uint64_t start_pc, bool verbose = true);
+  uint64_t VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
+  uint64_t VirtualToPhysical32(uint64_t virtual_address, bool write_access = false);
+  uint64_t VirtualToPhysical64(uint64_t virtual_address, bool write_access = false);
+  int GetXlen() {return xlen_;}
+  void Ecall();
+private:
+  uint64_t Sext32bit(uint64_t data32bit);
 
 private:
-  uint32_t reg[kRegSize];
-  uint32_t pc;
-  std::shared_ptr<memory_wrapper> memory;
-  std::vector<uint32_t> csrs;
-  uint32_t load_cmd(uint32_t pc);
-  uint32_t get_code(uint32_t ir);
-  std::pair<bool, bool> system_call();
-  uint32_t load_wd(uint32_t address);
-  void store_wd(uint32_t address, uint32_t data, int width = 32);
-
-  // Below are for system call emulation
+  uint64_t reg_[kRegSize];
+  uint64_t pc_;
+  uint64_t next_pc_;
+  uint64_t mstatus_;
+  PrivilegeMode privilege_;
+  std::shared_ptr<MemoryWrapper> memory_;
+  std::vector<uint64_t> csrs_;
+  void InitializeCsrs();
+  void Mret();
+  void Sret();
+  uint32_t LoadCmd(uint64_t pc);
+  uint32_t GetCode(uint32_t ir);
+  std::pair<bool, bool> SystemCall();
+  uint64_t LoadWd(uint64_t physical_address, int width = 32);
+  void StoreWd(uint64_t physical_address, uint64_t data, int width = 32);
+  void Trap(int cause = 0, bool interrupt = false);
+  bool page_fault_ = false;
+  bool prev_page_fault_ = false;
+  uint64_t prev_faulting_address_ = 0;
+  bool error_flag_, end_flag_;
+  uint64_t faulting_address_;
+  inline bool CheckShiftSign(uint8_t shamt, uint8_t instruction, const std::string &message_str);
+  PrivilegeMode ToPrivilegeMode(int value);
+  void DumpCpuStatus();
+  void UpdateMstatus(int16_t csr);
+  void ApplyMstatusToCsr();
+  // Below are for system call and host emulation
 public:
-  void set_work_memory(uint32_t top, uint32_t bottom);
+  void SetWorkMemory(uint64_t top, uint64_t bottom);
+  void SetEcallEmulationEnable(bool ecall_emulation) { ecall_emulation_ = ecall_emulation;};
+  void SetHostEmulationEnable(bool host_emulation) {host_emulation_ = host_emulation;};
 private:
-  uint32_t top = 0x80000000;
-  uint32_t bottom = 0x40000000;
-  uint32_t brk = bottom;
+  void HostEmulation();
+  static constexpr uint64_t kToHost = 0x80001000;
+  static constexpr uint64_t kFromHost = 0x80001040;
+  bool ecall_emulation_ = false;
+  bool host_emulation_ = false;
+  uint64_t top_ = 0x80000000;
+  uint64_t bottom_ = 0x40000000;
+  uint64_t brk_ = bottom_;
+};
+
+enum ExceptionCode {
+  INSTRUCTION_ADDRESS_MISALIGNED = 0,
+  INSTRUCTION_ACCESS_FAULT = 1,
+  ILLEGAL_INSTRUCTION = 2,
+  BREAK_POINT = 3,
+  LOAD_ADDRESS_MISALIGNED = 4,
+  LOAD_ACCESS_FAULT = 5,
+  STORE_ADDRESS_MISALIGNED = 6,
+  STORE_ACCESS_FAULT = 7,
+  ECALL_UMODE = 8,
+  ECALL_SMODE = 9,
+  ECALL_MMODE = 11,
+  INSTRUCTION_PAGE_FAULT = 12,
+  LOAD_PAGE_FAULT = 13,
+  STORE_PAGE_FAULT = 15
 };
 
 enum CsrsAddresses {
-  kMepc = 0x341,
+  // User Trap Handling
+  USTATUS = 0x000, // User status register.
+  UIE = 0x004, // User interrupt-enable register.
+  UTVEC = 0x005, // User trap handler base address.
+  USCRATCH = 0x040, // Scratch register for user trap handlers.
+  UEPC = 0x041, // User exception program counter.
+  UCAUSE = 0x042, // User trap cause.
+  UTVAL = 0x43, // User bad address or instruction.
+  UIP = 0x44, // User interrupt pending.
+  // Supervisor Trap Handling.
+  SSTATUS = 0x100, // Supervisor status register.
+  SEDELEG = 0x102, // Supervisor exception delegation register.
+  SIDELEG = 0X103, // Supervisor interrupt delegation register.
+  SIE = 0x104, // Supervisor interrupt-enable register.
+  STVEC = 0x105, // Supervisor trap handler base address.
+  SCOUNTEREN = 0x106, // Supervisor counter enable.
+  SSCRATCH = 0x140, // Scratch register for supervisor trap handlers.
+  SEPC = 0x141, // Supervisor exception program counter.
+  SCAUSE = 0x142, // Supervisor trap cause,
+  STVAL = 0x143, // Supervisor bad address or instruction.
+  SIP = 0x144, // Supervisor interrupt pending.
+  // Super visor Protection and Translation.
+  SATP = 0x180, // Page-table base register. Former satp register.
+  // Machine Trap Setup
+  MSTATUS = 0x300, // Machine status register.
+  MISA = 0x301, // ISA and extensions.
+  MEDELEG = 0x302, // Machine exception delegation register.
+  MIDELEG = 0x303, // Machine interrupt delegation register.
+  MIE = 0x304, // Machine interrupt-enable register.
+  MTVEC = 0x305, // Machine trap-handler base address.
+  MCOUNTEREN = 0x306, // Machine counter enable.
+  // Machine Trap Handling.
+  MSCRATCH = 0x340, // Scratch register for machine trap handlers.
+  MEPC = 0x341, // Machine exception program counter.
+  MCAUSE = 0x342, // Machine trap cause.
+  MTVAL = 0x343, // Machine bad address
+  MIP = 0x344, // Machine interrupt pending
   // TDOD: add other CSR addresses.
-  // https://people.eecs.berkeley.edu/~krste/papers/riscv-privileged-v1.9.1.pdf
+  // https://riscv.org/specifications/privileged-isa/
 };
 
 enum Registers {
@@ -104,7 +199,9 @@ enum Registers {
 
 enum op_label {
   OPCODE_ARITHLOG = 0b00110011,
+  OPCODE_ARITHLOG_64 = 0b00111011,
   OPCODE_ARITHLOG_I = 0b00010011,
+  OPCODE_ARITHLOG_I64 = 0b0011011,
   OPCODE_B = 0b01100011,
   OPCODE_LD = 0b00000011,
   OPCODE_J = 0b01101111,
@@ -142,6 +239,8 @@ enum op_funct3 {
   FUNC3_LSH = 0b001,
   FUNC3_LSHU = 0b101,
   FUNC3_LSW = 0b010,
+  FUNC3_LSD = 0b011,
+  FUNC3_LSWU = 0b110,
   FUNC3_JALR = 0b000,
   FUNC3_SYSTEM = 0b000,
   FUNC3_CSRRC = 0b011,
@@ -157,22 +256,31 @@ enum op_funct3 {
 enum instruction {
   INST_ERROR,
   INST_ADD,
+  INST_ADDW,
   INST_AND,
   INST_SUB,
+  INST_SUBW,
   INST_OR,
   INST_XOR,
   INST_SLL,
+  INST_SLLW,
   INST_SRL,
+  INST_SRLW,
   INST_SRA,
+  INST_SRAW,
   INST_SLT,
   INST_SLTU,
   INST_ADDI,
+  INST_ADDIW,
   INST_ANDI,
   INST_ORI,
   INST_XORI,
   INST_SLLI,
+  INST_SLLIW,
   INST_SRLI,
+  INST_SRLIW,
   INST_SRAI,
+  INST_SRAIW,
   INST_SLTI,
   INST_SLTIU,
   INST_BEQ,
@@ -188,9 +296,12 @@ enum instruction {
   INST_LH,
   INST_LHU,
   INST_LW,
-  INST_SW,
-  INST_SH,
+  INST_LWU,
+  INST_LD,
   INST_SB,
+  INST_SH,
+  INST_SW,
+  INST_SD,
   INST_LUI,
   INST_AUIPC,
   INST_SYSTEM,
