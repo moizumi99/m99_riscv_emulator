@@ -587,6 +587,31 @@ void RiscvCpu::ImmediateShiftInstruction(uint32_t instruction, uint32_t rd, uint
   }
 }
 
+void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, int32_t imm12) {
+  uint64_t source_address = reg_[rs1] + imm12;
+  uint64_t address = VirtualToPhysical(source_address);
+  if (page_fault_) {
+    Trap(ExceptionCode::LOAD_PAGE_FAULT);
+    return;
+  }  uint64_t load_data;
+  if (instruction == INST_LB) {
+    load_data = SignExtend(LoadWd(address) & 0xFF, 8); // LB
+  } else if (instruction == INST_LBU) {
+    load_data = LoadWd(address) & 0xFF; // LBU
+  } else if (instruction == INST_LH) {
+    load_data = SignExtend(LoadWd(address) & 0xFFFF, 16); // LH
+  } else if (instruction == INST_LHU) {
+    load_data = LoadWd(address) & 0xFFFF; // LHU
+  } else if (instruction == INST_LW) {
+    load_data = SignExtend(LoadWd(address), 32); // LW
+  } else if (instruction == INST_LWU) {
+    load_data = LoadWd(address); // LWU
+  } else { // instruction == INST_LD
+    load_data = LoadWd(address, 64); // LD
+  }
+  reg_[rd] = load_data;
+}
+
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   error_flag_ = false;
   end_flag_ = false;
@@ -624,7 +649,6 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     int32_t imm20 = GetImm20(ir);
     uint32_t address;
 
-    uint64_t load_data;
     uint64_t source_address;
     switch (instruction) {
       uint64_t t;
@@ -703,29 +727,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_LW:
       case INST_LWU:
       case INST_LD:
-        source_address = reg_[rs1] + imm12;
-        address = VirtualToPhysical(source_address);
+        LoadInstruction(instruction, rd, rs1, imm12);
         if (page_fault_) {
-          Trap(ExceptionCode::LOAD_PAGE_FAULT);
           continue;
         }
-        if (instruction == INST_LB) {
-          load_data = SignExtend(LoadWd(address) & 0xFF, 8); // LB
-        } else if (instruction == INST_LBU) {
-          load_data = LoadWd(address) & 0xFF; // LBU
-        } else if (instruction == INST_LH) {
-          load_data = SignExtend(LoadWd(address) & 0xFFFF, 16); // LH
-        } else if (instruction == INST_LHU) {
-          load_data = LoadWd(address) & 0xFFFF; // LHU
-        } else if (instruction == INST_LW) {
-          load_data = SignExtend(LoadWd(address), 32); // LW
-        } else if (instruction == INST_LWU) {
-          load_data = LoadWd(address); // LWU
-        } else { // instruction == INST_LD
-          load_data = LoadWd(address, 64); // LD
-        }
-        reg_[rd] = load_data;
-        break;
+       break;
       case INST_SB:
       case INST_SH:
       case INST_SW:
