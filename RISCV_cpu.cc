@@ -518,6 +518,75 @@ RiscvCpu::OperationInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   reg_[rd] = temp64;
 }
 
+void RiscvCpu::ImmediateInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, int32_t imm12) {
+  uint64_t temp64;
+  switch (instruction) {
+    case INST_ADDI:
+    case INST_ADDIW:
+      temp64 = reg_[rs1] + imm12;
+      break;
+    case INST_ANDI:
+      temp64 = reg_[rs1] & imm12;
+      break;
+    case INST_ORI:
+      temp64 = reg_[rs1] | imm12;
+      break;
+    case INST_XORI:
+      temp64 = reg_[rs1] ^ imm12;
+      break;
+  }
+  if (xlen_ == 32 || instruction == INST_ADDIW) {
+    temp64 = Sext32bit(temp64);
+  }
+  reg_[rd] = temp64;
+}
+
+void RiscvCpu::ImmediateShiftInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t shamt) {
+  uint64_t  temp64;
+  switch (instruction) {
+    case INST_SLLI:
+      temp64 = reg_[rs1] << shamt;
+      if (xlen_ == 32) {
+        temp64 = Sext32bit(temp64);
+      }
+      reg_[rd] = temp64;
+      CheckShiftSign(shamt, instruction, "SLLI");
+      break;
+    case INST_SLLIW:
+      temp64 = (reg_[rs1] << shamt) & 0xFFFFFFFF;
+      temp64 = Sext32bit(temp64);
+      reg_[rd] = temp64;
+      CheckShiftSign(shamt, instruction, "SLLIW");
+      break;
+    case INST_SRLI:
+      temp64 = reg_[rs1];
+      if (xlen_ == 32) {
+        temp64 &= ~kUpper32bitMask;
+      }
+      temp64 = temp64 >> shamt;
+      if (xlen_ == 32) {
+        temp64 = Sext32bit(temp64);
+      }
+      reg_[rd] = temp64;
+      CheckShiftSign(shamt, instruction, "SRLI");
+      break;
+    case INST_SRLIW:
+      temp64 = (reg_[rs1] & 0xFFFFFFFF) >> shamt;
+      temp64 = Sext32bit(temp64);
+      reg_[rd] = temp64;
+      CheckShiftSign(shamt, instruction, "SRLIW");
+      break;
+    case INST_SRAI:
+      reg_[rd] = static_cast<int64_t>(reg_[rs1]) >> shamt;
+      CheckShiftSign(shamt, instruction, "SRAI");
+      break;
+    case INST_SRAIW:
+      reg_[rd] = static_cast<int32_t>(reg_[rs1]) >> shamt;
+      CheckShiftSign(shamt, instruction, "SRAI");
+      break;
+  }
+}
+
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   error_flag_ = false;
   end_flag_ = false;
@@ -576,79 +645,19 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         OperationInstruction(instruction, rd, rs1, rs2);
         break;
       case INST_ADDI:
-        temp64 = reg_[rs1] + imm12;
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        break;
       case INST_ADDIW:
-        // Add instruction set check.
-        assert(xlen_ == 64);
-        temp64 = (reg_[rs1] + imm12) & 0xFFFFFFFF;
-        temp64 = Sext32bit(temp64);
-        reg_[rd] = temp64;
-        break;
       case INST_ANDI:
-        temp64 = reg_[rs1] & imm12;
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        break;
       case INST_ORI:
-        temp64 = reg_[rs1] | imm12;
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        break;
       case INST_XORI:
-        temp64 = reg_[rs1] ^ imm12;
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
+        ImmediateInstruction(instruction, rd, rs1, imm12);
         break;
       case INST_SLLI:
-        temp64 = reg_[rs1] << shamt;
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        CheckShiftSign(shamt, instruction, "SLLI");
-        break;
       case INST_SLLIW:
-        temp64 = (reg_[rs1] << shamt) & 0xFFFFFFFF;
-        temp64 = Sext32bit(temp64);
-        reg_[rd] = temp64;
-        CheckShiftSign(shamt, instruction, "SLLIW");
-        break;
       case INST_SRLI:
-        temp64 = reg_[rs1];
-        if (xlen_ == 32) {
-          temp64 &= ~kUpper32bitMask;
-        }
-        temp64 = temp64 >> shamt;
-        if (xlen_ == 32) {
-          temp64 = Sext32bit(temp64);
-        }
-        reg_[rd] = temp64;
-        CheckShiftSign(shamt, instruction, "SRLI");
-        break;
       case INST_SRLIW:
-        temp64 = (reg_[rs1] & 0xFFFFFFFF) >> shamt;
-        temp64 = Sext32bit(temp64);
-        reg_[rd] = temp64;
-        CheckShiftSign(shamt, instruction, "SRLIW");
-        break;
       case INST_SRAI:
-        reg_[rd] = static_cast<int64_t>(reg_[rs1]) >> shamt;
-        CheckShiftSign(shamt, instruction, "SRAI");
-        break;
       case INST_SRAIW:
-        reg_[rd] = static_cast<int32_t>(reg_[rs1]) >> shamt;
-        CheckShiftSign(shamt, instruction, "SRAI");
+        ImmediateShiftInstruction(instruction, rd, rs1, shamt);
         break;
       case INST_SLT:
         reg_[rd] = (static_cast<int64_t>(reg_[rs1]) <

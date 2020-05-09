@@ -54,6 +54,8 @@ private:
   void CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd, uint32_t rs1);
   uint64_t BranchInstruction(uint32_t instruction, uint32_t rs1, uint32_t rs2, int32_t imm13);
   void OperationInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t rs2);
+  void ImmediateInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, int32_t imm12);
+  void ImmediateShiftInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t shamt);
   void Mret();
   void Sret();
   uint32_t LoadCmd(uint64_t pc);
