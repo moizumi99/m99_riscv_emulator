@@ -647,10 +647,10 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     int32_t imm21 = GetImm21(ir);
     int16_t imm12_stype = GetStypeImm12(ir);
     int32_t imm20 = GetImm20(ir);
-    uint32_t address;
+    uint64_t address;
 
-    uint64_t source_address;
     switch (instruction) {
+      uint64_t dst_address;
       uint64_t t;
       uint64_t temp64;
       case INST_ADD:
@@ -736,7 +736,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_SH:
       case INST_SW:
       case INST_SD:
-        address = VirtualToPhysical(reg_[rs1] + imm12_stype, true);
+        dst_address = reg_[rs1] + imm12_stype;
+        address = VirtualToPhysical( dst_address, true);
         if (page_fault_) {
           Trap(ExceptionCode::STORE_PAGE_FAULT);
           continue;
@@ -752,7 +753,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
           width = 64;
         }
         StoreWd(address, reg_[rs2], width);
-        host_write |= address == kToHost;
+        if (mxl_ == 1) {
+          host_write |= (address & 0xFFFFFFFF) == kToHost;
+        } else {
+          host_write |= address == kToHost;
+        }
         break;
       case INST_LUI:
         temp64 = imm20 << 12;
