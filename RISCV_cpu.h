@@ -57,6 +57,7 @@ private:
   void ImmediateInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, int32_t imm12);
   void ImmediateShiftInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t shamt);
   void LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, int32_t imm12);
+  void StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t rs2, int32_t imm12_stype);
   void Mret();
   void Sret();
   uint32_t LoadCmd(uint64_t pc);
@@ -86,6 +87,7 @@ private:
   static constexpr uint64_t kFromHost = 0x80001040;
   bool ecall_emulation_ = false;
   bool host_emulation_ = false;
+  bool host_write;
   uint64_t top_ = 0x80000000;
   uint64_t bottom_ = 0x40000000;
   uint64_t brk_ = bottom_;

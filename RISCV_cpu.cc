@@ -612,10 +612,36 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, 
   reg_[rd] = load_data;
 }
 
+void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t rs2, int32_t imm12_stype) {
+  uint64_t  dst_address = reg_[rs1] + imm12_stype;
+  uint64_t  address = VirtualToPhysical( dst_address, true);
+  if (page_fault_) {
+    Trap(ExceptionCode::STORE_PAGE_FAULT);
+    return;
+  }
+  int width;
+  if (instruction == INST_SB) {
+    width = 8;
+  } else if (instruction == INST_SH) {
+    width = 16;
+  } else if (instruction == INST_SW) {
+    width = 32;
+  } else { // if instruction === INST_SD.
+    width = 64;
+  }
+  StoreWd(address, reg_[rs2], width);
+  if (mxl_ == 1) {
+    host_write |= (address & 0xFFFFFFFF) == kToHost;
+  } else {
+    host_write |= address == kToHost;
+  }
+
+}
+
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   error_flag_ = false;
   end_flag_ = false;
-  bool host_write = false;
+  host_write = false;
 
   next_pc_ = start_pc;
   do {
@@ -736,29 +762,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_SH:
       case INST_SW:
       case INST_SD:
-        dst_address = reg_[rs1] + imm12_stype;
-        address = VirtualToPhysical( dst_address, true);
+        StoreInstruction(instruction, rd, rs1, rs2, imm12_stype);
         if (page_fault_) {
-          Trap(ExceptionCode::STORE_PAGE_FAULT);
           continue;
         }
-        int width;
-        if (instruction == INST_SB) {
-          width = 8;
-        } else if (instruction == INST_SH) {
-          width = 16;
-        } else if (instruction == INST_SW) {
-          width = 32;
-        } else { // if instruction === INST_SD.
-          width = 64;
-        }
-        StoreWd(address, reg_[rs2], width);
-        if (mxl_ == 1) {
-          host_write |= (address & 0xFFFFFFFF) == kToHost;
-        } else {
-          host_write |= address == kToHost;
-        }
-        break;
+       break;
       case INST_LUI:
         temp64 = imm20 << 12;
         if (xlen_ == 32) {
