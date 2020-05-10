@@ -41,11 +41,9 @@ constexpr int kMmuLevels = 2;
 
 uint64_t
 RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
-  Mmu mmu;
-  mmu.memory_ = memory_;
+  Mmu mmu(memory_, mxl_);
   mmu.page_fault_ = page_fault_;
   mmu.faulting_address_ = faulting_address_;
-  mmu.mxl_ = mxl_;
   mmu.privilege_ = privilege_;
   uint64_t physical_address = mmu.VirtualToPhysical(virtual_address,
                                                     csrs_[SATP], write_access);
