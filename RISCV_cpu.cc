@@ -631,17 +631,42 @@ void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   }
   StoreWd(address, reg_[rs2], width);
   if (mxl_ == 1) {
-    host_write |= (address & 0xFFFFFFFF) == kToHost;
+    host_write_ |= (address & 0xFFFFFFFF) == kToHost;
   } else {
-    host_write |= address == kToHost;
+    host_write_ |= address == kToHost;
   }
+}
 
+void RiscvCpu::SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm12) {
+  if (imm12 == 0b000000000000) {
+    // ECALL
+    if (ecall_emulation_) {
+      std::tie(error_flag_, end_flag_) = SystemCall();
+    } else {
+      Ecall();
+    }
+  } else if (imm12 == 0b000000000001) {
+    // EBREAK
+    // Debug function is not implemented yet.
+  } else if (imm12 == 0b001100000010) {
+    Mret();
+  } else if (imm12 == 0b000100000010) {
+    Sret();
+  } else if (((imm12 >> 5) == 0b0001001) && (rd == 0b00000)) {
+    // sfence.vma.
+    // TODO: Implement this function.
+    ;
+  } else {
+    // not defined.
+    std::cerr << "Undefined System instruction." << std::endl;
+    error_flag_ = true;
+  }
 }
 
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   error_flag_ = false;
   end_flag_ = false;
-  host_write = false;
+  host_write_ = false;
 
   next_pc_ = start_pc;
   do {
@@ -774,36 +799,9 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         reg_[rd] = temp64;
         break;
       case INST_SYSTEM:
-        if (imm12 == 0b000000000000) {
-          // ECALL
-          if (ecall_emulation_) {
-            std::tie(error_flag_, end_flag_) = SystemCall();
-          } else {
-            Ecall();
-          }
-        } else if (imm12 == 0b000000000001) {
-          // EBREAK
-          // Debug function is not implemented yet.
-        } else if (imm12 == 0b001100000010) {
-          Mret();
-        } else if (imm12 == 0b000100000010) {
-          Sret();
-        } else if (((imm12 >> 5) == 0b0001001) && (rd == 0b00000)) {
-          // sfence.vma.
-          // TODO: Implement this function.
-          ;
-        } else {
-          // not defined.
-          std::cerr << "Undefined System instruction." << std::endl;
-          error_flag_ = true;
-        }
-        break;
+        SystemInstruction(instruction, rd, imm12);
+       break;
       case INST_CSRRC:
-        t = csrs_[csr];
-        csrs_[csr] &= ~reg_[rs1];
-        reg_[rd] = t;
-        UpdateMstatus(csr);
-        break;
       case INST_CSRRCI:
       case INST_CSRRS:
       case INST_CSRRSI:
@@ -831,9 +829,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       DumpRegisters();
    }
 
-    if (host_emulation_ && host_write) {
+    if (host_emulation_ && host_write_) {
       HostEmulation();
-      host_write = false;
     }
 
   } while (!error_flag_ && !end_flag_);
@@ -890,6 +887,7 @@ void RiscvCpu::HostEmulation() {
   } else {
     std::cerr << "Unsupported Host Device " << device << std::endl;
   }
+  host_write_ = false;
 }
 
 void RiscvCpu::Ecall() {
