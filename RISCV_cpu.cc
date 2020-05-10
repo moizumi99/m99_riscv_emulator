@@ -50,13 +50,20 @@ RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
     mmu.memory_ = memory_;
     mmu.page_fault_ = page_fault_;
     mmu.faulting_address_ = faulting_address_;
-    uint64_t physical_address = VirtualToPhysical32(virtual_address, write_access);
-    page_fault_ = page_fault_;
-    faulting_address_ = faulting_address_;
+    uint64_t physical_address = mmu.VirtualToPhysical32(virtual_address, csrs_[SATP], write_access);
+    page_fault_ = mmu.page_fault_;
+    faulting_address_ = mmu.faulting_address_;
     return physical_address;
   } else {
     // if (xlen == 64) {
-    return VirtualToPhysical64(virtual_address, write_access);
+    Mmu mmu;
+    mmu.memory_ = memory_;
+    mmu.page_fault_ = page_fault_;
+    mmu.faulting_address_ = faulting_address_;
+    uint64_t physical_address = mmu.VirtualToPhysical64(virtual_address, csrs_[SATP], write_access);
+    page_fault_ = mmu.page_fault_;
+    faulting_address_ = mmu.faulting_address_;
+    return physical_address;
   }
 }
 
