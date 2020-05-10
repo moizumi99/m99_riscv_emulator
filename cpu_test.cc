@@ -8,7 +8,9 @@
 #include <iostream>
 #include <cassert>
 
-namespace cpu_test {
+namespace CPUT_TEST {
+
+using namespace RISCV_EMULATOR;
 
 // CPU address bus width.
 bool en_64_bit = true;
@@ -1223,5 +1225,5 @@ bool RunTest() {
 } // namespace cpu_test
 
 int main() {
-  return cpu_test::RunTest();
+  return CPUT_TEST::RunTest();
 }

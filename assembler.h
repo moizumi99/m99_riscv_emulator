@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <vector>
 
+namespace RISCV_EMULATOR {
+
 MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd);
 
 uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2);
@@ -125,6 +127,8 @@ uint32_t AsmFencei();
 
 uint32_t AsmLui(uint32_t rd, int32_t imm20);
 
-uint32_t  AsmAuipc(uint32_t rd, int32_t imm20);
+uint32_t AsmAuipc(uint32_t rd, int32_t imm20);
+
+} // namespace RISCV_EMULATOR
 
 #endif // ASSEMBLER_H

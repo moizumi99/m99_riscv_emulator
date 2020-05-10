@@ -10,6 +10,8 @@
 #include "system_call_emulator.h"
 #include "RISCV_cpu.h"
 
+namespace RISCV_EMULATOR {
+
 void ShowGuestStat(const Riscv32NewlibStat &guest_stat) {
   std::cerr << "st_dev: " << guest_stat.st_dev << std::endl;
   std::cerr << "st_ino: " << guest_stat.st_ino << std::endl;
@@ -45,7 +47,8 @@ void ShowHostStat(const struct stat &host_stat) {
   std::cerr << "st_ctim.tv_nsec: " << host_stat.st_ctim.tv_nsec << std::endl;
 }
 
-void ConvGuestStatToHostStat(const Riscv32NewlibStat &guest_stat, struct stat *host_stat) {
+void ConvGuestStatToHostStat(const Riscv32NewlibStat &guest_stat,
+                             struct stat *host_stat) {
   host_stat->st_dev = guest_stat.st_dev;
   host_stat->st_ino = guest_stat.st_ino;
   host_stat->st_mode = guest_stat.st_mode;
@@ -64,7 +67,8 @@ void ConvGuestStatToHostStat(const Riscv32NewlibStat &guest_stat, struct stat *h
   host_stat->st_ctim.tv_nsec = 0;
 }
 
-void ConvHostStatToGuestStat(const struct stat &host_stat, Riscv32NewlibStat *guest_stat) {
+void ConvHostStatToGuestStat(const struct stat &host_stat,
+                             Riscv32NewlibStat *guest_stat) {
   guest_stat->st_dev = host_stat.st_dev;
   guest_stat->st_ino = host_stat.st_ino;
   guest_stat->st_mode = host_stat.st_mode;
@@ -80,7 +84,8 @@ void ConvHostStatToGuestStat(const struct stat &host_stat, Riscv32NewlibStat *gu
   guest_stat->st_ctim = (int64_t) host_stat.st_ctim.tv_sec;
 }
 
-size_t MemoryWrapperStrlen(const MemoryWrapper &mem, size_t address, size_t max) {
+size_t
+MemoryWrapperStrlen(const MemoryWrapper &mem, size_t address, size_t max) {
   size_t counter = 0;
   size_t index = address;
   while (mem[index++] && counter < max) {
@@ -89,20 +94,23 @@ size_t MemoryWrapperStrlen(const MemoryWrapper &mem, size_t address, size_t max)
   return counter;
 }
 
-char *MemoryWrapperCopy(const MemoryWrapper &mem, size_t address, size_t length, char *dst) {
+char *MemoryWrapperCopy(const MemoryWrapper &mem, size_t address, size_t length,
+                        char *dst) {
   for (size_t i = 0; i < length; ++i) {
     dst[i] = mem[address + i];
   }
   return dst;
 }
 
-std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg, const uint64_t top,
-                                          uint64_t *break_address, bool debug) {
+std::pair<bool, bool>
+SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
+                    const uint64_t top,
+                    uint64_t *break_address, bool debug) {
   auto &brk = *break_address;
   auto &mem = *memory;
   bool end_flag = false;
   bool error_flag = false;
-  if (reg[A7] == 93 ) {
+  if (reg[A7] == 93) {
     // Exit system call.
     if (debug)
       std::cerr << "Exit System Call" << std::endl;
@@ -152,7 +160,8 @@ std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory,
     if (debug) {
       std::cerr << "Fstat System Call" << std::endl;
       std::cerr << "fd: " << reg[A0] << std::endl;
-      std::cerr << "riscv32_stat size: " << sizeof(struct Riscv32NewlibStat) << std::endl;
+      std::cerr << "riscv32_stat size: " << sizeof(struct Riscv32NewlibStat)
+                << std::endl;
     }
     unsigned char *statbuf_p = (unsigned char *) &guest_stat;
 
@@ -180,18 +189,18 @@ std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory,
     if (debug)
       std::cerr << "Open System Call" << std::endl;
     // These values are found in newlib/libc/include/sys/_default_fcntl.h
-    constexpr uint32_t kO_READ      = 0x000001;
-    constexpr uint32_t kO_WRITE     = 0x000002;
-    constexpr uint32_t kO_APPEND    = 0x000008;
-    constexpr uint32_t kO_CLOEXEC   = 0x040000;
-    constexpr uint32_t kO_CREAT     = 0x000200;
-    constexpr uint32_t kO_DIRECT    = 0x080000;
+    constexpr uint32_t kO_READ = 0x000001;
+    constexpr uint32_t kO_WRITE = 0x000002;
+    constexpr uint32_t kO_APPEND = 0x000008;
+    constexpr uint32_t kO_CLOEXEC = 0x040000;
+    constexpr uint32_t kO_CREAT = 0x000200;
+    constexpr uint32_t kO_DIRECT = 0x080000;
     constexpr uint32_t kO_DIRECTORY = 0x200000;
-    constexpr uint32_t kO_EXCL      = 0x000800;
-    constexpr uint32_t kO_NOCTTY    = 0x008000;
-    constexpr uint32_t kO_NONBLOCK  = 0x004000;
-    constexpr uint32_t kO_SYNC      = 0x002000;
-    constexpr uint32_t kO_TRUNC     = 0x000400;
+    constexpr uint32_t kO_EXCL = 0x000800;
+    constexpr uint32_t kO_NOCTTY = 0x008000;
+    constexpr uint32_t kO_NONBLOCK = 0x004000;
+    constexpr uint32_t kO_SYNC = 0x002000;
+    constexpr uint32_t kO_TRUNC = 0x000400;
     uint32_t flag = (reg[A1] & kO_WRITE) ? O_RDWR : O_RDONLY;
     flag |= (reg[A1] & kO_APPEND) ? O_APPEND : 0;
     flag |= (reg[A1] & kO_CLOEXEC) ? O_CLOEXEC : 0;
@@ -212,7 +221,8 @@ std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory,
       buffer[length] = 0;
       if (debug) {
         std::cerr << "FIle path: " << buffer << std::endl;
-        std::cerr << "File parameter: " << std::hex << reg[A1] << ", " << reg[A2]
+        std::cerr << "File parameter: " << std::hex << reg[A1] << ", "
+                  << reg[A2]
                   << std::dec << std::endl;
         std::cerr << "Flag = " << std::hex << flag << std::dec << std::endl;
       }
@@ -232,3 +242,5 @@ std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory,
 
   return std::make_pair(error_flag, end_flag);
 }
+
+} // namespace RISCV_EMULATOR

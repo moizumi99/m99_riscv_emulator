@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <cassert>
 
+namespace RISCV_EMULATOR {
+
 RiscvCpu::RiscvCpu(bool en64bit) {
   mxl_ = en64bit ? 2 : 1;
   xlen_ = en64bit ? 64 : 32;
@@ -839,7 +841,7 @@ void RiscvCpu::DumpRegisters() {
   );
 }
 
-PrivilegeMode RiscvCpu::ToPrivilegeMode(int value) {
+PrivilegeMode RiscvCpu::IntToPrivilegeMode(int value) {
   switch (value) {
     case 0:
       return PrivilegeMode::USER_MODE;
@@ -857,7 +859,7 @@ void RiscvCpu::Mret() {
   uint64_t mstatus = csrs_[MSTATUS];
   // Set privilege mode to MPP.
   uint64_t mpp = bitcrop(mstatus, 2, 11);
-  privilege_ = ToPrivilegeMode(mpp);
+  privilege_ = IntToPrivilegeMode(mpp);
   // Set MIE to MPIE.
   uint64_t mpie = bitcrop(mstatus, 1, 7);
   mstatus = bitset(mstatus, 1, 3, mpie);
@@ -875,7 +877,7 @@ void RiscvCpu::Sret() {
   uint64_t mstatus = csrs_[MSTATUS];
   // Set privilege mode to SPP.
   uint64_t spp = bitcrop(mstatus, 1, 8);
-  privilege_ = ToPrivilegeMode(spp);
+  privilege_ = IntToPrivilegeMode(spp);
   // Set SIE to SPIE.
   uint64_t spie = bitcrop(mstatus, 1, 5);
   mstatus = bitset(mstatus, 1, 1, spie);
@@ -1059,4 +1061,4 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
   return instruction;
 }
 
-
+} // namespace RISCV_EMULATOR

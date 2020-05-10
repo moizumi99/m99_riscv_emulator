@@ -20,7 +20,8 @@
 #include <tuple>
 #include <cassert>
 
-namespace {
+namespace RISCV_EMULATOR {
+
 bool flag_64bit = false;
 
 std::vector<uint8_t> ReadFile(std::string filename) {
@@ -561,7 +562,7 @@ SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory) {
   }
 }
 
-} // anonymous namespace.
+} // namespace RISCV_EMULATOR
 
 int main(int argc, char *argv[]) {
   bool cmdline_error, verbose, address64bit, paging, ecall_emulation, host_emulation;
@@ -643,3 +644,4 @@ int main(int argc, char *argv[]) {
 
   return return_value;
 }
+

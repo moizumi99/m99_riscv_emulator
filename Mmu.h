@@ -9,6 +9,8 @@
 #include "riscv_cpu_common.h"
 #include "memory_wrapper.h"
 
+namespace RISCV_EMULATOR  {
+
 class Mmu {
 public:
   Mmu(std::shared_ptr<MemoryWrapper> memory, const int mxl);
@@ -33,5 +35,6 @@ private:
   static constexpr int kMmuLevels = 2;
 };
 
+} // namespace RISCV_EMULATOR
 
 #endif //ASSEMBLER_TEST_MMU_H

@@ -7,7 +7,10 @@
 #include "bit_tools.h"
 #include "pte.h"
 
-Mmu::Mmu(std::shared_ptr<MemoryWrapper> memory, const int mxl) : memory_(memory), mxl_(mxl) {
+namespace RISCV_EMULATOR {
+
+Mmu::Mmu(std::shared_ptr<MemoryWrapper> memory, const int mxl) : memory_(
+  memory), mxl_(mxl) {
   page_fault_ = false;
   faulting_address_ = 0;
 }
@@ -16,7 +19,8 @@ void Mmu::SetPrivilege(const PrivilegeMode privilege) {
   privilege_ = privilege;
 }
 
-uint64_t Mmu::VirtualToPhysical(uint64_t virtual_address, uint64_t satp, bool write_access) {
+uint64_t Mmu::VirtualToPhysical(uint64_t virtual_address, uint64_t satp,
+                                bool write_access) {
   if (privilege_ != PrivilegeMode::USER_MODE &&
       privilege_ != PrivilegeMode::SUPERVISOR_MODE) {
     return virtual_address;
@@ -29,7 +33,8 @@ uint64_t Mmu::VirtualToPhysical(uint64_t virtual_address, uint64_t satp, bool wr
   }
 }
 
-uint64_t Mmu::VirtualToPhysical64(uint64_t virtual_address, uint64_t satp, bool write_access) {
+uint64_t Mmu::VirtualToPhysical64(uint64_t virtual_address, uint64_t satp,
+                                  bool write_access) {
   // TODO: Implement v48 MMU emulation.
   constexpr int kPteSize = 8;
   uint64_t physical_address = virtual_address;
@@ -105,7 +110,8 @@ uint64_t Mmu::VirtualToPhysical64(uint64_t virtual_address, uint64_t satp, bool 
   return physical_address_64bit;
 }
 
-uint64_t Mmu::VirtualToPhysical32(uint64_t virtual_address, uint64_t satp, bool write_access) {
+uint64_t Mmu::VirtualToPhysical32(uint64_t virtual_address, uint64_t satp,
+                                  bool write_access) {
   constexpr int kPteSize = 4;
   uint64_t physical_address = virtual_address;
   MemoryWrapper &mem = *memory_;
@@ -173,3 +179,4 @@ uint64_t Mmu::VirtualToPhysical32(uint64_t virtual_address, uint64_t satp, bool 
   return physical_address_64bit;
 }
 
+} //namespace RISCV_EMULATOR

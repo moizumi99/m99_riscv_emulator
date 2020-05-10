@@ -8,6 +8,8 @@
 #include <memory>
 #include "memory_wrapper.h"
 
+namespace RISCV_EMULATOR {
+
 struct Riscv32NewlibStat {
   uint16_t st_dev;  // 0
   uint16_t st_ino;  // 2
@@ -47,5 +49,7 @@ char *MemoryWrapperCopy(const MemoryWrapper &mem, size_t address, size_t length,
 
 std::pair<bool, bool> SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg, const uint64_t top,
                                           uint64_t *break_address, bool debug = false);
+
+} // namespace RISCV_EMULATOR
 
 #endif //ASSEMBLER_TEST_SYSTEM_CALL_EMULATOR_H

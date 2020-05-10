@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <cassert>
 
+namespace RISCV_EMULATOR {
+
 // R_TYPE
 uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   RType cmd;
@@ -375,6 +377,7 @@ uint32_t AsmCsrrci(uint32_t rd, uint32_t zimm, int32_t offset12) {
   cmd.imm12 = offset12;
   return cmd.GetValue();
 }
+
 uint32_t AsmCsrrs(uint32_t rd, uint32_t rs1, int32_t offset12) {
   IType cmd;
   cmd.opcode = OPCODE_SYSTEM;
@@ -636,3 +639,5 @@ uint32_t AsmAuipc(uint32_t rd, int32_t imm20) {
   cmd.imm20 = imm20 & 0x0FFFFF;
   return cmd.GetValue();
 }
+
+} // namespace RISCV_EMULATOR

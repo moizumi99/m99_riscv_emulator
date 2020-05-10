@@ -8,6 +8,10 @@
 #include <iostream>
 #include <bitset>
 
+using namespace RISCV_EMULATOR;
+
+namespace PTE_TEST {
+
 constexpr int kTestCaseSize = 1000;
 
 constexpr uint32_t GenMask(int size) {
@@ -133,8 +137,10 @@ bool Test() {
   return test_result;
 }
 
+} // namespace PTE_TEST
+
 int main() {
-  bool result = Test();
+  bool result = PTE_TEST::Test();
   if (result) {
     std::cout << "Pte test passed." << std::endl;
   } else {

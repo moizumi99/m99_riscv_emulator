@@ -2,6 +2,8 @@
 #include "assembler.h"
 #include "bit_tools.h"
 
+namespace RISCV_EMULATOR {
+
 MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd) {
 
   *(mem++) = cmd & 0xFF;
@@ -56,3 +58,5 @@ MemorWrapperIterator LoadAssemblerSort(MemorWrapperIterator &mem) {
   AddCmd(mem, AsmJal(X0, -64));  // 48
   return mem;
 }
+
+} // namespace RISCV_EMULATOR

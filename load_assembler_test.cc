@@ -5,9 +5,9 @@
 #include <string>
 #include <random>
 
+using namespace RISCV_EMULATOR;
 
 namespace load_assembler_test {
-
 constexpr int TEST_NUM = 1000;
 
 std::mt19937 rnd;
