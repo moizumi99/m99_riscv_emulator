@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <cassert>
 
-namespace RISCV_EMULATOR {
+namespace CPU_TEST {
 
 // R_TYPE
 uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2) {

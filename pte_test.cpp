@@ -10,7 +10,7 @@
 
 using namespace RISCV_EMULATOR;
 
-namespace PTE_TEST {
+namespace {
 
 constexpr int kTestCaseSize = 1000;
 
@@ -137,10 +137,10 @@ bool Test() {
   return test_result;
 }
 
-} // namespace PTE_TEST
+} // namespace anonymous
 
 int main() {
-  bool result = PTE_TEST::Test();
+  bool result = Test();
   if (result) {
     std::cout << "Pte test passed." << std::endl;
   } else {

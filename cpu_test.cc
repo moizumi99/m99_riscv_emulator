@@ -1,4 +1,3 @@
-
 #include "RISCV_cpu.h"
 #include "bit_tools.h"
 #include "load_assembler.h"
@@ -8,10 +7,10 @@
 #include <iostream>
 #include <cassert>
 
-namespace CPUT_TEST {
-
 using namespace RISCV_EMULATOR;
+using namespace CPU_TEST;
 
+namespace {
 // CPU address bus width.
 bool en_64_bit = true;
 int xlen;
@@ -1222,8 +1221,8 @@ bool RunTest() {
   return error;
 }
 
-} // namespace cpu_test
+} // namespace anonymous
 
 int main() {
-  return CPUT_TEST::RunTest();
+  return RunTest();
 }

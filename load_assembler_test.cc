@@ -6,8 +6,9 @@
 #include <random>
 
 using namespace RISCV_EMULATOR;
+using namespace CPU_TEST;
 
-namespace load_assembler_test {
+namespace {
 constexpr int TEST_NUM = 1000;
 
 std::mt19937 rnd;
@@ -998,8 +999,8 @@ bool RunAllTests() {
   return error;
 }
 
-} // namespace load_assembler_test
+} // namespace anonymous
 
 int main() {
-  return load_assembler_test::RunAllTests();
+  return RunAllTests();
 }

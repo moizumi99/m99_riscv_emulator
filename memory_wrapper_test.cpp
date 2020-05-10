@@ -17,7 +17,7 @@ constexpr int kTestCycle = 8;
 constexpr int kSmallTestCycle = 100;
 } // namespace anonumous
 
-namespace MEMORY_WRAPPER_TEST {
+namespace {
 
 int GetHash32(uint32_t val) {
   static std::hash<uint32_t> h;
@@ -212,22 +212,22 @@ bool Run32bitTest(int test_cycle, size_t test_size, bool verbose = false) {
   return result;
 }
 
-} // namespace MEMORY_WRAPPER_TEST
+} // namespace anonymous
 
 int main() {
-  bool result = MEMORY_WRAPPER_TEST::RunTests(kSmallTestCycle, kSmallTestSize, false);
+  bool result = RunTests(kSmallTestCycle, kSmallTestSize, false);
   if (result) {
     std::cout << kSmallTestCycle << " small tests passed." << std::endl;
   } else {
     std::cout << "Small test failed." << std::endl;
   }
-  result = result && MEMORY_WRAPPER_TEST::RunTests(kTestCycle, kMaxTestSize, true);
+  result = result && RunTests(kTestCycle, kMaxTestSize, true);
   if (result) {
     std::cout << "memory_wrapper test pass." << std::endl;
   } else {
     std::cout << "memory_wrapper test fail." << std::endl;
   }
-  result = result && MEMORY_WRAPPER_TEST::Run32bitTest(kSmallTestCycle, kSmallTestSize, false);
+  result = result && Run32bitTest(kSmallTestCycle, kSmallTestSize, false);
   if (result) {
     std::cout << "32bit read/write test pass." << std::endl;
   } else {

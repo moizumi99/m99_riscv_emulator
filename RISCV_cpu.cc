@@ -3,7 +3,6 @@
 #include "instruction_encdec.h"
 #include "memory_wrapper.h"
 #include "system_call_emulator.h"
-#include "pte.h"
 #include "Mmu.h"
 #include <iostream>
 #include <tuple>

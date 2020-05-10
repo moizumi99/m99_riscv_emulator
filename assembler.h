@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <vector>
 
-namespace RISCV_EMULATOR {
+using namespace RISCV_EMULATOR;
+
+namespace CPU_TEST {
 
 MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd);
 

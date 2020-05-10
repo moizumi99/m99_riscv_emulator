@@ -1,24 +1,20 @@
 #include "RISCV_Emulator.h"
-#include "load_assembler.h"
 #include "memory_wrapper.h"
 #include "RISCV_cpu.h"
 #include "pte.h"
 #include <iostream>
 #include <vector>
 #include <fstream>
-
-#ifndef WIN32
-
-#include <elf.h>
-
-#else
-#include <win32_elf.h>
-#endif
-
 #include <string>
 #include <cstring>
 #include <tuple>
 #include <cassert>
+
+#ifndef WIN32
+#include <elf.h>
+#else
+#include <win32_elf.h>
+#endif
 
 namespace RISCV_EMULATOR {
 
