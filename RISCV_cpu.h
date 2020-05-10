@@ -5,15 +5,9 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include "riscv_cpu_common.h"
 #include "bit_tools.h"
 #include "memory_wrapper.h"
-
-enum class PrivilegeMode {
-  USER_MODE = 0,
-  SUPERVISOR_MODE = 1,
-  MACHINE_MODE = 3
-};
-
 
 class RiscvCpu {
   static constexpr int kCsrSize = 4096;

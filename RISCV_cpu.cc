@@ -4,6 +4,7 @@
 #include "memory_wrapper.h"
 #include "system_call_emulator.h"
 #include "pte.h"
+#include "Mmu.h"
 #include <iostream>
 #include <tuple>
 #include <stdint.h>
@@ -45,7 +46,14 @@ RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
     return virtual_address;
   }
   if (xlen_ == 32) {
-    return VirtualToPhysical32(virtual_address, write_access);
+    Mmu mmu;
+    mmu.memory_ = memory_;
+    mmu.page_fault_ = page_fault_;
+    mmu.faulting_address_ = faulting_address_;
+    uint64_t physical_address = VirtualToPhysical32(virtual_address, write_access);
+    page_fault_ = page_fault_;
+    faulting_address_ = faulting_address_;
+    return physical_address;
   } else {
     // if (xlen == 64) {
     return VirtualToPhysical64(virtual_address, write_access);
