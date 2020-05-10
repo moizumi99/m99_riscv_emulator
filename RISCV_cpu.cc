@@ -36,19 +36,16 @@ void RiscvCpu::InitializeCsrs() {
   }
 }
 
-constexpr int kPageSize = 1 << 12; // PAGESIZE is 2^12.
-constexpr int kMmuLevels = 2;
-
 uint64_t
 RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
   Mmu mmu(memory_, mxl_);
-  mmu.page_fault_ = page_fault_;
-  mmu.faulting_address_ = faulting_address_;
-  mmu.privilege_ = privilege_;
+  mmu.SetPrivilege(privilege_);
   uint64_t physical_address = mmu.VirtualToPhysical(virtual_address,
                                                     csrs_[SATP], write_access);
-  page_fault_ = mmu.page_fault_;
-  faulting_address_ = mmu.faulting_address_;
+  if (mmu.GetPageFault()) {
+    page_fault_ = true;
+    faulting_address_ = mmu.GetFaultingAddress();
+  }
   return physical_address;
 }
 
@@ -66,8 +63,6 @@ bool RiscvCpu::CheckShiftSign(uint8_t shamt, uint8_t instruction,
   return false;
 }
 
-void RiscvCpu::SetRegister(uint32_t num, uint64_t value) { reg_[num] = value; }
-
 void RiscvCpu::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
   this->memory_ = memory;
 }
@@ -77,6 +72,8 @@ uint32_t RiscvCpu::LoadCmd(uint64_t pc) {
   uint64_t physical_address = VirtualToPhysical(pc);
   return mem.Read32(physical_address);
 }
+
+void RiscvCpu::SetRegister(uint32_t num, uint64_t value) { reg_[num] = value; }
 
 uint64_t RiscvCpu::ReadRegister(uint32_t num) {
   return reg_[num];
@@ -561,7 +558,6 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     int32_t imm20 = GetImm20(ir);
 
     switch (instruction) {
-      uint64_t t;
       uint64_t temp64;
       case INST_ADD:
       case INST_ADDW:
