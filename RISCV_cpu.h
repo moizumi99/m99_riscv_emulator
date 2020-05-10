@@ -74,6 +74,7 @@ private:
   inline bool CheckShiftSign(uint8_t shamt, uint8_t instruction, const std::string &message_str);
   PrivilegeMode ToPrivilegeMode(int value);
   void DumpCpuStatus();
+  void DumpRegisters();
   void UpdateMstatus(int16_t csr);
   void ApplyMstatusToCsr();
   // Below are for system call and host emulation

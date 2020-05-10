@@ -673,10 +673,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     int32_t imm21 = GetImm21(ir);
     int16_t imm12_stype = GetStypeImm12(ir);
     int32_t imm20 = GetImm20(ir);
-    uint64_t address;
 
     switch (instruction) {
-      uint64_t dst_address;
       uint64_t t;
       uint64_t temp64;
       case INST_ADD:
@@ -754,18 +752,12 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_LWU:
       case INST_LD:
         LoadInstruction(instruction, rd, rs1, imm12);
-        if (page_fault_) {
-          continue;
-        }
        break;
       case INST_SB:
       case INST_SH:
       case INST_SW:
       case INST_SD:
         StoreInstruction(instruction, rd, rs1, rs2, imm12_stype);
-        if (page_fault_) {
-          continue;
-        }
        break;
       case INST_LUI:
         temp64 = imm20 << 12;
@@ -836,32 +828,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     reg_[ZERO] = 0;
 
     if (verbose) {
-      std::cout
-        << "           X1/RA            X2/SP            X3/GP            X4/TP            "
-           "X5/T0            X6/T1            X7/T2            X8/S0/FP         "
-           "X9/S1            X10/A0           X11/A1           X12/A2           "
-           "X13/A3           X14/A4           X15/A5           X16/A6 "
-        << std::endl;
-      printf("%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx "
-             "%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx\n",
-             reg_[1], reg_[2], reg_[3], reg_[4], reg_[5], reg_[6], reg_[7],
-             reg_[8],
-             reg_[9], reg_[10], reg_[11], reg_[12], reg_[13], reg_[14],
-             reg_[15], reg_[16]
-      );
-      std::cout
-        << "          X17/A7           X18/S2           X19/S3           X20/S4           "
-           "X21/S5           X22/S6           X23/S7           X24/S8           "
-           "X25/S9           X26/S10          X27/S11          X28/T3           "
-           "X29/T4           X30/T5           X31/T6" << std::endl;
-      printf("%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx "
-             "%016lx %016lx %016lx %016lx %016lx %016lx %016lx\n",
-             reg_[17], reg_[18], reg_[19], reg_[20], reg_[21], reg_[22],
-             reg_[23], reg_[24],
-             reg_[25], reg_[26], reg_[27], reg_[28], reg_[29], reg_[30],
-             reg_[31]
-      );
-    }
+      DumpRegisters();
+   }
 
     if (host_emulation_ && host_write) {
       HostEmulation();
@@ -986,6 +954,34 @@ void RiscvCpu::DumpCpuStatus() {
             << std::endl;
   std::cout << "CSR[MSTATUS] = " << std::hex << csrs_[MSTATUS] << std::endl;
   std::cout << "PC = " << std::hex << pc_ << std::endl;
+}
+
+void RiscvCpu::DumpRegisters() {
+  std::cout
+    << "           X1/RA            X2/SP            X3/GP            X4/TP            "
+       "X5/T0            X6/T1            X7/T2         X8/S0/FP            "
+       "X9/S1           X10/A0           X11/A1           X12/A2           "
+       "X13/A3           X14/A4           X15/A5           X16/A6 "
+    << std::endl;
+  printf("%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx "
+         "%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx\n",
+         reg_[1], reg_[2], reg_[3], reg_[4], reg_[5], reg_[6], reg_[7],
+         reg_[8],
+         reg_[9], reg_[10], reg_[11], reg_[12], reg_[13], reg_[14],
+         reg_[15], reg_[16]
+  );
+  std::cout
+    << "          X17/A7           X18/S2           X19/S3           X20/S4           "
+       "X21/S5           X22/S6           X23/S7           X24/S8           "
+       "X25/S9          X26/S10          X27/S11          X28/T3           "
+       "X29/T4           X30/T5           X31/T6" << std::endl;
+  printf("%016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx "
+         "%016lx %016lx %016lx %016lx %016lx %016lx %016lx\n",
+         reg_[17], reg_[18], reg_[19], reg_[20], reg_[21], reg_[22],
+         reg_[23], reg_[24],
+         reg_[25], reg_[26], reg_[27], reg_[28], reg_[29], reg_[30],
+         reg_[31]
+  );
 }
 
 PrivilegeMode RiscvCpu::ToPrivilegeMode(int value) {
