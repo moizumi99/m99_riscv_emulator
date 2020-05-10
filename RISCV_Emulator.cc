@@ -562,9 +562,7 @@ SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory) {
   }
 }
 
-} // namespace RISCV_EMULATOR
-
-int main(int argc, char *argv[]) {
+int run(int argc, char *argv[]) {
   bool cmdline_error, verbose, address64bit, paging, ecall_emulation, host_emulation;
   std::string filename;
 
@@ -645,3 +643,8 @@ int main(int argc, char *argv[]) {
   return return_value;
 }
 
+} // namespace RISCV_EMULATOR
+
+int main(int argc, char *argv[]) {
+  return RISCV_EMULATOR::run(argc, argv);
+}
