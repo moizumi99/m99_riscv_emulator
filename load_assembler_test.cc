@@ -234,7 +234,7 @@ uint32_t gen_s_type(uint32_t base, uint8_t rs1, uint8_t rs2, int16_t imm12) {
   return instruction;
 }
 
-// Support function for showing error message at the end of a test sequence.
+/// Support function for showing error message at the end of a test sequence.
 void print_error_result(std::string &cmdname, int num_test, bool error,
                         bool verbose) {
   if (verbose) {
@@ -980,6 +980,130 @@ bool test_u_type(bool verbose = false) {
   return total_error;
 }
 
+bool test_mult(bool verbose = false) {
+  enum TEST_LIST {
+    TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW, TEST_DIV, TEST_DIVU,
+    TEST_DIVUW, TEST_DIVW, TEST_REM, TEST_REMU,
+  };
+  bool total_error = false;
+
+  TEST_LIST test_set[] = {
+    TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW, TEST_DIV, TEST_DIVU,
+    TEST_DIVUW, TEST_DIVW, TEST_REM, TEST_REMU,
+  };
+  for (TEST_LIST testcase : test_set) {
+    bool error = false;
+    uint32_t base;
+    std::string cmdname;
+    switch (testcase) {
+      case TEST_MUL:
+        base = 0b00000010000000000000000000110011;
+        cmdname = "MUL";
+        break;
+      case TEST_MULH:
+        base = 0b00000010000000000001000000110011;
+        cmdname = "MULH";
+        break;
+      case TEST_MULHSU:
+        base = 0b00000010000000000010000000110011;
+        cmdname = "MULHSU";
+        break;
+      case TEST_MULHU:
+        base = 0b00000010000000000011000000110011;
+        cmdname = "MULHU";
+        break;
+      case TEST_MULW:
+        base = 0b00000010000000000000000000111011;
+        cmdname = "MULW";
+        break;
+      case TEST_DIV:
+        base = 0b00000010000000000100000000110011;
+        cmdname = "DIV";
+        break;
+      case TEST_DIVU:
+        base = 0b00000010000000000101000000110011;
+        cmdname = "DIVU";
+        break;
+      case TEST_DIVUW:
+        base = 0b00000010000000000101000000111011;
+        cmdname = "DIVUW";
+        break;
+      case TEST_DIVW:
+        base = 0b00000010000000000100000000111011;
+        cmdname = "DIVUW";
+        break;
+      case TEST_REM:
+        base = 0b00000010000000000110000000110011;
+        cmdname = "REM";
+        break;
+      case TEST_REMU:
+        base = 0b00000010000000000111000000110011;
+        cmdname = "REMU";
+        break;
+      default:
+        printf("Test case is not defined yet\n");
+        return true;
+        break;
+    }
+    uint8_t opcode = base & 0b01111111;
+    uint8_t funct3 = (base >> 12) & 0b111;
+    uint8_t funct7 = (base >> 25) & 0b1111111;
+
+    for (int i = 0; i < TEST_NUM && !error; i++) {
+      uint32_t cmd;
+      uint8_t rd = rnd() % 32;
+      uint8_t rs1 = rnd() % 32;
+      uint8_t rs2 = rnd() % 32;
+      switch (testcase) {
+        case TEST_MUL:
+          cmd = AsmMul(rd, rs1, rs2);
+          break;
+        case TEST_MULH:
+          cmd = AsmMulh(rd, rs1, rs2);
+          break;
+        case TEST_MULHSU:
+          cmd = AsmMulhsu(rd, rs1, rs2);
+          break;
+        case TEST_MULHU:
+          cmd = AsmMulhu(rd, rs1, rs2);
+          break;
+        case TEST_MULW:
+          cmd = AsmMulw(rd, rs1, rs2);
+          break;
+        case TEST_DIV:
+          cmd = AsmDiv(rd, rs1, rs2);
+          break;
+        case TEST_DIVU:
+          cmd = AsmDivu(rd, rs1, rs2);
+          break;
+        case TEST_DIVUW:
+          cmd = AsmDivuw(rd, rs1, rs2);
+          break;
+        case TEST_DIVW:
+          cmd = AsmDivw(rd, rs1, rs2);
+          break;
+        case TEST_REM:
+          cmd = AsmRem(rd, rs1, rs2);
+          break;
+        case TEST_REMU:
+          cmd = AsmRemu(rd, rs1, rs2);
+          break;
+        default:
+          break;
+      }
+      uint32_t exp = gen_r_type(base, rd, rs1, rs2);
+      std::string test_string = cmdname + " " + std::to_string(rd) + ", " +
+                                std::to_string(rs1) + ", " + std::to_string(rs2);
+      error |= check_equal_quiet(test_string, cmd, exp, verbose);
+      error |= test_r_type_decode_quiet(exp, opcode, funct3, funct7, rd, rs1,
+                                        rs2, verbose);
+    }
+    print_error_result(cmdname, TEST_NUM, error, verbose);
+    total_error |= error;
+  }
+  return total_error;
+}
+
 bool RunAllTests() {
   init_random();
   bool verbose = true;
@@ -990,6 +1114,7 @@ bool RunAllTests() {
   error |= test_j_type(verbose);
   error |= test_s_type(verbose);
   error |= test_u_type(verbose);
+  error |= test_mult(verbose);
 
   if (error) {
     printf("Test failed\n");

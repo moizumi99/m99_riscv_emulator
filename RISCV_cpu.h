@@ -268,6 +268,7 @@ enum op_funct {
   FUNC_NORM = 0b0000000,
   FUNC_ALT = 0b0100000,
   FUNC_MRET = 0b0011000,
+  FUNC_MULT = 0b0000001,
 };
 
 enum op_funct3 {
@@ -302,6 +303,14 @@ enum op_funct3 {
   FUNC3_CSRRWI = 0b101,
   FUNC3_FENCE = 0b000,
   FUNC3_FENCEI = 0b001,
+  FUNC3_MUL = 0b000,
+  FUNC3_MULH = 0b001,
+  FUNC3_MULHSU = 0b010,
+  FUNC3_MULHU = 0b011,
+  FUNC3_DIV = 0b100,
+  FUNC3_DIVU = 0b101,
+  FUNC3_REM = 0b110,
+  FUNC3_REMU = 0b111,
 };
 
 enum instruction {
