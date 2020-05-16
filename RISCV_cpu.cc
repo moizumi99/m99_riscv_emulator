@@ -4,6 +4,7 @@
 #include "memory_wrapper.h"
 #include "system_call_emulator.h"
 #include "Mmu.h"
+#include "Disassembler.h"
 #include <iostream>
 #include <tuple>
 #include <stdint.h>
@@ -522,6 +523,23 @@ RiscvCpu::SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm12) {
   }
 }
 
+void
+RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                          uint32_t rs2) {
+  bool w_instruction = instruction == INST_MULW;
+  uint64_t temp64;
+  switch (instruction) {
+    case INST_MUL:
+    case INST_MULW:
+      temp64 = reg_[rs1] * reg_[rs2];
+      break;
+  }
+  if (xlen_ == 32 || w_instruction) {
+    temp64 = Sext32bit(temp64);
+  }
+  reg_[rd] = temp64;
+}
+
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   error_flag_ = false;
   end_flag_ = false;
@@ -534,9 +552,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
 
     ir = LoadCmd(pc_);
     if (verbose) {
-      printf("PC: %016lx, cmd: %016lx, privilege: %d\n", pc_, ir,
-             static_cast<int>(privilege_)
-      );
+      printf("%016lx (%08lx): ", pc_, ir);
+      std::cout << Disassemble(ir) << std::endl;
     }
     if (page_fault_) {
       Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
@@ -671,6 +688,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_FENCEI:
         // Do nothing for now.
         break;
+      case INST_MUL:
+      case INST_MULW:
+        // RV32M/RV64M Instructions
+        MultInstruction(instruction, rd, rs1, rs2);
+        break;
       case INST_ERROR:
       default:
         std::cout << "Instruction Error at " << std::hex << pc_ << std::endl;
@@ -684,6 +706,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     reg_[ZERO] = 0;
 
     if (verbose) {
+      DumpPrivilegeStatus();
       DumpRegisters();
     }
 
@@ -805,9 +828,22 @@ void RiscvCpu::UpdateMstatus(int16_t csr) {
   ApplyMstatusToCsr();
 }
 
+void RiscvCpu::DumpPrivilegeStatus() {
+  std::cout << "Privilege Mode: ";
+  if (privilege_ == PrivilegeMode::USER_MODE) {
+    std::cout << "U";
+  } else if (privilege_ == PrivilegeMode::SUPERVISOR_MODE) {
+    std::cout << "S";
+  } else if (privilege_ == PrivilegeMode::MACHINE_MODE) {
+    std::cout << "M";
+  } else {
+    std::cout << "?";
+  }
+  std::cout << std::endl;
+}
+
 void RiscvCpu::DumpCpuStatus() {
-  std::cout << "CPU Privilege Mode = " << static_cast<int>(privilege_)
-            << std::endl;
+  DumpPrivilegeStatus();
   std::cout << "CSR[MSTATUS] = " << std::hex << csrs_[MSTATUS] << std::endl;
   std::cout << "PC = " << std::hex << pc_ << std::endl;
 }
@@ -898,38 +934,50 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
   uint32_t instruction = INST_ERROR;
   switch (opcode) {
     case OPCODE_ARITHLOG: // ADD, SUB
-      if (funct3 == FUNC3_ADDSUB) {
-        instruction = (funct7 == FUNC_NORM) ? INST_ADD : INST_SUB;
-      } else if (funct3 == FUNC3_AND) {
-        instruction = INST_AND;
-      } else if (funct3 == FUNC3_OR) {
-        instruction = INST_OR;
-      } else if (funct3 == FUNC3_XOR) {
-        instruction = INST_XOR;
-      } else if (funct3 == FUNC3_SR) {
-        if (funct7 == 0b0000000) {
-          instruction = INST_SRL;
-        } else if (funct7 == 0b0100000) {
-          instruction = INST_SRA;
+      if (funct7 == FUNC_NORM || funct7 == FUNC_ALT) {
+        if (funct3 == FUNC3_ADDSUB) {
+          instruction = (funct7 == FUNC_NORM) ? INST_ADD : INST_SUB;
+        } else if (funct3 == FUNC3_AND) {
+          instruction = INST_AND;
+        } else if (funct3 == FUNC3_OR) {
+          instruction = INST_OR;
+        } else if (funct3 == FUNC3_XOR) {
+          instruction = INST_XOR;
+        } else if (funct3 == FUNC3_SR) {
+          if (funct7 == FUNC_NORM) {
+            instruction = INST_SRL;
+          } else if (funct7 == FUNC_ALT) {
+            instruction = INST_SRA;
+          }
+        } else if (funct3 == FUNC3_SL) {
+          instruction = INST_SLL;
+        } else if (funct3 == FUNC3_SLT) {
+          instruction = INST_SLT;
+        } else if (funct3 == FUNC3_SLTU) {
+          instruction = INST_SLTU;
         }
-      } else if (funct3 == FUNC3_SL) {
-        instruction = INST_SLL;
-      } else if (funct3 == FUNC3_SLT) {
-        instruction = INST_SLT;
-      } else if (funct3 == FUNC3_SLTU) {
-        instruction = INST_SLTU;
+      } else if (funct7 == FUNC_MULT) {
+        if (funct3 == FUNC3_MUL) {
+          instruction = INST_MUL;
+        }
       }
       break;
     case OPCODE_ARITHLOG_64:
-      if (funct3 == FUNC3_ADDSUB) {
-        instruction = (funct7 == FUNC_NORM) ? INST_ADDW : INST_SUBW;
-      } else if (funct3 == FUNC3_SL) {
-        instruction = INST_SLLW;
-      } else if (funct3 == FUNC3_SR) {
-        if (funct7 == 0b000000) {
-          instruction = INST_SRLW;
-        } else if (funct7 == 0b0100000) {
-          instruction = INST_SRAW;
+      if (funct7 == FUNC_NORM || funct7 == FUNC_ALT) {
+        if (funct3 == FUNC3_ADDSUB) {
+          instruction = (funct7 == FUNC_NORM) ? INST_ADDW : INST_SUBW;
+        } else if (funct3 == FUNC3_SL) {
+          instruction = INST_SLLW;
+        } else if (funct3 == FUNC3_SR) {
+          if (funct7 == FUNC_NORM) {
+            instruction = INST_SRLW;
+          } else if (funct7 == FUNC_ALT) {
+            instruction = INST_SRAW;
+          }
+        }
+      } else if (funct7 == FUNC_MULT) {
+        if (funct3 == FUNC3_MUL) {
+          instruction = INST_MULW;
         }
       }
       break;

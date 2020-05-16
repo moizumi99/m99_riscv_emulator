@@ -80,6 +80,9 @@ private:
 
   void SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm12);
 
+  void MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                            uint32_t rs2);
+
   void Mret();
 
   void Sret();
@@ -106,6 +109,8 @@ private:
                              const std::string &message_str);
 
   PrivilegeMode IntToPrivilegeMode(int value);
+
+  void DumpPrivilegeStatus();
 
   void DumpCpuStatus();
 
@@ -372,7 +377,10 @@ enum instruction {
   INST_CSRRW,
   INST_CSRRWI,
   INST_FENCE,
-  INST_FENCEI
+  INST_FENCEI,
+  // RV32M/RV64M instructions
+  INST_MUL,
+  INST_MULW,
 };
 
 } // namespace RISCV_EMULATOR

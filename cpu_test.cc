@@ -1088,6 +1088,129 @@ bool TestJalrTypeLoop(bool verbose = true) {
   return error;
 }
 
+// Multiple-Type test cases start here.
+enum MULT_TYPE_TEST {
+  TEST_MUL, TEST_MULW
+};
+
+bool
+TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
+          int32_t value1, int32_t value2,
+          bool verbose) {
+  if (!en_64_bit &&
+      (test_type == TEST_MULW
+       )) {
+    return false;
+  }
+
+  bool error = false;
+  int64_t expected;
+  std::string test_case = "";
+
+  auto pointer = memory->begin();
+  uint32_t val20, val12;
+  std::tie(val20, val12) = SplitImmediate(value1);
+  AddCmd(pointer, AsmLui(rs1, val20));
+  AddCmd(pointer, AsmAddi(rs1, rs1, val12));
+  std::tie(val20, val12) = SplitImmediate(value2);
+  AddCmd(pointer, AsmLui(rs2, val20));
+  AddCmd(pointer, AsmAddi(rs2, rs2, val12));
+
+  if (rs1 == 0) {
+    value1 = 0;
+  }
+  if (rs2 == 0) {
+    value2 = 0;
+  }
+  if (rs1 == rs2) {
+    value1 = value2;
+  }
+  uint32_t kShiftMask = xlen == 64 ? 0b0111111 : 0b0011111;
+  switch (test_type) {
+    case TEST_MUL:
+      AddCmd(pointer, AsmMul(rd, rs1, rs2));
+      expected = static_cast<int64_t>(value1) * static_cast<int64_t >(value2);
+      test_case = "MUL";
+      break;
+    case TEST_MULW:
+      AddCmd(pointer, AsmMulw(rd, rs1, rs2));
+      expected =
+        (static_cast<int64_t>(value1) * static_cast<int64_t >(value2)) &
+        0xFFFFFFFF;
+      if (expected >> 31) {
+        expected |= 0xFFFFFFFF00000000;
+      }
+      test_case = "MULW";
+      break;
+    default:
+      if (verbose) {
+        printf("Undefined test case.\n");
+      }
+      return true;
+  }
+  AddCmd(pointer, AsmAddi(A0, rd, 0));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
+
+  if (rd == 0) {
+    expected = 0;
+  }
+  if (xlen == 32) {
+    expected = SignExtend(expected, 32);
+  }
+  RiscvCpu cpu(en_64_bit);
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  error = cpu.RunCpu(0, verbose) != 0;
+  int64_t return_value = static_cast<int64_t>(cpu.ReadRegister(A0));
+  error |= return_value != expected;
+  if (error & verbose) {
+    printf("RD: %d, RS1: %d, RS2: %d, Value1: %d(%08x), value2: %d(%03x)\n", rd,
+           rs1, rs2, value1, value1,
+           value2, value2);
+  }
+  if (verbose) {
+    PrintErrorMessage(test_case, error, expected, return_value);
+  }
+  return error;
+}
+
+void PrintMultTypeInstructionMessage(MULT_TYPE_TEST test_case, bool error) {
+  std::map<MULT_TYPE_TEST, const std::string> test_name = {{TEST_MUL,  "MUL"},
+                                                        {TEST_MULW,  "MULW"},
+  };
+  printf("%s test %s.\n", test_name[test_case].c_str(),
+         error ? "failed" : "passed");
+}
+
+bool TestMultTypeLoop(bool verbose = true) {
+  bool total_error = false;
+  MULT_TYPE_TEST test_sets[] = {TEST_MUL, TEST_MULW,
+  };
+  for (MULT_TYPE_TEST test_case: test_sets) {
+    bool error = false;
+    for (int i = 0; i < kUnitTestMax && !error; i++) {
+      int32_t rd = rnd() & 0x1F;
+      int32_t rs1 = rnd() & 0x1F;
+      int32_t rs2 = rnd() & 0x1F;
+      int32_t value1 = static_cast<int32_t>(rnd());
+      int32_t value2 = static_cast<int32_t>(rnd());
+      bool test_error = TestMultType(test_case, rd, rs1, rs2, value1, value2,
+                                  false);
+      if (test_error && verbose) {
+        test_error = TestMultType(test_case, rd, rs1, rs2, value1, value2, true);
+      }
+      error |= test_error;
+    }
+    if (verbose) {
+      PrintMultTypeInstructionMessage(test_case, error);
+    }
+    total_error |= error;
+  }
+  return total_error;
+}
+// Multiple test cases end here.
+
 // Summation test starts here.
 bool TestSum(bool verbose) {
   auto pointer = memory->begin();
@@ -1208,6 +1331,7 @@ bool RunTest() {
     error |= TestStoreLoop(verbose);
     error |= TestBTypeLoop(verbose);
     error |= TestJalrTypeLoop(verbose);
+    error |= TestMultTypeLoop(verbose);
     error |= TestSumQuiet(verbose);
     error |= TestSortQuiet(verbose);
     // Add test for MRET
