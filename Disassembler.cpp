@@ -204,7 +204,7 @@ std::string Disassemble(uint32_t ir) {
       } else if (funct3 == FUNC3_LSD) {
         cmd = "SD";
       }
-      cmd +=
+      cmd += " " +
         GetRegName(rs2) + ", " + std::to_string(imm12_stype) + "(" +
         GetRegName(rs1) +
         ")";

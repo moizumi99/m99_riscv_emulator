@@ -579,6 +579,7 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
                           uint32_t rs2) {
   bool sign_extend_en = xlen_ == 32;
   uint64_t temp64;
+  uint64_t largest_negative = static_cast<uint64_t>(1) << (xlen_ - 1);
   switch (instruction) {
     case INST_MUL:
       temp64 = reg_[rs1] * reg_[rs2];
@@ -618,6 +619,10 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     case INST_DIV:
       if (reg_[rs2] == 0) {
         temp64 = -1;
+      } else if (static_cast<int64_t>(reg_[rs2]) == -1 &&
+                 reg_[rs1] == largest_negative) {
+        // Overflow check.
+        temp64 = largest_negative;
       } else {
         temp64 =
           static_cast<int64_t >(reg_[rs1]) / static_cast<int64_t>(reg_[rs2]);
@@ -637,7 +642,7 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     case INST_DIVUW:
       if (reg_[rs2] == 0) {
         temp64 = ~0;
-     } else {
+      } else {
         temp64 = static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) /
                  static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF);
       }
@@ -646,6 +651,10 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     case INST_DIVW:
       if (reg_[rs2] == 0) {
         temp64 = -1;
+      } else if (static_cast<int64_t>(reg_[rs2]) == -1 &&
+                 reg_[rs1] == 1 << 31) {
+        // Overflow check.
+        temp64 = 1 << 31;
       } else {
         temp64 = static_cast<int64_t>(SignExtend(reg_[rs1], 32)) /
                  static_cast<int64_t>(SignExtend(reg_[rs2], 32));
@@ -655,6 +664,10 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     case INST_REM:
       if (reg_[rs2] == 0) {
         temp64 = reg_[rs1];
+      } else if (static_cast<int64_t>(reg_[rs2]) == -1 &&
+                 reg_[rs1] == largest_negative) {
+        // Overflow check.
+        temp64 = 0;
       } else {
         temp64 =
           static_cast<int64_t >(reg_[rs1]) % static_cast<int64_t>(reg_[rs2]);
@@ -683,6 +696,10 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     case INST_REMW:
       if (reg_[rs2] == 0) {
         temp64 = reg_[rs1];
+      } else if (static_cast<int64_t>(reg_[rs2]) == -1 &&
+                 reg_[rs1] == 1 << 31) {
+        // Overflow check.
+        temp64 = 0;
       } else {
         temp64 = static_cast<int64_t>(SignExtend(reg_[rs1], 32)) %
                  static_cast<int64_t>(SignExtend(reg_[rs2], 32));
