@@ -1096,7 +1096,7 @@ enum MULT_TYPE_TEST {
 
 bool
 TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
-          int32_t value1, int32_t value2,
+          int64_t value1, int64_t value2,
           bool verbose) {
   if (!en_64_bit &&
       (test_type == TEST_MULW
@@ -1133,17 +1133,15 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
   switch (test_type) {
     case TEST_MUL:
       AddCmd(pointer, AsmMul(rd, rs1, rs2));
-      expected = static_cast<int64_t>(value1) * static_cast<int64_t >(value2);
+      expected = value1 * value2;
       test_case = "MUL";
       break;
     case TEST_MULH:
       AddCmd(pointer, AsmMulh(rd, rs1, rs2));
       if (xlen == 32) {
-        expected =
-          (static_cast<int64_t>(value1) * static_cast<int64_t >(value2))
-            >> xlen;
+        expected = (value1 * value2) >> xlen;
       } else {
-        temp128 = static_cast<__int128 >(value1) * static_cast<__int128>(value2);
+        temp128 = static_cast<__int128 >(value1) * value2;
         expected = temp128 >> xlen;
       }
       test_case = "MULH";
@@ -1151,10 +1149,10 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
     case TEST_MULHSU:
       AddCmd(pointer, AsmMulhsu(rd, rs1, rs2));
       if (xlen == 32) {
-        expected = (static_cast<int64_t>(value1) * static_cast<uint64_t >(value2 & 0xFFFFFFFF)
-          >> xlen);
+        expected = (value1 * static_cast<uint64_t >(value2 & 0xFFFFFFFF))
+          >> xlen;
       } else {
-        temp128 = static_cast<__int128 >(value1) * static_cast<uint64_t>(static_cast<int64_t>(value2));
+        temp128 = static_cast<__int128 >(value1) * static_cast<uint64_t>(value2);
         expected = temp128 >> xlen;
       }
       test_case = "MULHSU";
@@ -1165,16 +1163,15 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
         expected = static_cast<uint64_t>(value1 & 0xFFFFFFFF) * static_cast<uint64_t >(value2 & 0xFFFFFFFF);
         expected = expected >> xlen;
       } else {
-        temp128 = static_cast<__int128 >(static_cast<uint64_t>(value1)) * static_cast<uint64_t>(value2);
+        temp128 = static_cast<__int128 >(static_cast<uint64_t >(value1)) *
+          static_cast<uint64_t>(value2);
         expected = temp128 >> xlen;
       }
       test_case = "MULHU";
       break;
     case TEST_MULW:
       AddCmd(pointer, AsmMulw(rd, rs1, rs2));
-      expected =
-        (static_cast<int64_t>(value1) * static_cast<int64_t >(value2)) &
-        0xFFFFFFFF;
+      expected = (value1 * value2) & 0xFFFFFFFF;
       if (expected >> 31) {
         expected |= 0xFFFFFFFF00000000;
       }
