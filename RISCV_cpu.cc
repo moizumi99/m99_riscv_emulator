@@ -594,26 +594,26 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
           (static_cast<int64_t>(reg_[rs1]) * static_cast<int64_t>(reg_[rs2]))
             >> 32;
       } else {
-        temp64 = GetMulh64(static_cast<int64_t>(reg_[rs1]),
-                           static_cast<int64_t>(reg_[rs2]));
+        temp64 = GetMulh64(reg_[rs1],
+                           reg_[rs2]);
       }
       break;
     case INST_MULHSU:
       if (xlen_ == 32) {
         temp64 = (static_cast<int64_t>(reg_[rs1]) *
-                  static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF)) >> 32;
+          (reg_[rs2] & 0xFFFFFFFF)) >> 32;
       } else {
         temp64 = GetMulhsu64(static_cast<int64_t>(reg_[rs1]),
-                             static_cast<uint64_t>(reg_[rs2]));
+                             reg_[rs2]);
       }
       break;
     case INST_MULHU:
       if (xlen_ == 32) {
-        temp64 = (static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) *
-                  static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF)) >> 32;
+        temp64 = ((reg_[rs1] & 0xFFFFFFFF) *
+                  (reg_[rs2] & 0xFFFFFFFF)) >> 32;
       } else {
-        temp64 = GetMulhu64(static_cast<uint64_t>(reg_[rs1]),
-                            static_cast<uint64_t>(reg_[rs2]));
+        temp64 = GetMulhu64(reg_[rs1],
+                            reg_[rs2]);
       }
       break;
     case INST_DIV:
@@ -643,8 +643,7 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       if (reg_[rs2] == 0) {
         temp64 = ~0;
       } else {
-        temp64 = static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) /
-                 static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF);
+        temp64 = (reg_[rs1] & 0xFFFFFFFF) / (reg_[rs2] & 0xFFFFFFFF);
       }
       sign_extend_en = true;
       break;
@@ -677,19 +676,16 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       if (reg_[rs2] == 0) {
         temp64 = reg_[rs1];
       } else if (xlen_ == 32) {
-        temp64 = static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) %
-                 static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF);
+        temp64 = (reg_[rs1] & 0xFFFFFFFF) % (reg_[rs2] & 0xFFFFFFFF);
       } else {
-        temp64 =
-          static_cast<uint64_t >(reg_[rs1]) % static_cast<uint64_t>(reg_[rs2]);
+        temp64 = reg_[rs1] % reg_[rs2];
       }
       break;
     case INST_REMUW:
       if (reg_[rs2] == 0) {
         temp64 = reg_[rs1];
       } else {
-        temp64 = static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) %
-                 static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF);
+        temp64 = (reg_[rs1] & 0xFFFFFFFF) % (reg_[rs2] & 0xFFFFFFFF);
       }
       sign_extend_en = true;
       break;
