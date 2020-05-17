@@ -983,13 +983,13 @@ bool test_u_type(bool verbose = false) {
 bool test_mult(bool verbose = false) {
   enum TEST_LIST {
     TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW, TEST_DIV, TEST_DIVU,
-    TEST_DIVUW, TEST_DIVW, TEST_REM, TEST_REMU,
+    TEST_DIVUW, TEST_DIVW, TEST_REM, TEST_REMU, TEST_REMW, TEST_REMUW,
   };
   bool total_error = false;
 
   TEST_LIST test_set[] = {
     TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW, TEST_DIV, TEST_DIVU,
-    TEST_DIVUW, TEST_DIVW, TEST_REM, TEST_REMU,
+    TEST_DIVUW, TEST_DIVW, TEST_REM, TEST_REMU, TEST_REMW, TEST_REMUW,
   };
   for (TEST_LIST testcase : test_set) {
     bool error = false;
@@ -1040,6 +1040,14 @@ bool test_mult(bool verbose = false) {
         base = 0b00000010000000000111000000110011;
         cmdname = "REMU";
         break;
+      case TEST_REMW:
+        base = 0b00000010000000000110000000111011;
+        cmdname = "REMW";
+        break;
+      case TEST_REMUW:
+        base = 0b00000010000000000111000000111011;
+        cmdname = "REMUW";
+        break;
       default:
         printf("Test case is not defined yet\n");
         return true;
@@ -1087,6 +1095,12 @@ bool test_mult(bool verbose = false) {
           break;
         case TEST_REMU:
           cmd = AsmRemu(rd, rs1, rs2);
+          break;
+        case TEST_REMW:
+          cmd = AsmRemw(rd, rs1, rs2);
+          break;
+        case TEST_REMUW:
+          cmd = AsmRemuw(rd, rs1, rs2);
           break;
         default:
           break;

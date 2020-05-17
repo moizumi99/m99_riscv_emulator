@@ -384,6 +384,14 @@ enum instruction {
   INST_MULHSU,
   INST_MULHU,
   INST_MULW,
+  INST_DIV,
+  INST_DIVU,
+  INST_DIVUW,
+  INST_DIVW,
+  INST_REM,
+  INST_REMU,
+  INST_REMUW,
+  INST_REMW,
 };
 
 } // namespace RISCV_EMULATOR

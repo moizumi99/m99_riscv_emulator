@@ -32,7 +32,7 @@ std::string Disassemble(uint32_t ir) {
   int32_t imm21 = GetImm21(ir);
   int16_t imm12_stype = GetStypeImm12(ir);
   int32_t imm20 = GetImm20(ir);
-  std::string cmd;
+  std::string cmd = "UNDEF";
   switch (opcode) {
     case OPCODE_ARITHLOG: // ADD, SUB
       if (funct7 == FUNC_NORM || funct7 == FUNC_ALT) {
@@ -66,31 +66,47 @@ std::string Disassemble(uint32_t ir) {
           cmd = "MULHSU";
         } else if (funct3 == FUNC3_MULHU) {
           cmd = "MULHU";
+        } else if (funct3 == FUNC3_DIV) {
+          cmd = "DIV";
+        } else if (funct3 == FUNC3_DIVU) {
+          cmd = "DIVU";
+        } else if (funct3 == FUNC3_REM) {
+          cmd = "REM";
+        } else if (funct3 == FUNC3_REMU) {
+          cmd = "REMU";
         }
-      }
-      cmd += " " + GetRegName(rd) + ", " + GetRegName(rs1), +", " +
-                                                              GetRegName(rs2);
-      break;
-    case OPCODE_ARITHLOG_64:
-      if (funct7 == FUNC_NORM || funct7 == FUNC_ALT) {
-        if (funct3 == FUNC3_ADDSUB) {
-          cmd = (funct7 == FUNC_NORM) ? "ADDW" : "SUBW";
-        } else if (funct3 == FUNC3_SL) {
-          cmd = "SLLW";
-        } else if (funct3 == FUNC3_SR) {
-          if (funct7 == FUNC_NORM) {
-            cmd = "SRLW";
-          } else if (funct7 == FUNC_ALT) {
-            cmd = "SRAW";
+        cmd += " " + GetRegName(rd) + ", " + GetRegName(rs1) + ", " +
+               GetRegName(rs2);
+        break;
+        case OPCODE_ARITHLOG_64:
+          if (funct7 == FUNC_NORM || funct7 == FUNC_ALT) {
+            if (funct3 == FUNC3_ADDSUB) {
+              cmd = (funct7 == FUNC_NORM) ? "ADDW" : "SUBW";
+            } else if (funct3 == FUNC3_SL) {
+              cmd = "SLLW";
+            } else if (funct3 == FUNC3_SR) {
+              if (funct7 == FUNC_NORM) {
+                cmd = "SRLW";
+              } else if (funct7 == FUNC_ALT) {
+                cmd = "SRAW";
+              }
+            }
+          } else if (funct7 == FUNC_MULT) {
+            if (funct3 == FUNC3_MUL) {
+              cmd = "MULW";
+            } else if (funct3 == FUNC3_DIVU) {
+              cmd = "DIVUW";
+            } else if (funct3 == FUNC3_DIV) {
+              cmd = "DIVW";
+            } else if (funct3 == FUNC3_REMU) {
+              cmd = "REMUW";
+            } else if (funct3 == FUNC3_REM) {
+              cmd = "REMW";
+            }
           }
-        }
-      } else if (funct7 == FUNC_MULT) {
-        if (funct3 == FUNC3_MUL) {
-          cmd = "MULW";
-        }
       }
-      cmd += " " + GetRegName(rd) + ", " + GetRegName(rs1), +", " +
-                                                            GetRegName(rs2);
+      cmd += " " + GetRegName(rd) + ", " + GetRegName(rs1) + ", " +
+             GetRegName(rs2);
       break;
     case OPCODE_ARITHLOG_I: // ADDI, SUBI
       if (funct3 == FUNC3_ADDSUB) {
@@ -189,7 +205,8 @@ std::string Disassemble(uint32_t ir) {
         cmd = "SD";
       }
       cmd +=
-        GetRegName(rs2) + ", " + std::to_string(imm12_stype) + "(" + GetRegName(rs1) +
+        GetRegName(rs2) + ", " + std::to_string(imm12_stype) + "(" +
+        GetRegName(rs1) +
         ")";
       break;
     case OPCODE_LUI: // LUI

@@ -762,4 +762,26 @@ uint32_t AsmRemu(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   return cmd.GetValue();
 }
 
+uint32_t AsmRemw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG_64;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_REM;
+  return cmd.GetValue();
+}
+
+uint32_t AsmRemuw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG_64;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_REMU;
+  return cmd.GetValue();
+}
+
 } // namespace RISCV_EMULATOR

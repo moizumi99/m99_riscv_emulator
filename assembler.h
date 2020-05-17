@@ -153,6 +153,10 @@ uint32_t AsmRem(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
 uint32_t AsmRemu(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
+uint32_t AsmRemw(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmRemuw(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
 } // namespace RISCV_EMULATOR
 
 #endif // ASSEMBLER_H

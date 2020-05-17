@@ -599,7 +599,8 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       break;
     case INST_MULHSU:
       if (xlen_ == 32) {
-        temp64 = (static_cast<int64_t>(reg_[rs1]) * static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF)) >> 32;
+        temp64 = (static_cast<int64_t>(reg_[rs1]) *
+                  static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF)) >> 32;
       } else {
         temp64 = GetMulhsu64(static_cast<int64_t>(reg_[rs1]),
                              static_cast<uint64_t>(reg_[rs2]));
@@ -607,10 +608,87 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       break;
     case INST_MULHU:
       if (xlen_ == 32) {
-        temp64 = (static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) * static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF)) >> 32;
+        temp64 = (static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) *
+                  static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF)) >> 32;
       } else {
-        temp64 = GetMulhu64(static_cast<uint64_t>(reg_[rs1]), static_cast<uint64_t>(reg_[rs2]));
+        temp64 = GetMulhu64(static_cast<uint64_t>(reg_[rs1]),
+                            static_cast<uint64_t>(reg_[rs2]));
       }
+      break;
+    case INST_DIV:
+      if (reg_[rs2] == 0) {
+        temp64 = -1;
+      } else {
+        temp64 =
+          static_cast<int64_t >(reg_[rs1]) / static_cast<int64_t>(reg_[rs2]);
+      }
+      break;
+    case INST_DIVU:
+      if (reg_[rs2] == 0) {
+        temp64 = ~0;
+      } else if (xlen_ == 32) {
+        temp64 = static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) /
+                 static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF);
+      } else {
+        temp64 =
+          static_cast<uint64_t >(reg_[rs1]) / static_cast<uint64_t>(reg_[rs2]);
+      }
+      break;
+    case INST_DIVUW:
+      if (reg_[rs2] == 0) {
+        temp64 = ~0;
+     } else {
+        temp64 = static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) /
+                 static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF);
+      }
+      sign_extend_en = true;
+      break;
+    case INST_DIVW:
+      if (reg_[rs2] == 0) {
+        temp64 = -1;
+      } else {
+        temp64 = static_cast<int64_t>(SignExtend(reg_[rs1], 32)) /
+                 static_cast<int64_t>(SignExtend(reg_[rs2], 32));
+      }
+      sign_extend_en = true;
+      break;
+    case INST_REM:
+      if (reg_[rs2] == 0) {
+        temp64 = reg_[rs1];
+      } else {
+        temp64 =
+          static_cast<int64_t >(reg_[rs1]) % static_cast<int64_t>(reg_[rs2]);
+      }
+      break;
+    case INST_REMU:
+      if (reg_[rs2] == 0) {
+        temp64 = reg_[rs1];
+      } else if (xlen_ == 32) {
+        temp64 = static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) %
+                 static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF);
+      } else {
+        temp64 =
+          static_cast<uint64_t >(reg_[rs1]) % static_cast<uint64_t>(reg_[rs2]);
+      }
+      break;
+    case INST_REMUW:
+      if (reg_[rs2] == 0) {
+        temp64 = reg_[rs1];
+      } else {
+        temp64 = static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) %
+                 static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF);
+      }
+      sign_extend_en = true;
+      break;
+    case INST_REMW:
+      if (reg_[rs2] == 0) {
+        temp64 = reg_[rs1];
+      } else {
+        temp64 = static_cast<int64_t>(SignExtend(reg_[rs1], 32)) %
+                 static_cast<int64_t>(SignExtend(reg_[rs2], 32));
+      }
+      sign_extend_en = true;
+      break;
   }
   if (sign_extend_en) {
     temp64 = Sext32bit(temp64);
@@ -631,7 +709,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     ir = LoadCmd(pc_);
     if (verbose) {
       char machine_status = privilege_ == PrivilegeMode::USER_MODE ? 'U' :
-        privilege_ == PrivilegeMode::SUPERVISOR_MODE ? 'S' : 'M';
+                            privilege_ == PrivilegeMode::SUPERVISOR_MODE ? 'S'
+                                                                         : 'M';
       printf("%c %016lx (%08lx): ", machine_status, pc_, ir);
       std::cout << Disassemble(ir) << std::endl;
     }
@@ -773,6 +852,14 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_MULHSU:
       case INST_MULHU:
       case INST_MULW:
+      case INST_DIV:
+      case INST_DIVU:
+      case INST_DIVUW:
+      case INST_DIVW:
+      case INST_REM:
+      case INST_REMU:
+      case INST_REMUW:
+      case INST_REMW:
         // RV32M/RV64M Instructions
         MultInstruction(instruction, rd, rs1, rs2);
         break;
@@ -1032,6 +1119,14 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
           instruction = INST_MULHSU;
         } else if (funct3 == FUNC3_MULHU) {
           instruction = INST_MULHU;
+        } else if (funct3 == FUNC3_DIV) {
+          instruction = INST_DIV;
+        } else if (funct3 == FUNC3_DIVU) {
+          instruction = INST_DIVU;
+        } else if (funct3 == FUNC3_REM) {
+          instruction = INST_REM;
+        } else if (funct3 == FUNC3_REMU) {
+          instruction = INST_REMU;
         }
       }
       break;
@@ -1051,6 +1146,14 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
       } else if (funct7 == FUNC_MULT) {
         if (funct3 == FUNC3_MUL) {
           instruction = INST_MULW;
+        } else if (funct3 == FUNC3_DIVU) {
+          instruction = INST_DIVUW;
+        } else if (funct3 == FUNC3_DIV) {
+          instruction = INST_DIVW;
+        } else if (funct3 == FUNC3_REMU) {
+          instruction = INST_REMUW;
+        } else if (funct3 == FUNC3_REM) {
+          instruction = INST_REMW;
         }
       }
       break;

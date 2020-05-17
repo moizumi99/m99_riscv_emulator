@@ -1090,7 +1090,9 @@ bool TestJalrTypeLoop(bool verbose = true) {
 
 // Multiple-Type test cases start here.
 enum MULT_TYPE_TEST {
-  TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW
+  TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW,
+  TEST_DIV, TEST_DIVU, TEST_DIVUW, TEST_DIVW,
+  TEST_REM, TEST_REMU, TEST_REMUW, TEST_REMW,
 };
 
 
@@ -1098,9 +1100,10 @@ bool
 TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
           int64_t value1, int64_t value2,
           bool verbose) {
-  if (!en_64_bit &&
-      (test_type == TEST_MULW
-       )) {
+  bool w_instruction = test_type == TEST_MULW || test_type == TEST_DIVUW || test_type == TEST_DIVW
+                             || test_type == TEST_REMUW || test_type == TEST_REMW;
+
+  if (!en_64_bit && w_instruction) {
     return false;
   }
 
@@ -1126,10 +1129,7 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
   if (rs1 == rs2) {
     value1 = value2;
   }
-  uint32_t kShiftMask = xlen == 64 ? 0b0111111 : 0b0011111;
   __int128 temp128;
-  __int128 op1;
-  unsigned __int128 op2;
   switch (test_type) {
     case TEST_MUL:
       AddCmd(pointer, AsmMul(rd, rs1, rs2));
@@ -1177,6 +1177,92 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
       }
       test_case = "MULW";
       break;
+    case TEST_DIV:
+      AddCmd(pointer, AsmDiv(rd, rs1, rs2));
+      if (value2 == 0) {
+        expected = -1;
+      } else {
+        expected = value1 / value2;
+      }
+      test_case = "DIV";
+      break;
+    case TEST_DIVU:
+      AddCmd(pointer, AsmDivu(rd, rs1, rs2));
+      if (value2 == 0) {
+        expected = ~0;
+      } else if (xlen == 32) {
+        expected =
+          static_cast<uint64_t>(value1 & 0xFFFFFFFF) /
+          static_cast<uint64_t>(value2 & 0xFFFFFFFF);
+      } else {
+        expected =
+          static_cast<uint64_t>(value1) / static_cast<uint64_t>(value2);
+      }
+      test_case = "DIVU";
+      break;
+    case TEST_DIVUW:
+      AddCmd(pointer, AsmDivuw(rd, rs1, rs2));
+      if ((value2 & 0xFFFFFFFF) == 0) {
+        expected = ~0;
+      } else {
+        expected =
+          static_cast<uint64_t>(value1 & 0xFFFFFFFF) / static_cast<uint64_t>(value2 & 0xFFFFFFFF);
+      }
+      test_case = "DIVUW";
+      break;
+    case TEST_DIVW:
+      AddCmd(pointer, AsmDivw(rd, rs1, rs2));
+      if ((value2 & 0xFFFFFFFF) == 0) {
+        expected = -1;
+      } else {
+        expected =
+          static_cast<int64_t>(SignExtend(value1, 32)) / static_cast<int64_t>(SignExtend(value2, 32));
+      }
+      test_case = "DIVW";
+      break;
+    case TEST_REM:
+      AddCmd(pointer, AsmRem(rd, rs1, rs2));
+      if (value2 == 0) {
+        expected = value1;
+      } else {
+        expected = value1 % value2;
+      }
+      test_case = "REM";
+      break;
+    case TEST_REMU:
+      AddCmd(pointer, AsmRemu(rd, rs1, rs2));
+      if (value2 == 0) {
+        expected = value1;
+      } else if (xlen == 32) {
+        expected =
+          static_cast<uint64_t>(value1 & 0xFFFFFFFF) %
+          static_cast<uint64_t>(value2 & 0xFFFFFFFF);
+      } else {
+        expected =
+          static_cast<uint64_t>(value1) % static_cast<uint64_t>(value2);
+      }
+      test_case = "REMU";
+      break;
+    case TEST_REMUW:
+      AddCmd(pointer, AsmRemuw(rd, rs1, rs2));
+      if ((value2 & 0xFFFFFFFF) == 0) {
+        expected = value1;
+      } else {
+        expected =
+          static_cast<uint64_t>(value1 & 0xFFFFFFFF) % static_cast<uint64_t>(value2 & 0xFFFFFFFF);
+      }
+      test_case = "REMUW";
+      break;
+    case TEST_REMW:
+      AddCmd(pointer, AsmRemw(rd, rs1, rs2));
+      if ((value2 & 0xFFFFFFFF) == 0) {
+        expected = value1;
+      } else {
+        expected =
+          static_cast<int64_t>(SignExtend(value1, 32)) % static_cast<int64_t>(SignExtend(value2, 32));
+      }
+      test_case = "REMW";
+      break;
     default:
       if (verbose) {
         printf("Undefined test case.\n");
@@ -1190,7 +1276,7 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
   if (rd == 0) {
     expected = 0;
   }
-  if (xlen == 32) {
+  if (xlen == 32 || w_instruction) {
     expected = SignExtend(expected, 32);
   }
   RiscvCpu cpu(en_64_bit);
@@ -1216,6 +1302,14 @@ void PrintMultTypeInstructionMessage(MULT_TYPE_TEST test_case, bool error) {
                                                            {TEST_MULHSU, "MULHSU"},
                                                            {TEST_MULHU, "MULHU"},
                                                         {TEST_MULW,  "MULW"},
+                                                           {TEST_DIV, "DIV"},
+                                                           {TEST_DIVU, "DIVU"},
+                                                           {TEST_DIVUW, "DIVUW"},
+                                                           {TEST_DIVW, "DIVW"},
+                                                           {TEST_REM, "REM"},
+                                                           {TEST_REMU, "REMU"},
+                                                           {TEST_REMUW, "REMUW"},
+                                                           {TEST_REMW, "REMW"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -1224,6 +1318,8 @@ void PrintMultTypeInstructionMessage(MULT_TYPE_TEST test_case, bool error) {
 bool TestMultTypeLoop(bool verbose = true) {
   bool total_error = false;
   MULT_TYPE_TEST test_sets[] = {TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW,
+                                  TEST_DIV, TEST_DIVU, TEST_DIVUW, TEST_DIVW,
+                                  TEST_REM, TEST_REMU, TEST_REMUW, TEST_REMW,
   };
   for (MULT_TYPE_TEST test_case: test_sets) {
     bool error = false;
