@@ -380,6 +380,9 @@ enum instruction {
   INST_FENCEI,
   // RV32M/RV64M instructions
   INST_MUL,
+  INST_MULH,
+  INST_MULHSU,
+  INST_MULHU,
   INST_MULW,
 };
 

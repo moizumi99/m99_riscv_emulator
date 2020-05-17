@@ -1090,8 +1090,9 @@ bool TestJalrTypeLoop(bool verbose = true) {
 
 // Multiple-Type test cases start here.
 enum MULT_TYPE_TEST {
-  TEST_MUL, TEST_MULW
+  TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW
 };
+
 
 bool
 TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
@@ -1126,11 +1127,48 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
     value1 = value2;
   }
   uint32_t kShiftMask = xlen == 64 ? 0b0111111 : 0b0011111;
+  __int128 temp128;
+  __int128 op1;
+  unsigned __int128 op2;
   switch (test_type) {
     case TEST_MUL:
       AddCmd(pointer, AsmMul(rd, rs1, rs2));
       expected = static_cast<int64_t>(value1) * static_cast<int64_t >(value2);
       test_case = "MUL";
+      break;
+    case TEST_MULH:
+      AddCmd(pointer, AsmMulh(rd, rs1, rs2));
+      if (xlen == 32) {
+        expected =
+          (static_cast<int64_t>(value1) * static_cast<int64_t >(value2))
+            >> xlen;
+      } else {
+        temp128 = static_cast<__int128 >(value1) * static_cast<__int128>(value2);
+        expected = temp128 >> xlen;
+      }
+      test_case = "MULH";
+      break;
+    case TEST_MULHSU:
+      AddCmd(pointer, AsmMulhsu(rd, rs1, rs2));
+      if (xlen == 32) {
+        expected = (static_cast<int64_t>(value1) * static_cast<uint64_t >(value2 & 0xFFFFFFFF)
+          >> xlen);
+      } else {
+        temp128 = static_cast<__int128 >(value1) * static_cast<uint64_t>(static_cast<int64_t>(value2));
+        expected = temp128 >> xlen;
+      }
+      test_case = "MULHSU";
+      break;
+    case TEST_MULHU:
+      AddCmd(pointer, AsmMulhu(rd, rs1, rs2));
+      if (xlen == 32) {
+        expected = static_cast<uint64_t>(value1 & 0xFFFFFFFF) * static_cast<uint64_t >(value2 & 0xFFFFFFFF);
+        expected = expected >> xlen;
+      } else {
+        temp128 = static_cast<__int128 >(static_cast<uint64_t>(value1)) * static_cast<uint64_t>(value2);
+        expected = temp128 >> xlen;
+      }
+      test_case = "MULHU";
       break;
     case TEST_MULW:
       AddCmd(pointer, AsmMulw(rd, rs1, rs2));
@@ -1177,6 +1215,9 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
 
 void PrintMultTypeInstructionMessage(MULT_TYPE_TEST test_case, bool error) {
   std::map<MULT_TYPE_TEST, const std::string> test_name = {{TEST_MUL,  "MUL"},
+                                                           {TEST_MULH, "MULH"},
+                                                           {TEST_MULHSU, "MULHSU"},
+                                                           {TEST_MULHU, "MULHU"},
                                                         {TEST_MULW,  "MULW"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
@@ -1185,7 +1226,7 @@ void PrintMultTypeInstructionMessage(MULT_TYPE_TEST test_case, bool error) {
 
 bool TestMultTypeLoop(bool verbose = true) {
   bool total_error = false;
-  MULT_TYPE_TEST test_sets[] = {TEST_MUL, TEST_MULW,
+  MULT_TYPE_TEST test_sets[] = {TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW,
   };
   for (MULT_TYPE_TEST test_case: test_sets) {
     bool error = false;
@@ -1318,10 +1359,10 @@ bool RunTest() {
     en_64_bit = i == 0 ? false : true;
     if (en_64_bit) {
       xlen = 64;
-      std::cout << "64bit test start." << std::endl;
+      std::cout << "------- 64bit test start -------" << std::endl;
     } else {
       xlen = 32;
-      std::cout << "32bit test start." << std::endl;
+      std::cout << "------- 32bit test start -------" << std::endl;
     }
     error |= TestITypeLoop(verbose);
     error |= TestRTypeLoop(verbose);

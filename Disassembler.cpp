@@ -60,6 +60,12 @@ std::string Disassemble(uint32_t ir) {
       } else if (funct7 == FUNC_MULT) {
         if (funct3 == FUNC3_MUL) {
           cmd = "MUL";
+        } else if (funct3 == FUNC3_MULH) {
+          cmd = "MULH";
+        } else if (funct3 == FUNC3_MULHSU) {
+          cmd = "MULHSU";
+        } else if (funct3 == FUNC3_MULHU) {
+          cmd = "MULHU";
         }
       }
       cmd += " " + GetRegName(rd) + ", " + GetRegName(rs1), +", " +

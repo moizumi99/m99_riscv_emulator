@@ -523,18 +523,96 @@ RiscvCpu::SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm12) {
   }
 }
 
+uint64_t GetMulh64(int64_t op1, int64_t op2) {
+  int64_t a = op1 >> 32;
+  uint64_t b = op1 & 0xFFFFFFFF;
+  int64_t c = op2 >> 32;
+  uint64_t d = op2 & 0xFFFFFFFF;
+  int64_t ac = a * c;
+  int64_t ad = a * d;
+  int64_t bc = b * c;
+  uint64_t bd = b * d;
+
+  // Break down into 32 bit segments;
+  uint64_t d32 = (ad & 0xFFFFFFFF) + (bc & 0xFFFFFFFF) + (bd >> 32);
+
+  int64_t upper = ac + (ad >> 32) + (bc >> 32) + (d32 >> 32);
+  return static_cast<uint64_t>(upper);
+}
+
+uint64_t GetMulhsu64(int64_t op1, uint64_t op2) {
+  int64_t a = op1 >> 32;
+  uint64_t b = op1 & 0xFFFFFFFF;
+  uint64_t c = op2 >> 32;
+  uint64_t d = op2 & 0xFFFFFFFF;
+  int64_t ac = a * c;
+  int64_t ad = a * d;
+  uint64_t bc = b * c;
+  uint64_t bd = b * d;
+
+  // Break down into 32 bit segments;
+  uint64_t d32 = (ad & 0xFFFFFFFF) + (bc & 0xFFFFFFFF) + (bd >> 32);
+
+  int64_t upper = ac + (ad >> 32) + (bc >> 32) + (d32 >> 32);
+  return static_cast<uint64_t>(upper);
+}
+
+uint64_t GetMulhu64(uint64_t op1, uint64_t op2) {
+  uint64_t a = op1 >> 32;
+  uint64_t b = op1 & 0xFFFFFFFF;
+  uint64_t c = op2 >> 32;
+  uint64_t d = op2 & 0xFFFFFFFF;
+  uint64_t ac = a * c;
+  uint64_t ad = a * d;
+  uint64_t bc = b * c;
+  uint64_t bd = b * d;
+
+  // Break down into 32 bit segments;
+  uint64_t d32 = (ad & 0xFFFFFFFF) + (bc & 0xFFFFFFFF) + (bd >> 32);
+
+  uint64_t upper = ac + (ad >> 32) + (bc >> 32) + (d32 >> 32);
+  return upper;
+}
+
 void
 RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
                           uint32_t rs2) {
-  bool w_instruction = instruction == INST_MULW;
+  bool sign_extend_en = xlen_ == 32;
   uint64_t temp64;
   switch (instruction) {
     case INST_MUL:
-    case INST_MULW:
       temp64 = reg_[rs1] * reg_[rs2];
       break;
+    case INST_MULW:
+      temp64 = reg_[rs1] * reg_[rs2];
+      sign_extend_en = true;
+      break;
+    case INST_MULH:
+      if (xlen_ == 32) {
+        temp64 =
+          (static_cast<int64_t>(reg_[rs1]) * static_cast<int64_t>(reg_[rs2]))
+            >> 32;
+      } else {
+        temp64 = GetMulh64(static_cast<int64_t>(reg_[rs1]),
+                           static_cast<int64_t>(reg_[rs2]));
+      }
+      break;
+    case INST_MULHSU:
+      if (xlen_ == 32) {
+        temp64 = (static_cast<int64_t>(reg_[rs1]) * static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF)) >> 32;
+      } else {
+        temp64 = GetMulhsu64(static_cast<int64_t>(reg_[rs1]),
+                             static_cast<uint64_t>(reg_[rs2]));
+      }
+      break;
+    case INST_MULHU:
+      if (xlen_ == 32) {
+        temp64 = (static_cast<uint64_t>(reg_[rs1] & 0xFFFFFFFF) * static_cast<uint64_t>(reg_[rs2] & 0xFFFFFFFF)) >> 32;
+      } else {
+        temp64 = GetMulhu64(static_cast<uint64_t>(reg_[rs1]), static_cast<uint64_t>(reg_[rs2]));
+      }
   }
-  if (xlen_ == 32 || w_instruction) {
+  if (sign_extend_en) {
     temp64 = Sext32bit(temp64);
   }
   reg_[rd] = temp64;
@@ -689,6 +767,9 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         // Do nothing for now.
         break;
       case INST_MUL:
+      case INST_MULH:
+      case INST_MULHSU:
+      case INST_MULHU:
       case INST_MULW:
         // RV32M/RV64M Instructions
         MultInstruction(instruction, rd, rs1, rs2);
@@ -959,6 +1040,12 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
       } else if (funct7 == FUNC_MULT) {
         if (funct3 == FUNC3_MUL) {
           instruction = INST_MUL;
+        } else if (funct3 == FUNC3_MULH) {
+          instruction = INST_MULH;
+        } else if (funct3 == FUNC3_MULHSU) {
+          instruction = INST_MULHSU;
+        } else if (funct3 == FUNC3_MULHU) {
+          instruction = INST_MULHU;
         }
       }
       break;
