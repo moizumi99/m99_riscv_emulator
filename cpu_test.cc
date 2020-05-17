@@ -684,7 +684,7 @@ bool TestLoad(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
   if (verbose) {
     PrintErrorMessage(test_case, error, expected, return_value);
     if (error) {
-      printf("rd: %2d, rs1: %2d, offset0: %08X, offset1: %08X, val: %08X\n", rd,
+      printf("rd: %2d, rs1: %2d, offset0: %08X, offset1: %08X, val: %08lX\n", rd,
              rs1, offset0, offset1, val);
     }
   }
@@ -1200,7 +1200,7 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
   int64_t return_value = static_cast<int64_t>(cpu.ReadRegister(A0));
   error |= return_value != expected;
   if (error & verbose) {
-    printf("RD: %d, RS1: %d, RS2: %d, Value1: %d(%08x), value2: %d(%03x)\n", rd,
+    printf("RD: %d, RS1: %d, RS2: %d, Value1: %ld(%08lx), value2: %ld(%08lx)\n", rd,
            rs1, rs2, value1, value1,
            value2, value2);
   }

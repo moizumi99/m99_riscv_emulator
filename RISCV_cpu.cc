@@ -630,7 +630,9 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
 
     ir = LoadCmd(pc_);
     if (verbose) {
-      printf("%016lx (%08lx): ", pc_, ir);
+      char machine_status = privilege_ == PrivilegeMode::USER_MODE ? 'U' :
+        privilege_ == PrivilegeMode::SUPERVISOR_MODE ? 'S' : 'M';
+      printf("%c %016lx (%08lx): ", machine_status, pc_, ir);
       std::cout << Disassemble(ir) << std::endl;
     }
     if (page_fault_) {
@@ -787,7 +789,6 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     reg_[ZERO] = 0;
 
     if (verbose) {
-      DumpPrivilegeStatus();
       DumpRegisters();
     }
 
@@ -909,22 +910,7 @@ void RiscvCpu::UpdateMstatus(int16_t csr) {
   ApplyMstatusToCsr();
 }
 
-void RiscvCpu::DumpPrivilegeStatus() {
-  std::cout << "Privilege Mode: ";
-  if (privilege_ == PrivilegeMode::USER_MODE) {
-    std::cout << "U";
-  } else if (privilege_ == PrivilegeMode::SUPERVISOR_MODE) {
-    std::cout << "S";
-  } else if (privilege_ == PrivilegeMode::MACHINE_MODE) {
-    std::cout << "M";
-  } else {
-    std::cout << "?";
-  }
-  std::cout << std::endl;
-}
-
 void RiscvCpu::DumpCpuStatus() {
-  DumpPrivilegeStatus();
   std::cout << "CSR[MSTATUS] = " << std::hex << csrs_[MSTATUS] << std::endl;
   std::cout << "PC = " << std::hex << pc_ << std::endl;
 }
