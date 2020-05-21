@@ -10,7 +10,7 @@
 #include <tuple>
 #include <cassert>
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <elf.h>
 #else
 #include <win32_elf.h>
