@@ -14,7 +14,18 @@
 #include "RISCV_cpu.h"
 #ifdef _WIN32
 #include "io.h"
+#define CIO_open _open
+#define CIO_close _close
+#define CIO_lseek _lseek
+#define CIO_read _read
+#define CIO_write _write
 typedef signed int ssize_t;
+#else
+#define CIO_open open
+#define CIO_close close
+#define CIO_lseek lseek
+#define CIO_read read
+#define CIO_write write
 #endif
 
 namespace RISCV_EMULATOR {
@@ -142,7 +153,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
       buffer[i] = mem[reg[A1] + i];
     }
     std::cerr << std::endl;
-    ssize_t return_value = _write(reg[A0], buffer, length);
+    ssize_t return_value = CIO_write(reg[A0], buffer, length);
     reg[A0] = return_value;
     delete buffer;
   } else if (reg[A7] == 214) {
@@ -163,7 +174,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
       std::cerr << "Read System Call" << std::endl;
     int length = reg[A2];
     unsigned char *buffer = new unsigned char[length];
-    size_t return_value = _read(reg[A0], buffer, length);
+    size_t return_value = CIO_read(reg[A0], buffer, length);
     reg[A0] = (uint32_t) return_value;
     for (int i = 0; i < length; i++) {
       mem[reg[A1] + i] = buffer[i];
@@ -202,7 +213,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
 	// Try to prevent closing if open is not used
 	if (openHandles > 0)
 	{
-		return_value = _close(reg[A0]);
+		return_value = CIO_close(reg[A0]);
 		openHandles--;
 	}
 	else
@@ -259,7 +270,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
                   << std::dec << std::endl;
         std::cerr << "Flag = " << std::hex << flag << std::dec << std::endl;
       }
-      return_value = _open(buffer, flag, reg[A2]);
+      return_value = CIO_open(buffer, flag, reg[A2]);
 	  if (return_value >= 0) openHandles++;
       delete buffer;
     }
@@ -267,7 +278,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
   } else if (reg[A7] == 62) {
     // lseek.
     std::cerr << "Lseek System Call" << std::endl;
-    int return_value = _lseek(reg[A0], reg[A1], reg[A2]);
+    int return_value = CIO_lseek(reg[A0], reg[A1], reg[A2]);
     reg[A0] = return_value;
   } else {
     std::cerr << "Undefined system call (" << reg[A7] << "). Exit.\n";
