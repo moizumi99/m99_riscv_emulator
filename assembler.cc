@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <cassert>
 
+namespace CPU_TEST {
+
 // R_TYPE
 uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   RType cmd;
@@ -375,6 +377,7 @@ uint32_t AsmCsrrci(uint32_t rd, uint32_t zimm, int32_t offset12) {
   cmd.imm12 = offset12;
   return cmd.GetValue();
 }
+
 uint32_t AsmCsrrs(uint32_t rd, uint32_t rs1, int32_t offset12) {
   IType cmd;
   cmd.opcode = OPCODE_SYSTEM;
@@ -636,3 +639,149 @@ uint32_t AsmAuipc(uint32_t rd, int32_t imm20) {
   cmd.imm20 = imm20 & 0x0FFFFF;
   return cmd.GetValue();
 }
+
+// MULT_TYPE
+uint32_t AsmMul(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_MUL;
+  return cmd.GetValue();
+}
+
+uint32_t AsmMulh(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_MULH;
+  return cmd.GetValue();
+}
+
+uint32_t AsmMulhsu(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_MULHSU;
+  return cmd.GetValue();
+}
+
+uint32_t AsmMulhu(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_MULHU;
+  return cmd.GetValue();
+}
+
+uint32_t AsmMulw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG_64;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_MUL;
+  return cmd.GetValue();
+}
+
+uint32_t AsmDiv(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_DIV;
+  return cmd.GetValue();
+}
+
+uint32_t AsmDivu(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_DIVU;
+  return cmd.GetValue();
+}
+
+uint32_t AsmDivuw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG_64;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_DIVU;
+  return cmd.GetValue();
+}
+
+uint32_t AsmDivw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG_64;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_DIV;
+  return cmd.GetValue();
+}
+
+uint32_t AsmRem(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_REM;
+  return cmd.GetValue();
+}
+
+uint32_t AsmRemu(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_REMU;
+  return cmd.GetValue();
+}
+
+uint32_t AsmRemw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG_64;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_REM;
+  return cmd.GetValue();
+}
+
+uint32_t AsmRemuw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  RType cmd;
+  cmd.funct7 = FUNC_MULT;
+  cmd.opcode = OPCODE_ARITHLOG_64;
+  cmd.rs2 = rs2;
+  cmd.rs1 = rs1;
+  cmd.rd = rd;
+  cmd.funct3 = FUNC3_REMU;
+  return cmd.GetValue();
+}
+
+} // namespace RISCV_EMULATOR

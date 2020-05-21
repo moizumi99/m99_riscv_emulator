@@ -53,7 +53,7 @@ test_list=(
   "target/share/riscv-tests/isa/rv64ui-p-ori"
 )
 emulater="./RISCV_Emulator"
-flag="-e -64"
+flag="-h -64"
 for test in "${test_list[@]}"; do
   echo -n "Run ${test} test: "
   $(eval "${emulater}  ${flag} ${test} 2> /dev/null")

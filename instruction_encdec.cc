@@ -3,6 +3,8 @@
 #include "RISCV_cpu.h"
 #include <cstdint>
 
+namespace RISCV_EMULATOR {
+
 uint32_t RType::GetValue() {
   uint32_t value = 0;
   value |= funct7 << 25 | rs2 << 20 | rs1 << 15;
@@ -31,7 +33,8 @@ void IType::SetValue(uint32_t value) {
   funct3 = bitcrop(value, 3, 12);
   imm12 = GetImm12(value);
   // For SLLIW, SRLIW, SRAIW, only the lower 6 bits are relevant.
-  if ((opcode == OPCODE_ARITHLOG_I || opcode == OPCODE_ARITHLOG_I64) && (funct3 == FUNC3_SR || funct3 == FUNC3_SL)) {
+  if ((opcode == OPCODE_ARITHLOG_I || opcode == OPCODE_ARITHLOG_I64) &&
+      (funct3 == FUNC3_SR || funct3 == FUNC3_SL)) {
     imm12 &= 0b0111111;
   }
   rs1 = bitcrop(value, 5, 15);
@@ -138,7 +141,8 @@ int32_t GetImm21(uint32_t ir) {
   uint32_t offset11 = bitcrop(ir, 1, 20);
   uint32_t offset10_1 = bitcrop(ir, 10, 21);
   uint32_t offset20 = bitcrop(ir, 1, 31);
-  imm21 = (offset20 << 20) | (offset19_12 << 12) | (offset11 << 11) | (offset10_1 << 1);
+  imm21 = (offset20 << 20) | (offset19_12 << 12) | (offset11 << 11) |
+          (offset10_1 << 1);
 //  imm21 = (bitcrop(ir, 1, 31) << 20) | (bitcrop(ir, 8, 12) << 12);
 //  imm21 |= (bitcrop(ir, 1, 20) << 11) | (bitcrop(ir, 10, 21) << 1);
 
@@ -162,3 +166,5 @@ uint32_t GetImm20(uint32_t ir) {
   imm20 = SignExtend(imm20, 20);
   return imm20;
 }
+
+} // namespace RISCV_EMULATOR

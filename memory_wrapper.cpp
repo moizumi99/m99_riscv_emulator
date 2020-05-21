@@ -3,6 +3,7 @@
 //
 #include <stdexcept>
 #include "memory_wrapper.h"
+namespace RISCV_EMULATOR {
 
 bool MemoryWrapper::CheckRange(int entry) const {
   if (entry < 0 || entry >= kMapEntry) {
@@ -17,7 +18,7 @@ uint8_t &MemoryWrapper::operator[](size_t i) {
   if (!CheckRange(entry)) {
     mapping[entry].resize(1 << kOffsetBits, 0);
   };
- return mapping[entry][offset];
+  return mapping[entry][offset];
 }
 
 const uint8_t MemoryWrapper::operator[](size_t i) const {
@@ -30,7 +31,8 @@ const uint8_t MemoryWrapper::operator[](size_t i) const {
 }
 
 const uint32_t MemoryWrapper::Read32(size_t i) const {
-  return (*this)[i] | ((*this)[i + 1] << 8) | ((*this)[i + 2] << 16) | ((*this)[i + 3] << 24);
+  return (*this)[i] | ((*this)[i + 1] << 8) | ((*this)[i + 2] << 16) |
+         ((*this)[i + 3] << 24);
 }
 
 const uint64_t MemoryWrapper::Read64(size_t i) const {
@@ -76,9 +78,11 @@ MemorWrapperIterator MemoryWrapper::end() {
 }
 
 // Memory wrapper iterator definition starts here.
-MemorWrapperIterator::MemorWrapperIterator(MemoryWrapper &m, size_t p): pos(p), mw(&m)  {}
+MemorWrapperIterator::MemorWrapperIterator(MemoryWrapper &m, size_t p) : pos(p),
+                                                                         mw(
+                                                                           &m) {}
 
-uint8_t& MemorWrapperIterator::operator*() {
+uint8_t &MemorWrapperIterator::operator*() {
   return (*this->mw)[pos];
 }
 
@@ -164,11 +168,12 @@ bool MemorWrapperIterator::operator>=(const iterator &r) {
 }
 
 uint32_t LoadWd(const MemorWrapperIterator &&address) {
-  return address[0] | (address[1] << 8) | (address[2] << 16) | (address[3] << 24);
+  return address[0] | (address[1] << 8) | (address[2] << 16) |
+         (address[3] << 24);
 }
 
 void StoreWd(MemorWrapperIterator &&address, uint32_t data, int width) {
-  switch(width) {
+  switch (width) {
     case 32:
       address[2] = (data >> 16) & 0xFF;
       address[3] = (data >> 24) & 0xFF;
@@ -182,5 +187,4 @@ void StoreWd(MemorWrapperIterator &&address, uint32_t data, int width) {
   }
 }
 
-
-
+} // namespace RISCV_EMULATOR

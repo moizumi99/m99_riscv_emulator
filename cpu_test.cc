@@ -1,4 +1,3 @@
-
 #include "RISCV_cpu.h"
 #include "bit_tools.h"
 #include "load_assembler.h"
@@ -8,8 +7,10 @@
 #include <iostream>
 #include <cassert>
 
-namespace cpu_test {
+using namespace RISCV_EMULATOR;
+using namespace CPU_TEST;
 
+namespace {
 // CPU address bus width.
 bool en_64_bit = true;
 int xlen;
@@ -683,7 +684,7 @@ bool TestLoad(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
   if (verbose) {
     PrintErrorMessage(test_case, error, expected, return_value);
     if (error) {
-      printf("rd: %2d, rs1: %2d, offset0: %08X, offset1: %08X, val: %08X\n", rd,
+      printf("rd: %2d, rs1: %2d, offset0: %08X, offset1: %08X, val: %08lX\n", rd,
              rs1, offset0, offset1, val);
     }
   }
@@ -1087,6 +1088,263 @@ bool TestJalrTypeLoop(bool verbose = true) {
   return error;
 }
 
+// Multiple-Type test cases start here.
+enum MULT_TYPE_TEST {
+  TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW,
+  TEST_DIV, TEST_DIVU, TEST_DIVUW, TEST_DIVW,
+  TEST_REM, TEST_REMU, TEST_REMUW, TEST_REMW,
+};
+
+
+bool
+TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
+          int64_t value1, int64_t value2,
+          bool verbose) {
+  bool w_instruction = test_type == TEST_MULW || test_type == TEST_DIVUW || test_type == TEST_DIVW
+                             || test_type == TEST_REMUW || test_type == TEST_REMW;
+
+  if (!en_64_bit && w_instruction) {
+    return false;
+  }
+
+  bool error = false;
+  int64_t expected;
+  std::string test_case = "";
+
+  auto pointer = memory->begin();
+  uint32_t val20, val12;
+  std::tie(val20, val12) = SplitImmediate(value1);
+  AddCmd(pointer, AsmLui(rs1, val20));
+  AddCmd(pointer, AsmAddi(rs1, rs1, val12));
+  std::tie(val20, val12) = SplitImmediate(value2);
+  AddCmd(pointer, AsmLui(rs2, val20));
+  AddCmd(pointer, AsmAddi(rs2, rs2, val12));
+
+  if (rs1 == 0) {
+    value1 = 0;
+  }
+  if (rs2 == 0) {
+    value2 = 0;
+  }
+  if (rs1 == rs2) {
+    value1 = value2;
+  }
+  __int128 temp128;
+  switch (test_type) {
+    case TEST_MUL:
+      AddCmd(pointer, AsmMul(rd, rs1, rs2));
+      expected = value1 * value2;
+      test_case = "MUL";
+      break;
+    case TEST_MULH:
+      AddCmd(pointer, AsmMulh(rd, rs1, rs2));
+      if (xlen == 32) {
+        expected = (value1 * value2) >> xlen;
+      } else {
+        temp128 = static_cast<__int128 >(value1) * value2;
+        expected = temp128 >> xlen;
+      }
+      test_case = "MULH";
+      break;
+    case TEST_MULHSU:
+      AddCmd(pointer, AsmMulhsu(rd, rs1, rs2));
+      if (xlen == 32) {
+        expected = (value1 * static_cast<uint64_t >(value2 & 0xFFFFFFFF))
+          >> xlen;
+      } else {
+        temp128 = static_cast<__int128 >(value1) * static_cast<uint64_t>(value2);
+        expected = temp128 >> xlen;
+      }
+      test_case = "MULHSU";
+      break;
+    case TEST_MULHU:
+      AddCmd(pointer, AsmMulhu(rd, rs1, rs2));
+      if (xlen == 32) {
+        expected = static_cast<uint64_t>(value1 & 0xFFFFFFFF) * static_cast<uint64_t >(value2 & 0xFFFFFFFF);
+        expected = expected >> xlen;
+      } else {
+        temp128 = static_cast<__int128 >(static_cast<uint64_t >(value1)) *
+          static_cast<uint64_t>(value2);
+        expected = temp128 >> xlen;
+      }
+      test_case = "MULHU";
+      break;
+    case TEST_MULW:
+      AddCmd(pointer, AsmMulw(rd, rs1, rs2));
+      expected = (value1 * value2) & 0xFFFFFFFF;
+      if (expected >> 31) {
+        expected |= 0xFFFFFFFF00000000;
+      }
+      test_case = "MULW";
+      break;
+    case TEST_DIV:
+      AddCmd(pointer, AsmDiv(rd, rs1, rs2));
+      if (value2 == 0) {
+        expected = -1;
+      } else {
+        expected = value1 / value2;
+      }
+      test_case = "DIV";
+      break;
+    case TEST_DIVU:
+      AddCmd(pointer, AsmDivu(rd, rs1, rs2));
+      if (value2 == 0) {
+        expected = ~0;
+      } else if (xlen == 32) {
+        expected =
+          static_cast<uint64_t>(value1 & 0xFFFFFFFF) /
+          static_cast<uint64_t>(value2 & 0xFFFFFFFF);
+      } else {
+        expected =
+          static_cast<uint64_t>(value1) / static_cast<uint64_t>(value2);
+      }
+      test_case = "DIVU";
+      break;
+    case TEST_DIVUW:
+      AddCmd(pointer, AsmDivuw(rd, rs1, rs2));
+      if ((value2 & 0xFFFFFFFF) == 0) {
+        expected = ~0;
+      } else {
+        expected =
+          static_cast<uint64_t>(value1 & 0xFFFFFFFF) / static_cast<uint64_t>(value2 & 0xFFFFFFFF);
+      }
+      test_case = "DIVUW";
+      break;
+    case TEST_DIVW:
+      AddCmd(pointer, AsmDivw(rd, rs1, rs2));
+      if ((value2 & 0xFFFFFFFF) == 0) {
+        expected = -1;
+      } else {
+        expected =
+          static_cast<int64_t>(SignExtend(value1, 32)) / static_cast<int64_t>(SignExtend(value2, 32));
+      }
+      test_case = "DIVW";
+      break;
+    case TEST_REM:
+      AddCmd(pointer, AsmRem(rd, rs1, rs2));
+      if (value2 == 0) {
+        expected = value1;
+      } else {
+        expected = value1 % value2;
+      }
+      test_case = "REM";
+      break;
+    case TEST_REMU:
+      AddCmd(pointer, AsmRemu(rd, rs1, rs2));
+      if (value2 == 0) {
+        expected = value1;
+      } else if (xlen == 32) {
+        expected =
+          static_cast<uint64_t>(value1 & 0xFFFFFFFF) %
+          static_cast<uint64_t>(value2 & 0xFFFFFFFF);
+      } else {
+        expected =
+          static_cast<uint64_t>(value1) % static_cast<uint64_t>(value2);
+      }
+      test_case = "REMU";
+      break;
+    case TEST_REMUW:
+      AddCmd(pointer, AsmRemuw(rd, rs1, rs2));
+      if ((value2 & 0xFFFFFFFF) == 0) {
+        expected = value1;
+      } else {
+        expected =
+          static_cast<uint64_t>(value1 & 0xFFFFFFFF) % static_cast<uint64_t>(value2 & 0xFFFFFFFF);
+      }
+      test_case = "REMUW";
+      break;
+    case TEST_REMW:
+      AddCmd(pointer, AsmRemw(rd, rs1, rs2));
+      if ((value2 & 0xFFFFFFFF) == 0) {
+        expected = value1;
+      } else {
+        expected =
+          static_cast<int64_t>(SignExtend(value1, 32)) % static_cast<int64_t>(SignExtend(value2, 32));
+      }
+      test_case = "REMW";
+      break;
+    default:
+      if (verbose) {
+        printf("Undefined test case.\n");
+      }
+      return true;
+  }
+  AddCmd(pointer, AsmAddi(A0, rd, 0));
+  AddCmd(pointer, AsmXor(RA, RA, RA));
+  AddCmd(pointer, AsmJalr(ZERO, RA, 0));
+
+  if (rd == 0) {
+    expected = 0;
+  }
+  if (xlen == 32 || w_instruction) {
+    expected = SignExtend(expected, 32);
+  }
+  RiscvCpu cpu(en_64_bit);
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  error = cpu.RunCpu(0, verbose) != 0;
+  int64_t return_value = static_cast<int64_t>(cpu.ReadRegister(A0));
+  error |= return_value != expected;
+  if (error & verbose) {
+    printf("RD: %d, RS1: %d, RS2: %d, Value1: %ld(%08lx), value2: %ld(%08lx)\n", rd,
+           rs1, rs2, value1, value1,
+           value2, value2);
+  }
+  if (verbose) {
+    PrintErrorMessage(test_case, error, expected, return_value);
+  }
+  return error;
+}
+
+void PrintMultTypeInstructionMessage(MULT_TYPE_TEST test_case, bool error) {
+  std::map<MULT_TYPE_TEST, const std::string> test_name = {{TEST_MUL,  "MUL"},
+                                                           {TEST_MULH, "MULH"},
+                                                           {TEST_MULHSU, "MULHSU"},
+                                                           {TEST_MULHU, "MULHU"},
+                                                        {TEST_MULW,  "MULW"},
+                                                           {TEST_DIV, "DIV"},
+                                                           {TEST_DIVU, "DIVU"},
+                                                           {TEST_DIVUW, "DIVUW"},
+                                                           {TEST_DIVW, "DIVW"},
+                                                           {TEST_REM, "REM"},
+                                                           {TEST_REMU, "REMU"},
+                                                           {TEST_REMUW, "REMUW"},
+                                                           {TEST_REMW, "REMW"},
+  };
+  printf("%s test %s.\n", test_name[test_case].c_str(),
+         error ? "failed" : "passed");
+}
+
+bool TestMultTypeLoop(bool verbose = true) {
+  bool total_error = false;
+  MULT_TYPE_TEST test_sets[] = {TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW,
+                                  TEST_DIV, TEST_DIVU, TEST_DIVUW, TEST_DIVW,
+                                  TEST_REM, TEST_REMU, TEST_REMUW, TEST_REMW,
+  };
+  for (MULT_TYPE_TEST test_case: test_sets) {
+    bool error = false;
+    for (int i = 0; i < kUnitTestMax && !error; i++) {
+      int32_t rd = rnd() & 0x1F;
+      int32_t rs1 = rnd() & 0x1F;
+      int32_t rs2 = rnd() & 0x1F;
+      int32_t value1 = static_cast<int32_t>(rnd());
+      int32_t value2 = static_cast<int32_t>(rnd());
+      bool test_error = TestMultType(test_case, rd, rs1, rs2, value1, value2,
+                                  false);
+      if (test_error && verbose) {
+        test_error = TestMultType(test_case, rd, rs1, rs2, value1, value2, true);
+      }
+      error |= test_error;
+    }
+    if (verbose) {
+      PrintMultTypeInstructionMessage(test_case, error);
+    }
+    total_error |= error;
+  }
+  return total_error;
+}
+// Multiple test cases end here.
+
 // Summation test starts here.
 bool TestSum(bool verbose) {
   auto pointer = memory->begin();
@@ -1194,10 +1452,10 @@ bool RunTest() {
     en_64_bit = i == 0 ? false : true;
     if (en_64_bit) {
       xlen = 64;
-      std::cout << "64bit test start." << std::endl;
+      std::cout << "------- 64bit test start -------" << std::endl;
     } else {
       xlen = 32;
-      std::cout << "32bit test start." << std::endl;
+      std::cout << "------- 32bit test start -------" << std::endl;
     }
     error |= TestITypeLoop(verbose);
     error |= TestRTypeLoop(verbose);
@@ -1207,6 +1465,7 @@ bool RunTest() {
     error |= TestStoreLoop(verbose);
     error |= TestBTypeLoop(verbose);
     error |= TestJalrTypeLoop(verbose);
+    error |= TestMultTypeLoop(verbose);
     error |= TestSumQuiet(verbose);
     error |= TestSortQuiet(verbose);
     // Add test for MRET
@@ -1220,8 +1479,8 @@ bool RunTest() {
   return error;
 }
 
-} // namespace cpu_test
+} // namespace anonymous
 
 int main() {
-  return cpu_test::RunTest();
+  return RunTest();
 }

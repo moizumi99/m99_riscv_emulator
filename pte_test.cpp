@@ -8,6 +8,10 @@
 #include <iostream>
 #include <bitset>
 
+using namespace RISCV_EMULATOR;
+
+namespace {
+
 constexpr int kTestCaseSize = 1000;
 
 constexpr uint32_t GenMask(int size) {
@@ -132,6 +136,8 @@ bool Test() {
   test_result &= WriteTest();
   return test_result;
 }
+
+} // namespace anonymous
 
 int main() {
   bool result = Test();

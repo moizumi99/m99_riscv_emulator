@@ -5,13 +5,14 @@
 #include "pte.h"
 #include "bit_tools.h"
 
+namespace RISCV_EMULATOR {
 
 // 32 bit version,
 Pte32::Pte32() : Pte32(0) {}
 
 Pte32::Pte32(uint32_t pte_value) : pte_(pte_value) {}
 
-Pte32& Pte32::operator=(uint32_t pte_value) {
+Pte32 &Pte32::operator=(uint32_t pte_value) {
   this->pte_ = pte_value;
   return (*this);
 }
@@ -39,24 +40,31 @@ uint32_t Pte32::GetRsw() const {
 uint32_t Pte32::GetD() const {
   return bitcrop(pte_, 1, 7);
 }
+
 uint32_t Pte32::GetA() const {
   return bitcrop(pte_, 1, 6);
 }
+
 uint32_t Pte32::GetG() const {
   return bitcrop(pte_, 1, 5);
 }
+
 uint32_t Pte32::GetU() const {
   return bitcrop(pte_, 1, 4);
 }
+
 uint32_t Pte32::GetX() const {
   return bitcrop(pte_, 1, 3);
 }
+
 uint32_t Pte32::GetW() const {
   return bitcrop(pte_, 1, 2);
 }
+
 uint32_t Pte32::GetR() const {
   return bitcrop(pte_, 1, 1);
 }
+
 uint32_t Pte32::GetV() const {
   return bitcrop(pte_, 1, 0);
 }
@@ -89,9 +97,11 @@ void Pte32::SetU(int value) {
 void Pte32::SetX(int value) {
   pte_ = SetBit(pte_, value, 3);
 }
+
 void Pte32::SetW(int value) {
   pte_ = SetBit(pte_, value, 2);
 }
+
 void Pte32::SetR(int value) {
   pte_ = SetBit(pte_, value, 1);
 }
@@ -120,7 +130,7 @@ Pte64::Pte64() : pte_(0) {}
 
 Pte64::Pte64(uint64_t pte_value) : pte_(pte_value) {}
 
-Pte64& Pte64::operator=(uint64_t pte_value) {
+Pte64 &Pte64::operator=(uint64_t pte_value) {
   this->pte_ = pte_value;
   return (*this);
 }
@@ -152,24 +162,31 @@ uint32_t Pte64::GetRsw() const {
 uint32_t Pte64::GetD() const {
   return bitcrop(pte_, 1, 7);
 }
+
 uint32_t Pte64::GetA() const {
   return bitcrop(pte_, 1, 6);
 }
+
 uint32_t Pte64::GetG() const {
   return bitcrop(pte_, 1, 5);
 }
+
 uint32_t Pte64::GetU() const {
   return bitcrop(pte_, 1, 4);
 }
+
 uint32_t Pte64::GetX() const {
   return bitcrop(pte_, 1, 3);
 }
+
 uint32_t Pte64::GetW() const {
   return bitcrop(pte_, 1, 2);
 }
+
 uint32_t Pte64::GetR() const {
   return bitcrop(pte_, 1, 1);
 }
+
 uint32_t Pte64::GetV() const {
   return bitcrop(pte_, 1, 0);
 }
@@ -201,9 +218,11 @@ void Pte64::SetU(int value) {
 void Pte64::SetX(int value) {
   pte_ = SetBit(pte_, value, 3);
 }
+
 void Pte64::SetW(int value) {
   pte_ = SetBit(pte_, value, 2);
 }
+
 void Pte64::SetR(int value) {
   pte_ = SetBit(pte_, value, 1);
 }
@@ -226,3 +245,5 @@ bool Pte64::IsValid() const {
 bool Pte64::IsLeaf() const {
   return GetR() != 0 || GetW() != 0 || GetX() != 0;
 }
+
+} // namespace RISCV_EMULATOR

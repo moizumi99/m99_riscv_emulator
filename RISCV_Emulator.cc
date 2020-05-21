@@ -1,26 +1,23 @@
 #include "RISCV_Emulator.h"
-#include "load_assembler.h"
 #include "memory_wrapper.h"
 #include "RISCV_cpu.h"
 #include "pte.h"
 #include <iostream>
 #include <vector>
 #include <fstream>
-
-#ifndef WIN32
-
-#include <elf.h>
-
-#else
-#include <win32_elf.h>
-#endif
-
 #include <string>
 #include <cstring>
 #include <tuple>
 #include <cassert>
 
-namespace {
+#ifndef WIN32
+#include <elf.h>
+#else
+#include <win32_elf.h>
+#endif
+
+namespace RISCV_EMULATOR {
+
 bool flag_64bit = false;
 
 std::vector<uint8_t> ReadFile(std::string filename) {
@@ -561,9 +558,7 @@ SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory) {
   }
 }
 
-} // anonymous namespace.
-
-int main(int argc, char *argv[]) {
+int run(int argc, char *argv[]) {
   bool cmdline_error, verbose, address64bit, paging, ecall_emulation, host_emulation;
   std::string filename;
 
@@ -642,4 +637,10 @@ int main(int argc, char *argv[]) {
   std::cerr << "Return GetValue: " << return_value << "." << std::endl;
 
   return return_value;
+}
+
+} // namespace RISCV_EMULATOR
+
+int main(int argc, char *argv[]) {
+  return RISCV_EMULATOR::run(argc, argv);
 }

@@ -5,15 +5,11 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include "riscv_cpu_common.h"
 #include "bit_tools.h"
 #include "memory_wrapper.h"
 
-enum class PrivilegeMode {
-  USER_MODE = 0,
-  SUPERVISOR_MODE = 1,
-  MACHINE_MODE = 3
-};
-
+namespace RISCV_EMULATOR {
 
 class RiscvCpu {
   static constexpr int kCsrSize = 4096;
@@ -23,26 +19,31 @@ class RiscvCpu {
   int mxl_ = 1;
 public:
   RiscvCpu(bool en64bit);
+
   RiscvCpu();
+
   ~RiscvCpu() {
 
   };
 
   void SetRegister(uint32_t num, uint64_t value);
+
   uint64_t ReadRegister(uint32_t num);
+
   void SetMemory(std::shared_ptr<MemoryWrapper> memory);
+
   void SetCsr(uint32_t index, uint64_t value);
+
   uint64_t ReadCsr(uint32_t index);
+
   int RunCpu(uint64_t start_pc, bool verbose = true);
-  uint64_t VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
-  uint64_t VirtualToPhysical32(uint64_t virtual_address, bool write_access = false);
-  uint64_t VirtualToPhysical64(uint64_t virtual_address, bool write_access = false);
-  int GetXlen() {return xlen_;}
-  void Ecall();
-private:
-  uint64_t Sext32bit(uint64_t data32bit);
 
 private:
+  uint64_t
+  VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
+
+  uint64_t Sext32bit(uint64_t data32bit);
+
   uint64_t reg_[kRegSize];
   uint64_t pc_;
   uint64_t next_pc_;
@@ -50,36 +51,91 @@ private:
   PrivilegeMode privilege_;
   std::shared_ptr<MemoryWrapper> memory_;
   std::vector<uint64_t> csrs_;
+
   void InitializeCsrs();
+
+  void Ecall();
+
+  void CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd,
+                       uint32_t rs1);
+
+  uint64_t BranchInstruction(uint32_t instruction, uint32_t rs1, uint32_t rs2,
+                             int32_t imm13);
+
+  void OperationInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                            uint32_t rs2);
+
+  void ImmediateInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                            int32_t imm12);
+
+  void
+  ImmediateShiftInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                            uint32_t shamt);
+
+  void LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                       int32_t imm12);
+
+  void StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                        uint32_t rs2, int32_t imm12_stype);
+
+  void SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm12);
+
+  void MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                            uint32_t rs2);
+
   void Mret();
+
   void Sret();
+
   uint32_t LoadCmd(uint64_t pc);
+
   uint32_t GetCode(uint32_t ir);
+
   std::pair<bool, bool> SystemCall();
+
   uint64_t LoadWd(uint64_t physical_address, int width = 32);
+
   void StoreWd(uint64_t physical_address, uint64_t data, int width = 32);
+
   void Trap(int cause = 0, bool interrupt = false);
+
   bool page_fault_ = false;
   bool prev_page_fault_ = false;
   uint64_t prev_faulting_address_ = 0;
   bool error_flag_, end_flag_;
   uint64_t faulting_address_;
-  inline bool CheckShiftSign(uint8_t shamt, uint8_t instruction, const std::string &message_str);
-  PrivilegeMode ToPrivilegeMode(int value);
+
+  inline bool CheckShiftSign(uint8_t shamt, uint8_t instruction,
+                             const std::string &message_str);
+
+  PrivilegeMode IntToPrivilegeMode(int value);
+
+  void DumpPrivilegeStatus();
+
   void DumpCpuStatus();
+
+  void DumpRegisters();
+
   void UpdateMstatus(int16_t csr);
+
   void ApplyMstatusToCsr();
   // Below are for system call and host emulation
 public:
   void SetWorkMemory(uint64_t top, uint64_t bottom);
-  void SetEcallEmulationEnable(bool ecall_emulation) { ecall_emulation_ = ecall_emulation;};
-  void SetHostEmulationEnable(bool host_emulation) {host_emulation_ = host_emulation;};
+
+  void SetEcallEmulationEnable(
+    bool ecall_emulation) { ecall_emulation_ = ecall_emulation; };
+
+  void SetHostEmulationEnable(
+    bool host_emulation) { host_emulation_ = host_emulation; };
 private:
   void HostEmulation();
+
   static constexpr uint64_t kToHost = 0x80001000;
   static constexpr uint64_t kFromHost = 0x80001040;
   bool ecall_emulation_ = false;
   bool host_emulation_ = false;
+  bool host_write_;
   uint64_t top_ = 0x80000000;
   uint64_t bottom_ = 0x40000000;
   uint64_t brk_ = bottom_;
@@ -217,6 +273,7 @@ enum op_funct {
   FUNC_NORM = 0b0000000,
   FUNC_ALT = 0b0100000,
   FUNC_MRET = 0b0011000,
+  FUNC_MULT = 0b0000001,
 };
 
 enum op_funct3 {
@@ -251,6 +308,14 @@ enum op_funct3 {
   FUNC3_CSRRWI = 0b101,
   FUNC3_FENCE = 0b000,
   FUNC3_FENCEI = 0b001,
+  FUNC3_MUL = 0b000,
+  FUNC3_MULH = 0b001,
+  FUNC3_MULHSU = 0b010,
+  FUNC3_MULHU = 0b011,
+  FUNC3_DIV = 0b100,
+  FUNC3_DIVU = 0b101,
+  FUNC3_REM = 0b110,
+  FUNC3_REMU = 0b111,
 };
 
 enum instruction {
@@ -312,8 +377,23 @@ enum instruction {
   INST_CSRRW,
   INST_CSRRWI,
   INST_FENCE,
-  INST_FENCEI
+  INST_FENCEI,
+  // RV32M/RV64M instructions
+  INST_MUL,
+  INST_MULH,
+  INST_MULHSU,
+  INST_MULHU,
+  INST_MULW,
+  INST_DIV,
+  INST_DIVU,
+  INST_DIVUW,
+  INST_DIVW,
+  INST_REM,
+  INST_REMU,
+  INST_REMUW,
+  INST_REMW,
 };
 
+} // namespace RISCV_EMULATOR
 
 #endif // RISCV_CPU_H

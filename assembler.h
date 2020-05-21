@@ -5,6 +5,10 @@
 #include <cstdint>
 #include <vector>
 
+using namespace RISCV_EMULATOR;
+
+namespace CPU_TEST {
+
 MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd);
 
 uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2);
@@ -125,6 +129,34 @@ uint32_t AsmFencei();
 
 uint32_t AsmLui(uint32_t rd, int32_t imm20);
 
-uint32_t  AsmAuipc(uint32_t rd, int32_t imm20);
+uint32_t AsmAuipc(uint32_t rd, int32_t imm20);
+
+uint32_t AsmMul(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmMulh(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmMulhsu(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmMulhu(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmMulw(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmDiv(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmDivu(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmDivuw(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmDivw(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmRem(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmRemu(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmRemw(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+uint32_t AsmRemuw(uint32_t rd, uint32_t rs1, uint32_t rs2);
+
+} // namespace RISCV_EMULATOR
 
 #endif // ASSEMBLER_H

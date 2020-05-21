@@ -5,7 +5,14 @@
 #include "memory_wrapper.h"
 #include <vector>
 
+using namespace RISCV_EMULATOR;
+
+namespace CPU_TEST {
+
 MemorWrapperIterator LoadAssemblerSum(MemorWrapperIterator &mem);
+
 MemorWrapperIterator LoadAssemblerSort(MemorWrapperIterator &mem);
 
-#endif // LOAD_ASSEMBLER_H
+} // namespace CPU_TEST {
+
+#endif // CPU_TEST
