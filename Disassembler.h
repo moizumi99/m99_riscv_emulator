@@ -6,6 +6,7 @@
 #define ASSEMBLER_TEST_DISASSEMBLER_H
 
 #include "RISCV_cpu.h"
+#include <string>
 
 namespace RISCV_EMULATOR {
 
