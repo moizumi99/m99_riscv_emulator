@@ -157,6 +157,34 @@ uint32_t AsmRemw(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
 uint32_t AsmRemuw(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
+uint16_t AsmCAdd(uint32_t rd, uint32_t rs2);
+
+uint16_t AsmCEbreak();
+
+uint16_t AsmCFldsp(uint32_t rd, uint32_t uimm);
+
+uint16_t AsmCFlwsp(uint32_t rd, uint32_t uimm);
+
+uint16_t AsmCFsdsp(uint32_t rs2, uint32_t uimm);
+
+uint16_t AsmCFswsp(uint32_t rs2, uint32_t uimm);
+
+uint16_t AsmCJalr(uint32_t rs1);
+
+uint16_t AsmCJr(uint32_t rs1);
+
+uint16_t AsmCLdsp(uint32_t rd, uint32_t uimm);
+
+uint16_t AsmCLwsp(uint32_t rd, uint32_t uimm);
+
+uint16_t AsmCMv(uint32_t rd, uint32_t rs2);
+
+uint16_t AsmCSdsp(uint32_t rs2, uint32_t uimm);
+
+uint16_t AsmCSlli(uint32_t rd, uint32_t uimm);
+
+uint16_t AsmCSwsp(uint32_t rs2, uint32_t uimm);
+
 } // namespace RISCV_EMULATOR
 
 #endif // ASSEMBLER_H

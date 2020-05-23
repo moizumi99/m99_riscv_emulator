@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <random>
+#include <bitset>
 
 using namespace RISCV_EMULATOR;
 using namespace CPU_TEST;
@@ -34,18 +35,19 @@ void print_binary(T value) {
 bool check_equal(const std::string &text, uint32_t value, uint32_t exp,
                  bool verbose = false) {
   bool error = value != exp;
-  if (verbose) {
-    std::cout << text;
-    printf(": %d (", value);
-    print_binary(value);
-    printf(")");
-    if (!error) {
-      printf(" - Pass\n");
-    } else {
-      printf(" - Error (expected: ");
-      print_binary(exp);
-      printf(")\n");
-    }
+  if (!verbose) {
+    return error;
+  }
+  std::cout << text;
+  printf(": %d (", value);
+  print_binary(value);
+  printf(")");
+  if (!error) {
+    printf(" - Pass\n");
+  } else {
+    printf(" - Error (expected: ");
+    print_binary(exp);
+    printf(")\n");
   }
   return error;
 }
@@ -1118,6 +1120,216 @@ bool test_mult(bool verbose = false) {
   return total_error;
 }
 
+bool test_compact(bool verbose = false) {
+  enum TEST_LIST {
+    TEST_CADD, TEST_CEBREAK, TEST_CJALR, TEST_CJR, TEST_CLDSP, TEST_CLWSP, TEST_CSDSP,
+    TEST_CMV, TEST_SLLI, TEST_CSWSP,
+    TEST_CFLDSP, TEST_CFLWSP, TEST_CFSDSP, TEST_CFSWSP,
+  };
+  bool total_error = false;
+
+  TEST_LIST test_set[] = {
+    TEST_CADD, TEST_CEBREAK, TEST_CJALR, TEST_CJR, TEST_CLDSP, TEST_CLWSP, TEST_CSDSP,
+    TEST_CMV, TEST_SLLI, TEST_CSWSP,
+    TEST_CFLDSP, TEST_CFLWSP, TEST_CFSDSP, TEST_CFSWSP,
+  };
+  for (TEST_LIST testcase : test_set) {
+    bool error = false;
+    std::string cmdname;
+
+    for (int i = 0; i < TEST_NUM && !error; i++) {
+      uint16_t cmd;
+      uint32_t rd = rnd() % 32;
+      uint32_t rs1 = rnd() % 32;
+      uint32_t rs2 = rnd() % 32;
+      uint16_t uimm = rnd() % UINT16_MAX;
+      switch (testcase) {
+        case TEST_CADD:
+          cmd = AsmCAdd(rd, rs2);
+          break;
+        case TEST_CEBREAK:
+          cmd = AsmCEbreak();
+          break;
+        case TEST_CFLDSP:
+          uimm = uimm & 0b0111111000;
+          cmd = AsmCFldsp(rd, uimm);
+          break;
+        case TEST_CFLWSP:
+          uimm &= 0b011111100;
+          cmd = AsmCFlwsp(rd, uimm);
+          break;
+        case TEST_CFSDSP:
+          uimm &= 0b0111111000;
+          cmd = AsmCFsdsp(rs2, uimm);
+          break;
+        case TEST_CFSWSP:
+          uimm &= 0b011111100;
+          cmd = AsmCFswsp(rs2, uimm);
+          break;
+        case TEST_CJALR:
+          cmd = AsmCJalr(rs1);
+          break;
+        case TEST_CJR:
+          cmd = AsmCJr(rs1);
+          break;
+        case TEST_CLDSP:
+          uimm &= 0b0111111000;
+          cmd = AsmCLdsp(rd, uimm);
+          break;
+        case TEST_CLWSP:
+          uimm &= 0b011111100;
+          cmd = AsmCLwsp(rd, uimm);
+          break;
+        case TEST_CMV:
+          cmd = AsmCMv(rd, rs2);
+          break;
+        case TEST_CSDSP:
+          uimm &= 0b0111111000;
+          cmd = AsmCSdsp(rs2, uimm);
+          break;
+        case TEST_SLLI:
+          uimm &= 0b0111111;
+          cmd = AsmCSlli(rd, uimm);
+          break;
+        case TEST_CSWSP:
+          uimm &= 0b011111100;
+          cmd = AsmCSwsp(rs2, uimm);
+          break;
+        default:
+          break;
+      }
+
+      // Generate expectation and decoded.
+      uint32_t rd_dec = rd;
+      uint32_t rs1_dec = rs1;
+      uint32_t rs2_dec = rs2;
+      uint16_t uimm_dec = uimm;
+      uint16_t exp = 0;
+      uint16_t msk = 0b1110000000000011;
+      switch (testcase) {
+        case TEST_CADD:
+          exp = 0b1001000000000010;
+          rd_dec = bitcrop(cmd, 5, 7);
+          rs2_dec = bitcrop(cmd, 5, 2);
+          cmdname = "C.ADD";
+          break;
+        case TEST_CEBREAK:
+          exp = 0b1001000000000010;
+          msk = 0b1111111111111111;
+          cmdname = "C.EBREAK";
+          break;
+        case TEST_CFLDSP:
+          exp = 0b0010000000000010;
+          rd_dec = bitcrop(cmd, 5, 7);
+          uimm_dec = bitcrop(cmd, 1, 12) << 5;
+          uimm_dec |= bitcrop(cmd, 2, 5) << 3;
+          uimm_dec |= bitcrop(cmd, 3, 2) << 6;
+          cmdname = "C.FLDSP";
+          break;
+        case TEST_CFLWSP:
+          exp = 0b0110000000000010;
+          rd_dec = bitcrop(cmd, 5, 7);
+          uimm_dec = bitcrop(cmd, 1, 12) << 5;
+          uimm_dec |= bitcrop(cmd, 3, 4) << 2;
+          uimm_dec |= bitcrop(cmd, 2, 2) << 6;
+          cmdname = "C.FLWSP";
+          break;
+        case TEST_CFSDSP:
+          exp = 0b1010000000000010;
+          rs2_dec = bitcrop(cmd, 5, 2);
+          uimm_dec = bitcrop(cmd, 3, 10) << 3;
+          uimm_dec |= bitcrop(cmd, 3, 7) << 6;
+          cmdname = "C.FSDSP";
+          break;
+        case TEST_CFSWSP:
+          exp = 0b1110000000000010;
+          rs2_dec = bitcrop(cmd, 5, 2);
+          uimm_dec = bitcrop(cmd, 4, 9) << 2;
+          uimm_dec |= bitcrop(cmd, 2, 7) << 6;
+          cmdname = "C.FSWSP";
+          break;
+        case TEST_CJALR:
+          exp = 0b1001000000000010;
+          msk = 0b1111000001111111;
+          rs1_dec = bitcrop(cmd, 5, 7);
+          cmdname = "C.JALR";
+          break;
+        case TEST_CJR:
+          exp = 0b1000000000000010;
+          msk = 0b1111000001111111;
+          rs1_dec = bitcrop(cmd, 5, 7);
+          cmdname = "C.JR";
+          break;
+        case TEST_CLDSP:
+          exp = 0b0110000000000010;
+          rd_dec = bitcrop(cmd, 5, 7);
+          uimm_dec = bitcrop(cmd, 1, 12) << 5;
+          uimm_dec |= bitcrop(cmd, 2, 5) << 3;
+          uimm_dec |= bitcrop(cmd, 3, 2) << 6;
+          cmdname = "C.LDSP";
+          break;
+        case TEST_CLWSP:
+          exp = 0b0100000000000010;
+          rd_dec = bitcrop(cmd, 5, 7);
+          uimm_dec = bitcrop(cmd, 1, 12) << 5;
+          uimm_dec |= bitcrop(cmd, 3, 4) << 2;
+          uimm_dec |= bitcrop(cmd, 2, 2) << 6;
+          cmdname = "C.LWSP";
+          break;
+        case TEST_CMV:
+          exp = 0b1000000000000010;
+          msk = 0b1111000000000011;
+          rd_dec = bitcrop(cmd, 5, 7);
+          rs2_dec = bitcrop(cmd, 5, 2);
+          cmdname = "C.MV";
+          break;
+        case TEST_CSDSP:
+          exp = 0b1110000000000010;
+          rs2_dec = bitcrop(cmd, 5, 2);
+          uimm_dec = bitcrop(cmd, 3, 10) << 3;
+          uimm_dec |= bitcrop(cmd, 3, 7) << 6;
+          cmdname = "C.SDSP";
+          break;
+        case TEST_SLLI:
+          exp = 0b0000000000000010;
+          rd_dec = bitcrop(cmd, 5, 7);
+          uimm_dec = bitcrop(cmd, 1, 12) << 5;
+          uimm_dec |= bitcrop(cmd, 5, 2);
+          cmdname = "C.SLLI";
+          break;
+        case TEST_CSWSP:
+          exp = 0b1100000000000010;
+          rs2 = bitcrop(cmd, 5, 2);
+          uimm_dec = bitcrop(cmd, 4, 9) << 2;
+          uimm_dec |= bitcrop(cmd, 2, 7) << 6;
+          cmdname = "C.SWSP";
+          break;
+        default:
+          printf("Test case is not defined yet\n");
+          return true;
+          break;
+      }
+      std::string test_string = cmdname + " " + std::to_string(rd) + ", " +
+                                std::to_string(rs1) + ", " + std::to_string(rs2) + ", " + std::to_string(uimm);
+      if ((exp & msk) != (cmd & msk) || rd != rd_dec || rs1 != rs1_dec || rs2 != rs2_dec || uimm != uimm_dec) {
+        error = true;
+        if (verbose) {
+          std::cerr << test_string << " failed." << std::endl;
+          std::cerr << "Expected: " << std::bitset<16>(exp);
+          std::cerr << ", Actual: " << std::bitset<16>(cmd) << std::endl;
+          std::cerr << "Decoded rd: " << rd_dec << "(" << rd << ")" << std::endl;
+          std::cerr << "Decoded rs1: " << rs1_dec << "(" << rs1 << ")" << std::endl;
+          std::cerr << "Decoded rs2: " << rs2_dec << "(" << rs2 << ")" << std::endl;
+          std::cerr << "Decoded uimm: " << uimm_dec << "(" << uimm << ")" << std::endl;
+        }
+      }
+    }
+    print_error_result(cmdname, TEST_NUM, error, verbose);
+    total_error |= error;
+  }
+  return total_error;
+}
+
 bool RunAllTests() {
   init_random();
   bool verbose = true;
@@ -1129,6 +1341,7 @@ bool RunAllTests() {
   error |= test_s_type(verbose);
   error |= test_u_type(verbose);
   error |= test_mult(verbose);
+  error |= test_compact(verbose);
 
   if (error) {
     printf("Test failed\n");
