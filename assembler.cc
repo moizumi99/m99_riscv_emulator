@@ -384,4 +384,110 @@ uint32_t AsmRemuw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   return AsmRType(OPCODE_ARITHLOG_64, FUNC_MULT, FUNC3_REMU, rd, rs1, rs2);
 }
 
+uint16_t AsmCAdd(uint32_t rd, uint32_t rs2) {
+  uint16_t cmd = 0b1001000000000010;
+  cmd |= ((rd & 0x1F) << 7) | ((rs2 & 0x1F) << 2);
+  return cmd;
+}
+
+uint16_t AsmCEbreak() {
+  uint16_t cmd = 0b1001000000000010;
+  return cmd;
+}
+
+uint16_t AsmCFldsp(uint32_t rd, uint32_t uimm) {
+  uint16_t cmd = 0b0010000000000010;
+  cmd |= (rd & 0x1F) << 7;
+  cmd |= ((uimm >> 5) & 1) << 12;
+  cmd |= ((uimm >> 3) & 0b11) << 5;
+  cmd |= ((uimm >> 6) & 0b111) << 2;
+  return cmd;
+}
+
+uint16_t AsmCFlwsp(uint32_t rd, uint32_t uimm) {
+  uint16_t cmd = 0b0110000000000010;
+  cmd |= (rd & 0x1F) << 7;
+  cmd |= ((uimm >> 5) & 1) << 12;
+  cmd |= ((uimm >> 2) & 0b111) << 4;
+  cmd |= ((uimm >> 6) & 0b11) << 2;
+  return cmd;
+}
+
+uint16_t AsmCFsdsp(uint32_t rs2, uint32_t uimm) {
+  uint16_t cmd = 0b1010000000000010;
+  cmd |= (rs2 & 0x1F) << 2;
+  cmd |= ((uimm >> 3) & 0b111) << 10;
+  cmd |= ((uimm >> 6) & 0b111) << 7;
+  return cmd;
+}
+
+uint16_t AsmCFswsp(uint32_t rs2, uint32_t uimm) {
+  uint16_t cmd = 0b1110000000000010;
+  cmd |= (rs2 & 0x1F) << 2;
+  cmd |= ((uimm >> 2) & 0b1111) << 9;
+  cmd |= ((uimm >> 6) & 0b11) << 7;
+  return cmd;
+}
+
+uint16_t AsmCJalr(uint32_t rs1) {
+  uint16_t cmd = 0b1001000000000010;
+  cmd |= (rs1 & 0b011111) << 7;
+  return cmd;
+}
+
+uint16_t AsmCJr(uint32_t rs1) {
+  uint16_t cmd = 0b1000000000000010;
+  cmd |= (rs1 & 0b011111) << 7;
+  return cmd;
+}
+
+uint16_t AsmCLdsp(uint32_t rd, uint32_t uimm) {
+  uint16_t cmd = 0b0110000000000010;
+  cmd |= (rd & 0x1F) << 7;
+  cmd |= ((uimm >> 5) & 1) << 12;
+  cmd |= ((uimm >> 3) & 0b11) << 5;
+  cmd |= ((uimm >> 6) & 0b111) << 2;
+  return cmd;
+}
+
+uint16_t AsmCLwsp(uint32_t rd, uint32_t uimm) {
+  uint16_t cmd = 0b0100000000000010;
+  cmd |= (rd & 0x1F) << 7;
+  cmd |= ((uimm >> 5) & 1) << 12;
+  cmd |= ((uimm >> 2) & 0b111) << 4;
+  cmd |= ((uimm >> 6) & 0b11) << 2;
+  return cmd;
+}
+
+uint16_t AsmCMv(uint32_t rd, uint32_t rs2) {
+  uint16_t cmd = 0b01000000000000010;
+  cmd |= (rd & 0x1F) << 7;
+  cmd |= (rs2 & 0x1F) << 2;
+  return cmd;
+}
+
+uint16_t AsmCSdsp(uint32_t rs2, uint32_t uimm) {
+  uint16_t cmd = 0b1110000000000010;
+  cmd |= (rs2 & 0x1F) << 2;
+  cmd |= ((uimm >> 3) & 0b111) << 10;
+  cmd |= ((uimm >> 6) & 0b111) << 7;
+  return cmd;
+}
+
+uint16_t AsmCSlli(uint32_t rd, uint32_t uimm) {
+  uint16_t cmd = 0b0000000000000010;
+  cmd |= (rd & 0x1F) << 7;
+  cmd |= ((uimm >> 5) & 1) << 12;
+  cmd |= (uimm & 0b11111) << 2;
+  return cmd;
+}
+
+uint16_t AsmCSwsp(uint32_t rs2, uint32_t uimm) {
+  uint16_t cmd = 0b1100000000000010;
+  cmd |= (rs2 & 0x1F) << 2;
+  cmd |= ((uimm >> 2) & 0b1111) << 9;
+  cmd |= ((uimm >> 6) & 0b11) << 7;
+  return cmd;
+}
+
 } // namespace RISCV_EMULATOR
