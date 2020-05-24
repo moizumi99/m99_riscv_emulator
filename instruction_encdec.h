@@ -5,6 +5,7 @@
 
 namespace RISCV_EMULATOR {
 
+// TODO: In the current Emulator code, these classes are not being used. Shall they be removed from the test code too?
 class BitField {
 public:
   virtual uint32_t GetValue() = 0;

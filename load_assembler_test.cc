@@ -52,7 +52,8 @@ bool check_equal(const std::string &text, uint32_t value, uint32_t exp,
   return error;
 }
 
-bool check_equal_quiet(const std::string &text, uint32_t cmd, uint32_t exp, bool verbose = false) {
+bool check_equal_quiet(const std::string &text, uint32_t cmd, uint32_t exp,
+                       bool verbose = false) {
   bool error = check_equal(text, cmd, exp, false);
   if (error & verbose) {
     error = check_equal(text, cmd, exp, true);
@@ -128,7 +129,8 @@ bool test_b_type_decode(uint32_t instruction, uint8_t opcode, uint8_t funct3,
   error |= check_equal("funct3", cmd.funct3, funct3);
   error |= check_equal("rs1", cmd.rs1, rs1, verbose);
   error |= check_equal("rs2", cmd.rs2, rs2, verbose);
-  error |= check_equal("imm13", SignExtend(cmd.imm13, 13), imm13 & (~0b01), verbose);
+  error |= check_equal("imm13", SignExtend(cmd.imm13, 13), imm13 & (~0b01),
+                       verbose);
   return error;
 }
 
@@ -153,7 +155,8 @@ bool test_j_type_decode(uint32_t instruction, uint8_t opcode, uint8_t rd,
   cmd.SetValue(instruction);
   error |= check_equal("cmd", cmd.opcode, opcode, verbose);
   error |= check_equal("rd", cmd.rd, rd, verbose);
-  error |= check_equal("imm21", SignExtend(cmd.imm21, 21), imm21 & (~1), verbose);
+  error |= check_equal("imm21", SignExtend(cmd.imm21, 21), imm21 & (~1),
+                       verbose);
   return error;
 }
 
@@ -252,13 +255,29 @@ void print_error_result(std::string &cmdname, int num_test, bool error,
 
 bool test_r_type(bool verbose = false) {
   enum TEST_LIST {
-    TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU, TEST_MRET,
-    TEST_SLLW, TEST_SRAW, TEST_SRLW, TEST_SUBW, TEST_ADDW
+    TEST_ADD,
+    TEST_SUB,
+    TEST_AND,
+    TEST_OR,
+    TEST_XOR,
+    TEST_SLL,
+    TEST_SRL,
+    TEST_SRA,
+    TEST_SLT,
+    TEST_SLTU,
+    TEST_MRET,
+    TEST_SLLW,
+    TEST_SRAW,
+    TEST_SRLW,
+    TEST_SUBW,
+    TEST_ADDW
   };
   bool total_error = false;
 
-  TEST_LIST test_set[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR, TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
-                          TEST_SLTU, TEST_MRET, TEST_SLLW, TEST_SRAW, TEST_SRLW, TEST_SUBW, TEST_ADDW};
+  TEST_LIST test_set[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR,
+                          TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT,
+                          TEST_SLTU, TEST_MRET, TEST_SLLW, TEST_SRAW, TEST_SRLW,
+                          TEST_SUBW, TEST_ADDW};
   for (TEST_LIST testcase : test_set) {
     bool error = false;
     uint32_t base;
@@ -398,7 +417,8 @@ bool test_r_type(bool verbose = false) {
       }
       uint32_t exp = gen_r_type(base, rd, rs1, rs2);
       std::string test_string = cmdname + " " + std::to_string(rd) + ", " +
-                                std::to_string(rs1) + ", " + std::to_string(rs2);
+                                std::to_string(rs1) + ", " +
+                                std::to_string(rs2);
       error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_r_type_decode_quiet(exp, opcode, funct3, funct7, rd, rs1,
                                         rs2, verbose);
@@ -411,19 +431,50 @@ bool test_r_type(bool verbose = false) {
 
 bool test_i_type(bool verbose = false) {
   enum TEST_LIST {
-    TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW,
-    TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLTI, TEST_SLTIU, TEST_EBREAK, TEST_ECALL,
-    TEST_CSRRC, TEST_CSRRCI, TEST_CSRRS, TEST_CSRRSI, TEST_CSRRW, TEST_CSRRWI, TEST_FENCE, TEST_FENCEI,
-    TEST_ADDIW, TEST_LD, TEST_LWU, TEST_SLLIW, TEST_SRAIW, TEST_SRLIW
+    TEST_ADDI,
+    TEST_SLLI,
+    TEST_SRLI,
+    TEST_SRAI,
+    TEST_LB,
+    TEST_LBU,
+    TEST_LH,
+    TEST_LHU,
+    TEST_LW,
+    TEST_JALR,
+    TEST_ANDI,
+    TEST_ORI,
+    TEST_XORI,
+    TEST_SLTI,
+    TEST_SLTIU,
+    TEST_EBREAK,
+    TEST_ECALL,
+    TEST_CSRRC,
+    TEST_CSRRCI,
+    TEST_CSRRS,
+    TEST_CSRRSI,
+    TEST_CSRRW,
+    TEST_CSRRWI,
+    TEST_FENCE,
+    TEST_FENCEI,
+    TEST_ADDIW,
+    TEST_LD,
+    TEST_LWU,
+    TEST_SLLIW,
+    TEST_SRAIW,
+    TEST_SRLIW
   };
   bool total_error = false;
-  TEST_LIST test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB, TEST_LBU, TEST_LH, TEST_LHU,
-                          TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLTI, TEST_SLTIU,
+  TEST_LIST test_set[] = {TEST_ADDI, TEST_SLLI, TEST_SRLI, TEST_SRAI, TEST_LB,
+                          TEST_LBU, TEST_LH, TEST_LHU,
+                          TEST_LW, TEST_JALR, TEST_ANDI, TEST_ORI, TEST_XORI,
+                          TEST_SLTI, TEST_SLTIU,
                           TEST_EBREAK, TEST_ECALL,
-                          TEST_CSRRC, TEST_CSRRCI, TEST_CSRRS, TEST_CSRRSI, TEST_CSRRW, TEST_CSRRWI,
+                          TEST_CSRRC, TEST_CSRRCI, TEST_CSRRS, TEST_CSRRSI,
+                          TEST_CSRRW, TEST_CSRRWI,
                           TEST_FENCE, TEST_FENCEI,
-                          TEST_ADDIW, TEST_LD, TEST_LWU, TEST_SLLIW, TEST_SRAIW, TEST_SRLIW
-                          };
+                          TEST_ADDIW, TEST_LD, TEST_LWU, TEST_SLLIW, TEST_SRAIW,
+                          TEST_SRLIW
+  };
   for (TEST_LIST test_case : test_set) {
     bool error = false;
     uint32_t base;
@@ -681,7 +732,8 @@ bool test_i_type(bool verbose = false) {
         }
           break;
         case TEST_FENCEI:
-          rd = rs1 = 0; imm12 = 0;
+          rd = rs1 = 0;
+          imm12 = 0;
           cmd = AsmFencei();
           break;
         default:
@@ -689,7 +741,8 @@ bool test_i_type(bool verbose = false) {
       }
       uint32_t exp = gen_i_type(base, rd, rs1, imm12);
       std::string test_string = cmdname + " " + std::to_string(rd) + ", " +
-                                std::to_string(rs1) + ", " + std::to_string(imm12);
+                                std::to_string(rs1) + ", " +
+                                std::to_string(imm12);
       error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_i_type_decode_quiet(exp, opcode, funct3, rd, rs1, imm12,
                                         verbose);
@@ -706,7 +759,8 @@ bool test_b_type(bool verbose = false) {
   };
   bool total_error = false;
 
-  for (TEST_LIST testcase : {TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU, TEST_BNE}) {
+  for (TEST_LIST testcase : {TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU,
+                             TEST_BNE}) {
     bool error = false;
     uint32_t base;
     std::string cmdname;
@@ -772,7 +826,8 @@ bool test_b_type(bool verbose = false) {
       }
       uint32_t exp = gen_b_type(base, rs1, rs2, imm13);
       std::string test_string = cmdname + " " + std::to_string(rs1) + ", " +
-                                std::to_string(rs2) + ", " + std::to_string(imm13);
+                                std::to_string(rs2) + ", " +
+                                std::to_string(imm13);
       error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_b_type_decode_quiet(exp, opcode, funct3, rs1, rs2, imm13,
                                         verbose);
@@ -818,7 +873,8 @@ bool test_j_type(bool verbose = false) {
       }
       uint32_t exp = gen_j_type(base, rd, imm21);
       std::string test_string =
-        cmdname + " " + std::to_string(rd) + ", " + ", " + std::to_string(imm21);
+        cmdname + " " + std::to_string(rd) + ", " + ", " +
+        std::to_string(imm21);
       error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_j_type_decode_quiet(exp, opcode, rd, imm21, verbose);
     }
@@ -886,7 +942,8 @@ bool test_s_type(bool verbose = false) {
       }
       uint32_t exp = gen_s_type(base, rs1, rs2, imm12);
       std::string test_string = cmdname + " " + std::to_string(rs1) + ", " +
-                                std::to_string(rs2) + ", " + ", " + std::to_string(imm12);
+                                std::to_string(rs2) + ", " + ", " +
+                                std::to_string(imm12);
       error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_s_type_decode_quiet(exp, opcode, funct3, rs1, rs2, imm12,
                                         verbose);
@@ -926,7 +983,8 @@ bool test_u_type_decode_quiet(uint32_t instruction, uint8_t opcode,
 
 // Create U TYPE instruction with necessary parameters.
 uint32_t gen_u_type(uint32_t base, uint8_t rd, int32_t imm20) {
-  uint32_t instruction = base | ((rd & 0x01F) << 7) | ((imm20 & 0x0FFFFF) << 12);
+  uint32_t instruction =
+    base | ((rd & 0x01F) << 7) | ((imm20 & 0x0FFFFF) << 12);
   return instruction;
 }
 
@@ -984,13 +1042,25 @@ bool test_u_type(bool verbose = false) {
 
 bool test_mult(bool verbose = false) {
   enum TEST_LIST {
-    TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW, TEST_DIV, TEST_DIVU,
-    TEST_DIVUW, TEST_DIVW, TEST_REM, TEST_REMU, TEST_REMW, TEST_REMUW,
+    TEST_MUL,
+    TEST_MULH,
+    TEST_MULHSU,
+    TEST_MULHU,
+    TEST_MULW,
+    TEST_DIV,
+    TEST_DIVU,
+    TEST_DIVUW,
+    TEST_DIVW,
+    TEST_REM,
+    TEST_REMU,
+    TEST_REMW,
+    TEST_REMUW,
   };
   bool total_error = false;
 
   TEST_LIST test_set[] = {
-    TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW, TEST_DIV, TEST_DIVU,
+    TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW, TEST_DIV,
+    TEST_DIVU,
     TEST_DIVUW, TEST_DIVW, TEST_REM, TEST_REMU, TEST_REMW, TEST_REMUW,
   };
   for (TEST_LIST testcase : test_set) {
@@ -1109,7 +1179,8 @@ bool test_mult(bool verbose = false) {
       }
       uint32_t exp = gen_r_type(base, rd, rs1, rs2);
       std::string test_string = cmdname + " " + std::to_string(rd) + ", " +
-                                std::to_string(rs1) + ", " + std::to_string(rs2);
+                                std::to_string(rs1) + ", " +
+                                std::to_string(rs2);
       error |= check_equal_quiet(test_string, cmd, exp, verbose);
       error |= test_r_type_decode_quiet(exp, opcode, funct3, funct7, rd, rs1,
                                         rs2, verbose);
@@ -1122,16 +1193,34 @@ bool test_mult(bool verbose = false) {
 
 bool test_compact(bool verbose = false) {
   enum TEST_LIST {
-    TEST_CADD, TEST_CEBREAK, TEST_CJALR, TEST_CJR, TEST_CLDSP, TEST_CLWSP, TEST_CSDSP,
+    TEST_CADD, TEST_CEBREAK, TEST_CJALR, TEST_CJR, TEST_CLDSP, TEST_CLWSP,
+    TEST_CSDSP,
     TEST_CMV, TEST_SLLI, TEST_CSWSP,
+    TEST_CADDI, TEST_CADDI16SP, TEST_CADDIW, TEST_CAND, TEST_COR,
+    TEST_CSUB, TEST_CSUBW, TEST_CXOR,
+    TEST_CSRAI, TEST_CSRLI,
+    TEST_CADDW, TEST_CANDI, TEST_CBEQZ, TEST_CBNEZ,
+    TEST_CJ, TEST_CJAL, TEST_CLI, TEST_CLUI,
+    TEST_CADDI4SPN,
     TEST_CFLDSP, TEST_CFLWSP, TEST_CFSDSP, TEST_CFSWSP,
+    TEST_CFLD, TEST_CFLW, TEST_CFSD, TEST_CFSW,
+    TEST_CLD, TEST_CLW, TEST_CSD, TEST_CSW,
   };
   bool total_error = false;
 
   TEST_LIST test_set[] = {
-    TEST_CADD, TEST_CEBREAK, TEST_CJALR, TEST_CJR, TEST_CLDSP, TEST_CLWSP, TEST_CSDSP,
+    TEST_CADD, TEST_CEBREAK, TEST_CJALR, TEST_CJR, TEST_CLDSP, TEST_CLWSP,
+    TEST_CSDSP,
     TEST_CMV, TEST_SLLI, TEST_CSWSP,
+    TEST_CADDI, TEST_CADDI16SP, TEST_CADDIW, TEST_CAND, TEST_COR,
+    TEST_CSUB, TEST_CSUBW, TEST_CXOR,
+    TEST_CSRAI, TEST_CSRLI,
+    TEST_CADDW, TEST_CANDI, TEST_CBEQZ, TEST_CBNEZ,
+    TEST_CJ, TEST_CJAL, TEST_CLI, TEST_CLUI,
+    TEST_CADDI4SPN,
     TEST_CFLDSP, TEST_CFLWSP, TEST_CFSDSP, TEST_CFSWSP,
+    TEST_CFLD, TEST_CFLW, TEST_CFSD, TEST_CFSW,
+    TEST_CLD, TEST_CLW, TEST_CSD, TEST_CSW,
   };
   for (TEST_LIST testcase : test_set) {
     bool error = false;
@@ -1142,7 +1231,8 @@ bool test_compact(bool verbose = false) {
       uint32_t rd = rnd() % 32;
       uint32_t rs1 = rnd() % 32;
       uint32_t rs2 = rnd() % 32;
-      uint16_t uimm = rnd() % UINT16_MAX;
+      uint32_t uimm = rnd();
+      int32_t imm = static_cast<int32_t>(uimm);
       switch (testcase) {
         case TEST_CADD:
           cmd = AsmCAdd(rd, rs2);
@@ -1195,6 +1285,117 @@ bool test_compact(bool verbose = false) {
           uimm &= 0b011111100;
           cmd = AsmCSwsp(rs2, uimm);
           break;
+        case TEST_CADDI:
+        case TEST_CLI:
+          imm = SignExtend(imm, 6);
+          if (testcase == TEST_CADDI) {
+            cmd = AsmCAddi(rd, imm);
+          } else {
+            cmd = AsmCLi(rd, imm);
+          }
+          break;
+        case TEST_CANDI:
+        case TEST_CSRAI:
+        case TEST_CSRLI:
+          imm = SignExtend(imm, 6);
+          rd = 8 + (rd & 0b111);
+          if (testcase == TEST_CANDI) {
+            cmd = AsmCAndi(rd, imm);
+          } else if (testcase == TEST_CSRAI) {
+            cmd = AsmCSrai(rd, imm);
+          } else if (testcase == TEST_CSRLI) {
+            cmd = AsmCSrli(rd, imm);
+          }
+          break;
+        case TEST_CADDI16SP:
+          imm &= 0b1111110000;
+          imm = SignExtend(imm, 10);
+          cmd = AsmCAddi16sp(imm);
+          break;
+        case TEST_CADDIW:
+          imm = SignExtend(imm, 6);
+          cmd = AsmCAddiw(rd, imm);
+          break;
+        case TEST_CAND:
+        case TEST_CADDW:
+        case TEST_COR:
+        case TEST_CSUB:
+        case TEST_CSUBW:
+        case TEST_CXOR:
+          rd = 8 + (rd & 0b111);
+          rs2 = 8 + (rs2 & 0b111);
+          if (testcase == TEST_CAND) {
+            cmd = AsmCAnd(rd, rs2);
+          } else if (testcase == TEST_CADDW) {
+            cmd = AsmCAddw(rd, rs2);
+          } else if (testcase == TEST_COR) {
+            cmd = AsmCOr(rd, rs2);
+          } else if (testcase == TEST_CSUB) {
+            cmd = AsmCSub(rd, rs2);
+          } else if (testcase == TEST_CSUBW) {
+            cmd = AsmCSubw(rd, rs2);
+          } else if (testcase == TEST_CXOR) {
+            cmd = AsmCXor(rd, rs2);
+          }
+          break;
+        case TEST_CBEQZ:
+        case TEST_CBNEZ:
+          rs1 = 8 + (rs1 & 0b111);
+          imm = SignExtend(imm & 0b111111110, 9);
+          if (testcase == TEST_CBEQZ) {
+            cmd = AsmCBeqz(rs1, imm);
+          } else if (testcase == TEST_CBNEZ) {
+            cmd = AsmCBnez(rs1, imm);
+          }
+          break;
+        case TEST_CJ:
+        case TEST_CJAL:
+          imm = SignExtend(imm & 0b111111111110, 12);
+          if (testcase == TEST_CJ) {
+            cmd = AsmCJ(imm);
+          } else if (testcase == TEST_CJAL) {
+            cmd = AsmCJal(imm);
+          }
+          break;
+        case TEST_CLUI:
+          imm = SignExtend(imm & 0b111111000000000000, 18);
+          cmd = AsmCLui(rd, imm);
+          break;
+        case TEST_CADDI4SPN:
+          rd = 8 + (rd & 0b111);
+          uimm &= 0b01111111000;
+          cmd = AsmCAddi4spn(rd, uimm);
+          break;
+        case TEST_CFLD:
+        case TEST_CFLW:
+        case TEST_CFSD:
+        case TEST_CFSW:
+        case TEST_CLD:
+        case TEST_CLW:
+        case TEST_CSD:
+        case TEST_CSW:
+          rd = 8 + (rd & 0b111);
+          rs1 = 8 + (rs1 & 0b111);
+          rs2 = 8 + (rs2 & 0b111);
+          uimm = (testcase == TEST_CLW || testcase == TEST_CSW || testcase == TEST_CFLW || testcase == TEST_CFSW) ? uimm & 0b1111100 : uimm & 0b11111000;
+          if (testcase == TEST_CFLD) {
+            cmd = AsmCFld(rd, rs1, uimm);
+          } else if (testcase == TEST_CFSD) {
+            cmd = AsmCFsd(rs1, rs2, uimm);
+          } else if (testcase == TEST_CFLW) {
+            cmd = AsmCFlw(rd, rs1, uimm);
+          } else if (testcase == TEST_CFSW) {
+            cmd = AsmCFsw(rs1, rs2, uimm);
+          } else if (testcase == TEST_CLD) {
+            cmd = AsmCLd(rd, rs1, uimm);
+          } else if (testcase == TEST_CLW) {
+            cmd = AsmCLw(rd, rs1, uimm);
+          } else if (testcase == TEST_CSD) {
+            cmd = AsmCSd(rs1, rs2, uimm);
+          } else if (testcase == TEST_CSW) {
+            cmd = AsmCsw(rs1, rs2, uimm);
+          }
+          break;
         default:
           break;
       }
@@ -1203,7 +1404,8 @@ bool test_compact(bool verbose = false) {
       uint32_t rd_dec = rd;
       uint32_t rs1_dec = rs1;
       uint32_t rs2_dec = rs2;
-      uint16_t uimm_dec = uimm;
+      uint32_t uimm_dec = uimm;
+      int32_t imm_dec = imm;
       uint16_t exp = 0;
       uint16_t msk = 0b1110000000000011;
       switch (testcase) {
@@ -1304,23 +1506,229 @@ bool test_compact(bool verbose = false) {
           uimm_dec |= bitcrop(cmd, 2, 7) << 6;
           cmdname = "C.SWSP";
           break;
+        case TEST_CADDI:
+        case TEST_CADDIW:
+        case TEST_CLI:
+          if (testcase == TEST_CADDI) {
+            exp = 0b0000000000000001;
+            cmdname = "C.ADDI";
+          } else if (testcase == TEST_CADDIW) {
+            exp = 0b0010000000000001;
+            cmdname = "C.ADDIW";
+          } else if (testcase == TEST_CLI) {
+            exp = 0b0100000000000001;
+            cmdname = "C.LI";
+          }
+          rd = bitcrop(cmd, 5, 7);
+          imm_dec = bitcrop(cmd, 1, 12) << 5;
+          imm_dec |= bitcrop(cmd, 5, 2);
+          imm_dec = SignExtend(imm_dec, 6);
+          break;
+        case TEST_CADDI16SP:
+          exp = 0b0110000100000001;
+          msk = 0b1110111110000011;
+          imm_dec = bitcrop(cmd, 1, 12) << 9;
+          imm_dec |= bitcrop(cmd, 1, 2) << 5;
+          imm_dec |= bitcrop(cmd, 2, 3) << 7;
+          imm_dec |= bitcrop(cmd, 1, 5) << 6;
+          imm_dec |= bitcrop(cmd, 1, 6) << 4;
+          imm_dec = SignExtend(imm_dec, 10);
+          cmdname = "C.ADDI16SP";
+          break;
+        case TEST_CAND:
+        case TEST_CADDW:
+        case TEST_COR:
+        case TEST_CSUB:
+        case TEST_CSUBW:
+        case TEST_CXOR:
+          if (testcase == TEST_CAND) {
+            exp = 0b1000110001100001;
+            cmdname = "C.AND";
+          } else if (testcase == TEST_CADDW) {
+            exp = 0b1001110000100001;
+            cmdname = "C.AND";
+          } else if (testcase == TEST_COR) {
+            exp = 0b1000110001000001;
+            cmdname = "C.OR";
+          } else if (testcase == TEST_CSUB) {
+            exp = 0b1000110000000001;
+            cmdname = "C.SUB";
+          } else if (testcase == TEST_CSUBW) {
+            exp = 0b1001110000000001;
+            cmdname = "C.SUBW";
+          } else if (testcase == TEST_CXOR) {
+            exp = 0b1000110000100001;
+            cmdname = "C.XOR";
+          }
+          msk = 0b1111110001100011;
+          rd_dec = bitcrop(cmd, 3, 7) + 8;
+          rs2_dec = bitcrop(cmd, 3, 2) + 8;
+          break;
+        case TEST_CANDI:
+        case TEST_CSRAI:
+        case TEST_CSRLI:
+          if (testcase == TEST_CANDI) {
+            exp = 0b1000100000000001;
+            cmdname = "C.ANDI";
+          } else if (testcase == TEST_CSRAI) {
+            exp = 0b1000010000000001;
+            cmdname = "C.CSRAI";
+          } else if (testcase == TEST_CSRLI) {
+            exp = 0b1000000000000001;
+            cmdname = "C.CSRLI";
+          }
+          msk = 0b1110110000000011;
+          rd = bitcrop(cmd, 3, 7) + 8;
+          imm_dec = bitcrop(cmd, 1, 12) << 5;
+          imm_dec |= bitcrop(cmd, 5, 2);
+          imm_dec = SignExtend(imm_dec, 6);
+          break;
+        case TEST_CBEQZ:
+        case TEST_CBNEZ:
+          if (testcase == TEST_CBEQZ) {
+            exp = 0b1100000000000001;
+            cmdname = "C.BEQZ";
+          } else if (testcase == TEST_CBNEZ) {
+            exp = 0b1110000000000001;
+            cmdname = "C.BNEZ";
+          }
+          rs1 = bitcrop(cmd, 3, 7) + 8;
+          imm_dec = bitcrop(cmd, 1, 12) << 8;
+          imm_dec |= bitcrop(cmd, 2, 10) << 3;
+          imm_dec |= bitcrop(cmd, 2, 5) << 6;
+          imm_dec |= bitcrop(cmd, 2, 3) << 1;
+          imm_dec |= bitcrop(cmd, 1, 2) << 5;
+          imm_dec = SignExtend(imm_dec, 9);
+          break;
+        case TEST_CJ:
+        case TEST_CJAL:
+          if (testcase == TEST_CJ) {
+            exp = 0b1010000000000001;
+            cmdname = "C.J";
+          } else {
+            exp = 0b0010000000000001;
+            cmdname = "C.JAL";
+          }
+          imm_dec = bitcrop(cmd, 1, 12) << 11;
+          imm_dec |= bitcrop(cmd, 1, 11) << 4;
+          imm_dec |= bitcrop(cmd, 2, 9) << 8;
+          imm_dec |= bitcrop(cmd, 1, 8) << 10;
+          imm_dec |= bitcrop(cmd, 1, 7) << 6;
+          imm_dec |= bitcrop(cmd, 1, 6) << 7;
+          imm_dec |= bitcrop(cmd, 3, 3) << 1;
+          imm_dec |= bitcrop(cmd, 1, 2) << 5;
+          imm_dec = SignExtend(imm_dec, 12);
+          break;
+        case TEST_CLUI:
+          exp = 0b0110000000000001;
+          cmdname = "C.LUI";
+          imm_dec = bitcrop(cmd, 1, 12) << 17;
+          imm_dec |= bitcrop(cmd, 5, 2) << 12;
+          imm_dec = SignExtend(imm_dec, 18);
+          break;
+        case TEST_CADDI4SPN:
+          exp = 0b0000000000000000;
+          cmdname = "C.ADDI4SPN";
+          rd_dec = bitcrop(cmd, 3, 2) + 8;
+          uimm_dec = bitcrop(cmd, 2, 11) << 4;
+          uimm_dec |= bitcrop(cmd, 4, 7) << 6;
+          uimm_dec |= bitcrop(cmd, 1, 6) << 2;
+          uimm_dec |= bitcrop(cmd, 1, 5) << 3;
+          break;
+        case TEST_CFLD:
+          exp = 0b0010000000000000;
+          cmdname = "C.FLD";
+          rd_dec = bitcrop(cmd, 3, 2) + 8;
+          rs1_dec = bitcrop(cmd, 3, 7) + 8;
+          uimm_dec = bitcrop(cmd, 3, 10) << 3;
+          uimm_dec |= bitcrop(cmd, 2, 5) << 6;
+          break;
+        case TEST_CFLW:
+          exp = 0b0110000000000000;
+          cmdname = "C.FLW";
+          rd_dec = bitcrop(cmd, 3, 2) + 8;
+          rs1_dec = bitcrop(cmd, 3, 7) + 8;
+          uimm_dec = bitcrop(cmd, 3, 10) << 3;
+          uimm_dec |= bitcrop(cmd, 1, 6) << 2;
+          uimm_dec |= bitcrop(cmd, 1, 5) << 6;
+          break;
+        case TEST_CFSD:
+          exp = 0b1010000000000000;
+          cmdname = "C.FSD";
+          rs1_dec = bitcrop(cmd, 3, 7) + 8;
+          rs2_dec = bitcrop(cmd, 3, 2) + 8;
+          uimm_dec = bitcrop(cmd, 3, 10) << 3;
+          uimm_dec |= bitcrop(cmd, 2, 5) << 6;
+          break;
+        case TEST_CFSW:
+          exp = 0b1110000000000000;
+          cmdname = "C.FSW";
+          rs1_dec = bitcrop(cmd, 3, 7) + 8;
+          rs2_dec = bitcrop(cmd, 3, 2) + 8;
+          uimm_dec = bitcrop(cmd, 3, 10) << 3;
+          uimm_dec |= bitcrop(cmd, 1, 6) << 2;
+          uimm_dec |= bitcrop(cmd, 1, 5) << 6;
+          break;
+        case TEST_CLD:
+          exp = 0b0110000000000000;
+          cmdname = "C.LD";
+          rs1_dec = bitcrop(cmd, 3, 7) + 8;
+          rd_dec = bitcrop(cmd, 3, 2) + 8;
+          uimm_dec = bitcrop(cmd, 3, 10) << 3;
+          uimm_dec |= bitcrop(cmd, 2, 5) << 6;
+          break;
+        case TEST_CLW:
+          exp = 0b0100000000000000;
+          cmdname = "C.LW";
+          rs1_dec = bitcrop(cmd, 3, 7) + 8;
+          rd_dec = bitcrop(cmd, 3, 2) + 8;
+          uimm_dec = bitcrop(cmd, 3, 10) << 3;
+          uimm_dec |= bitcrop(cmd, 1, 6) << 2;
+          uimm_dec |= bitcrop(cmd, 1, 5) << 6;
+          break;
+        case TEST_CSD:
+          exp = 0b1110000000000000;
+          cmdname = "C.SD";
+          rs1_dec = bitcrop(cmd, 3, 7) + 8;
+          rs2_dec = bitcrop(cmd, 3, 2) + 8;
+          uimm_dec = bitcrop(cmd, 3, 10) << 3;
+          uimm_dec |= bitcrop(cmd, 2, 5) << 6;
+          break;
+        case TEST_CSW:
+          exp = 0b1100000000000000;
+          cmdname = "C.SW";
+          rs1_dec = bitcrop(cmd, 3, 7) + 8;
+          rs2_dec = bitcrop(cmd, 3, 2) + 8;
+          uimm_dec = bitcrop(cmd, 3, 10) << 3;
+          uimm_dec |= bitcrop(cmd, 1, 6) << 2;
+          uimm_dec |= bitcrop(cmd, 1, 5) << 6;
+          break;
         default:
-          printf("Test case is not defined yet\n");
+          std::cerr << "Test case is not defined yet" << std::endl;
           return true;
           break;
       }
       std::string test_string = cmdname + " " + std::to_string(rd) + ", " +
-                                std::to_string(rs1) + ", " + std::to_string(rs2) + ", " + std::to_string(uimm);
-      if ((exp & msk) != (cmd & msk) || rd != rd_dec || rs1 != rs1_dec || rs2 != rs2_dec || uimm != uimm_dec) {
+                                std::to_string(rs1) + ", " +
+                                std::to_string(rs2) + ", " +
+                                std::to_string(uimm);
+      if ((exp & msk) != (cmd & msk) || rd != rd_dec || rs1 != rs1_dec ||
+          rs2 != rs2_dec || uimm != uimm_dec || imm != imm_dec) {
         error = true;
         if (verbose) {
           std::cerr << test_string << " failed." << std::endl;
-          std::cerr << "Expected: " << std::bitset<16>(exp);
-          std::cerr << ", Actual: " << std::bitset<16>(cmd) << std::endl;
-          std::cerr << "Decoded rd: " << rd_dec << "(" << rd << ")" << std::endl;
-          std::cerr << "Decoded rs1: " << rs1_dec << "(" << rs1 << ")" << std::endl;
-          std::cerr << "Decoded rs2: " << rs2_dec << "(" << rs2 << ")" << std::endl;
-          std::cerr << "Decoded uimm: " << uimm_dec << "(" << uimm << ")" << std::endl;
+          std::cerr << "Expected: " << std::bitset<16>(exp & msk);
+          std::cerr << ", Actual: " << std::bitset<16>(cmd & msk) << std::endl;
+          std::cerr << "Decoded rd: " << rd_dec << "(" << rd << ")"
+                    << std::endl;
+          std::cerr << "Decoded rs1: " << rs1_dec << "(" << rs1 << ")"
+                    << std::endl;
+          std::cerr << "Decoded rs2: " << rs2_dec << "(" << rs2 << ")"
+                    << std::endl;
+          std::cerr << "Decoded uimm: " << uimm_dec << "(" << uimm << ")"
+                    << std::endl;
+          std::cerr << "Decoded imm: " << imm_dec << "(" << imm << ")"
+                    << std::endl;
         }
       }
     }

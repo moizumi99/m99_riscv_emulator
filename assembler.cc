@@ -7,7 +7,9 @@
 namespace CPU_TEST {
 
 // R_TYPE
-uint32_t AsmRType(op_label opcode, op_funct funct, op_funct3 funct3, uint32_t rd, uint32_t rs1, uint32_t rs2) {
+uint32_t
+AsmRType(op_label opcode, op_funct funct, op_funct3 funct3, uint32_t rd,
+         uint32_t rs1, uint32_t rs2) {
   RType cmd;
   cmd.opcode = opcode;
   cmd.funct7 = funct;
@@ -15,7 +17,7 @@ uint32_t AsmRType(op_label opcode, op_funct funct, op_funct3 funct3, uint32_t rd
   cmd.rd = rd;
   cmd.rs1 = rs1;
   cmd.rs2 = rs2;
-  return  cmd.GetValue();
+  return cmd.GetValue();
 }
 
 uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2) {
@@ -84,7 +86,8 @@ uint32_t AsmMret() {
 }
 
 // I_TYPE
-uint32_t AsmIType(op_label opcode, op_funct3 funct3, uint32_t rd, uint32_t rs1, int32_t imm12) {
+uint32_t AsmIType(op_label opcode, op_funct3 funct3, uint32_t rd, uint32_t rs1,
+                  int32_t imm12) {
   IType cmd;
   cmd.opcode = opcode;
   cmd.funct3 = funct3;
@@ -240,7 +243,8 @@ uint32_t AsmLwu(uint32_t rd, uint32_t rs1, int32_t offset12) {
 }
 
 // B TYPE
-uint32_t AsmBType(op_label opcode, op_funct3 funct3, uint32_t rs1, uint32_t rs2, int32_t offset13) {
+uint32_t AsmBType(op_label opcode, op_funct3 funct3, uint32_t rs1, uint32_t rs2,
+                  int32_t offset13) {
   BType cmd;
   cmd.opcode = opcode;
   cmd.funct3 = funct3;
@@ -288,7 +292,8 @@ uint32_t AsmJal(uint32_t rd, int32_t offset21) {
 }
 
 // S TYPE
-uint32_t AsmSType(op_label opcode, op_funct3 funct3, uint32_t rs1, uint32_t rs2, int32_t offset12) {
+uint32_t AsmSType(op_label opcode, op_funct3 funct3, uint32_t rs1, uint32_t rs2,
+                  int32_t offset12) {
   SType cmd;
   cmd.opcode = opcode;
   cmd.funct3 = funct3;
@@ -488,6 +493,215 @@ uint16_t AsmCSwsp(uint32_t rs2, uint32_t uimm) {
   cmd |= ((uimm >> 2) & 0b1111) << 9;
   cmd |= ((uimm >> 6) & 0b11) << 7;
   return cmd;
+}
+
+uint16_t AsmCAddiType(uint16_t cmd, uint32_t rd, int32_t imm) {
+  cmd |= (rd & 0x1F) << 7;
+  cmd |= ((imm >> 5) & 1) << 12;
+  cmd |= (imm & 0b11111) << 2;
+  return cmd;
+}
+
+uint16_t AsmCAddi(uint32_t rd, int32_t imm) {
+  uint16_t cmd = 0b0000000000000001;
+  return AsmCAddiType(cmd, rd, imm);
+}
+
+uint16_t AsmCLi(uint32_t rd, int32_t imm) {
+  uint16_t cmd = 0b0100000000000001;
+  return AsmCAddiType(cmd, rd, imm);
+}
+
+uint16_t AsmCAddi16sp(int32_t imm) {
+  uint16_t cmd = 0b0110000100000001;
+  cmd |= ((imm >> 9) & 1) << 12;
+  cmd |= ((imm >> 5) & 1) << 2;
+  cmd |= ((imm >> 7) & 0b11) << 3;
+  cmd |= ((imm >> 6) & 1) << 5;
+  cmd |= ((imm >> 4) & 1) << 6;
+  return cmd;
+}
+
+uint16_t AsmCAddiw(uint32_t rd, int32_t imm) {
+  uint16_t cmd = 0b0010000000000001;
+  cmd |= (rd & 0x1F) << 7;
+  cmd |= ((imm >> 5) & 1) << 12;
+  cmd |= (imm & 0b11111) << 2;
+  return cmd;
+}
+
+uint16_t AsmCAndType(uint16_t cmd, uint32_t rd, uint32_t rs2) {
+  cmd |= (rd & 0b111) << 7;
+  cmd |= (rs2 & 0b111) << 2;
+  return cmd;
+}
+
+uint16_t AsmCAnd(uint32_t rd, uint32_t rs2) {
+  uint16_t cmd = 0b1000110001100001;
+  return AsmCAndType(cmd, rd, rs2);
+}
+
+uint16_t AsmCAddw(uint32_t rd, uint32_t rs2) {
+  uint16_t cmd = 0b1001110000100001;
+  return AsmCAndType(cmd, rd, rs2);
+}
+
+uint16_t AsmCOr(uint32_t rd, uint32_t rs2) {
+  uint16_t cmd = 0b1000110001000001;
+  return AsmCAndType(cmd, rd, rs2);
+}
+
+uint16_t AsmCSub(uint32_t rd, uint32_t rs2) {
+  uint16_t cmd = 0b1000110000000001;
+  return AsmCAndType(cmd, rd, rs2);
+}
+
+uint16_t AsmCSubw(uint32_t rd, uint32_t rs2) {
+  uint16_t cmd = 0b1001110000000001;
+  return AsmCAndType(cmd, rd, rs2);
+}
+
+uint16_t AsmCXor(uint32_t rd, uint32_t rs2) {
+  uint16_t cmd = 0b1000110000100001;
+  return AsmCAndType(cmd, rd, rs2);
+}
+
+uint16_t AsmCAndiType(uint16_t cmd, uint32_t rd, int32_t imm) {
+  cmd |= (rd & 0b111) << 7;
+  cmd |= ((imm >> 5) & 1) << 12;
+  cmd |= (imm & 0b11111) << 2;
+  return cmd;
+}
+
+uint16_t AsmCAndi(uint32_t rd, int32_t imm) {
+  uint16_t cmd = 0b1000100000000001;
+  return AsmCAndiType(cmd, rd, imm);
+}
+
+uint16_t AsmCSrai(uint32_t rd, int32_t imm) {
+  uint16_t cmd = 0b1000010000000001;
+  return AsmCAndiType(cmd, rd, imm);
+}
+
+uint16_t AsmCSrli(uint32_t rd, int32_t imm) {
+  uint16_t cmd = 0b1000000000000001;
+  return AsmCAndiType(cmd, rd, imm);
+}
+
+uint16_t AsmCBType(uint16_t  cmd, uint32_t rs1, int32_t offset) {
+  cmd |= (rs1 & 0b111) << 7;
+  cmd |= ((offset >> 8) & 1) << 12;
+  cmd |= ((offset >> 3) & 0b11) << 10;
+  cmd |= ((offset >> 6) & 0b11) << 5;
+  cmd |= ((offset >> 1) & 0b11) << 3;
+  cmd |= ((offset >> 5) & 1) << 2;
+  return cmd;
+}
+
+uint16_t AsmCBeqz(uint32_t rs1, int32_t offset) {
+  uint16_t cmd = 0b1100000000000001;
+  return AsmCBType(cmd, rs1, offset);
+}
+
+uint16_t AsmCBnez(uint32_t rs1, int32_t offset) {
+  uint16_t cmd = 0b1110000000000001;
+  return AsmCBType(cmd, rs1, offset);
+}
+
+uint16_t AsmCJType(uint16_t cmd, int32_t offset) {
+  cmd |= ((offset >> 11) & 1) << 12;
+  cmd |= ((offset >> 4) & 1) << 11;
+  cmd |= ((offset >> 8) & 0b11) << 9;
+  cmd |= ((offset >> 10) & 1) << 8;
+  cmd |= ((offset >> 6) & 1) << 7;
+  cmd |= ((offset >> 7) & 1) << 6;
+  cmd |= ((offset >> 1) & 0b111) << 3;
+  cmd |= ((offset >> 5) & 1) << 2;
+  return cmd;
+}
+
+uint16_t AsmCJ(int32_t offset) {
+  uint16_t cmd = 0b1010000000000001;
+  return AsmCJType(cmd, offset);
+}
+
+uint16_t AsmCJal(int32_t offset) {
+  uint16_t cmd = 0b0010000000000001;
+  return AsmCJType(cmd, offset);
+}
+
+uint16_t AsmCLui(uint32_t rd, int32_t imm) {
+  uint16_t cmd = 0b0110000000000001;
+  cmd |= ((imm >> 17) & 1) << 12;
+  cmd |= ((imm >> 12) & 0b11111) << 2;
+  return cmd;
+}
+
+uint16_t AsmCAddi4spn(uint32_t rd, uint32_t uimm) {
+  uint16_t cmd = 0b0000000000000000;
+  cmd |= ((rd & 0b111) << 2);
+  cmd |= ((uimm >> 4) & 0b11) << 11;
+  cmd |= ((uimm >> 6) & 0b1111) << 7;
+  cmd |= ((uimm >> 2) & 0b1) << 6;
+  cmd |= ((uimm >> 3) & 0b1) << 5;
+  return cmd;
+}
+
+uint16_t AsmCLdType(uint16_t cmd, uint32_t r4to2, uint32_t r9to7, uint32_t uimm) {
+  cmd |= ((r4to2 & 0b111) << 2);
+  cmd |= ((r9to7 & 0b111) << 7);
+  cmd |= ((uimm >> 3) & 0b111) << 10;
+  cmd |= ((uimm >> 6) & 0b11) << 5;
+  return cmd;
+}
+
+uint16_t AsmCLwType(uint16_t cmd, uint32_t r4to2, uint32_t r9to7, uint32_t uimm) {
+  cmd |= ((r4to2 & 0b111) << 2);
+  cmd |= ((r9to7 & 0b111) << 7);
+  cmd |= ((uimm >> 3) & 0b111) << 10;
+  cmd |= ((uimm >> 2) & 0b1) << 6;
+  cmd |= ((uimm >> 6) & 0b1) << 5;
+  return cmd;
+}
+
+uint16_t AsmCFld(uint32_t rd, uint32_t rs1, uint32_t uimm) {
+  uint16_t cmd = 0b0010000000000000;
+  return AsmCLdType(cmd, rd, rs1, uimm);
+}
+
+uint16_t AsmCFlw(uint32_t rd, uint32_t rs1, uint32_t uimm) {
+  uint16_t cmd = 0b0110000000000000;
+  return AsmCLwType(cmd, rd, rs1, uimm);
+}
+
+uint16_t AsmCFsd(uint32_t rs1, uint32_t rs2, uint32_t uimm) {
+  uint16_t cmd = 0b01010000000000000;
+  return AsmCLdType(cmd, rs2, rs1, uimm);
+}
+
+uint16_t AsmCFsw(uint32_t rs1, uint32_t rs2, uint32_t uimm) {
+  uint16_t cmd = 0b1110000000000000;
+  return AsmCLwType(cmd, rs2, rs1, uimm);
+}
+
+uint16_t AsmCLd(uint32_t rd, uint32_t rs1, uint32_t uimm) {
+  uint16_t cmd = 0b0110000000000000;
+  return AsmCLdType(cmd, rd, rs1, uimm);
+}
+
+uint16_t AsmCLw(uint32_t rd, uint32_t rs1, uint32_t uimm) {
+  uint16_t cmd = 0b0100000000000000;
+  return AsmCLwType(cmd, rd, rs1, uimm);
+}
+
+uint16_t AsmCSd(uint32_t rs1, uint32_t rs2, uint32_t uimm) {
+  uint16_t cmd = 0b01110000000000000;
+  return AsmCLdType(cmd, rs2, rs1, uimm);
+}
+
+uint16_t AsmCsw(uint32_t rs1, uint32_t rs2, uint32_t uimm) {
+  uint16_t cmd = 0b1100000000000000;
+  return AsmCLwType(cmd, rs2, rs1, uimm);
 }
 
 } // namespace RISCV_EMULATOR
