@@ -651,7 +651,7 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       if (reg_[rs2] == 0) {
         temp64 = -1;
       } else if (static_cast<int64_t>(reg_[rs2]) == -1 &&
-                 reg_[rs1] == 1 << 31) {
+                 reg_[rs1] == (1lu << 31)) {
         // Overflow check.
         temp64 = 1 << 31;
       } else {
@@ -693,7 +693,7 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       if (reg_[rs2] == 0) {
         temp64 = reg_[rs1];
       } else if (static_cast<int64_t>(reg_[rs2]) == -1 &&
-                 reg_[rs1] == 1 << 31) {
+                 reg_[rs1] == (1lu << 31)) {
         // Overflow check.
         temp64 = 0;
       } else {
@@ -738,12 +738,6 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     uint32_t rs1 = GetRs1(ir);
     uint32_t rs2 = GetRs2(ir);
     int32_t imm = GetImm(ir);
-    int16_t imm12 = GetImm12(ir);
-    int16_t imm13 = GetImm13(ir);
-    int32_t imm21 = GetImm21(ir);
-    int16_t imm12_stype = GetStypeImm12(ir);
-    int32_t imm20 = GetImm20(ir);
-    uint8_t shamt = GetShamt(ir);
     int16_t csr = GetCsr(ir);
 
     if (!ctype_) {
@@ -782,7 +776,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_ANDI:
       case INST_ORI:
       case INST_XORI:
-        ImmediateInstruction(instruction, rd, rs1, imm12);
+        ImmediateInstruction(instruction, rd, rs1, imm);
         break;
       case INST_SLLI:
       case INST_SLLIW:
@@ -790,7 +784,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_SRLIW:
       case INST_SRAI:
       case INST_SRAIW:
-        ImmediateShiftInstruction(instruction, rd, rs1, shamt);
+        ImmediateShiftInstruction(instruction, rd, rs1, imm);
         break;
       case INST_SLT:
         reg_[rd] = (static_cast<int64_t>(reg_[rs1]) <
@@ -800,10 +794,10 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         reg_[rd] = (reg_[rs1] < reg_[rs2]) ? 1 : 0;
         break;
       case INST_SLTI:
-        reg_[rd] = static_cast<int64_t>(reg_[rs1]) < imm12 ? 1 : 0;
+        reg_[rd] = static_cast<int64_t>(reg_[rs1]) < imm ? 1 : 0;
         break;
       case INST_SLTIU:
-        reg_[rd] = reg_[rs1] < static_cast<uint64_t>(imm12) ? 1 : 0;
+        reg_[rd] = reg_[rs1] < static_cast<uint64_t>(imm) ? 1 : 0;
         break;
       case INST_BEQ:
       case INST_BGE:
@@ -811,21 +805,21 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_BLT:
       case INST_BLTU:
       case INST_BNE:
-        next_pc_ = BranchInstruction(instruction, rs1, rs2, imm13);
+        next_pc_ = BranchInstruction(instruction, rs1, rs2, imm);
         break;
       case INST_JAL:
         reg_[rd] = pc_ + 4;
-        next_pc_ = pc_ + imm21;
+        next_pc_ = pc_ + imm;
         if (next_pc_ == pc_) {
           error_flag_ = true;
         }
         break;
       case INST_JALR:
-        next_pc_ = (reg_[rs1] + imm12) & ~1;
+        next_pc_ = (reg_[rs1] + imm) & ~1;
         reg_[rd] = pc_ + 4;
         // Below lines are only for simulation purpose.
         // Remove once a better solution is found.
-        if (rd == ZERO && rs1 == RA && reg_[rs1] == 0 && imm12 == 0) {
+        if (rd == ZERO && rs1 == RA && reg_[rs1] == 0 && imm == 0) {
           end_flag_ = true;
         }
         break;
@@ -836,30 +830,30 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_LW:
       case INST_LWU:
       case INST_LD:
-        LoadInstruction(instruction, rd, rs1, imm12);
+        LoadInstruction(instruction, rd, rs1, imm);
         break;
       case INST_SB:
       case INST_SH:
       case INST_SW:
       case INST_SD:
-        StoreInstruction(instruction, rd, rs1, rs2, imm12_stype);
+        StoreInstruction(instruction, rd, rs1, rs2, imm);
         break;
       case INST_LUI:
-        temp64 = imm20 << 12;
+        temp64 = imm << 12;
         if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_AUIPC:
-        temp64 = pc_ + (imm20 << 12);
+        temp64 = pc_ + (imm << 12);
         if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_SYSTEM:
-        SystemInstruction(instruction, rd, imm12);
+        SystemInstruction(instruction, rd, imm);
         break;
       case INST_CSRRC:
       case INST_CSRRCI:
@@ -1107,7 +1101,7 @@ void RiscvCpu::Sret() {
 }
 
 uint32_t RiscvCpu::GetCode(uint32_t ir) {
-  if (ir & 0b11 == 0b11) {
+  if ((ir & 0b11) == 0b11) {
     return GetCode32(ir);
   } else {
     ctype_ = true;
