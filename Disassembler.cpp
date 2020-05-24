@@ -18,25 +18,30 @@ std::string GetRegName(int reg) {
 }
 
 // TODO: Add tests for disassembly;
+// Disassemble16 and GetCode16 have very similar logic. Should be combined in some way.
 std::string Disassemble16(uint32_t ir) {
-  uint16_t opcode = (bitcrop(ir, 3, 13) << 2) | bitcrop(ir, 2, 0);
-  std::string cmd = "UNDEF";
-  uint32_t rd, rs1, rs2;
+  std::string cmd = "Unsupported C Instruction";
+  uint32_t instruction, rd, rs1, rs2;
   int32_t imm;
+  std::tie(instruction, rd, rs1, rs2, imm) = RiscvCpu::GetCode16(ir);
+  uint16_t opcode = (bitcrop(ir, 3, 13) << 2) | bitcrop(ir, 2, 0);
   switch (opcode) {
     case 0b10010: // c.add
-      rd = bitcrop(ir, 5, 7);
-      rs2 = bitcrop(ir, 5, 2);
       if (bitcrop(ir, 1, 12) == 1) {
         cmd = "C.ADD " + GetRegName(rd) + ", " + GetRegName(rs2);
       }
       break;
     case 0b00001:
-      rd = bitcrop(ir, 5, 7);
-      imm = bitcrop(ir, 1, 12) << 5;
-      imm |= bitcrop(ir, 5, 2);
       cmd = "C.ADDI " + GetRegName(rd) + ", " + std::to_string(imm);
       break;
+    case 0b01101:
+      if (bitcrop(ir, 5, 7) == 0b00010) {
+        // c.addi16sp.
+        cmd = "C.ADDI16SP SP, SP, " + std::to_string(imm);
+      }
+      break;
+    case 0b00000:
+      cmd = "C.ADDI4SPN " + GetRegName(rd) + ", SP, " + std::to_string(imm);
   }
   return cmd;
 }

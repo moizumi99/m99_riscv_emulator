@@ -733,25 +733,20 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     }
    // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
     ctype_ = (ir & 0b11) != 0b11;
-    uint32_t instruction = GetCode(ir);
-    uint32_t rd = GetRd(ir);
-    uint32_t rs1 = GetRs1(ir);
-    uint32_t rs2 = GetRs2(ir);
-    int32_t imm = GetImm(ir);
-    int16_t csr = GetCsr(ir);
 
+    uint32_t instruction, rd, rs1, rs2;
+    int32_t imm;
+    int16_t csr = GetCsr(ir);
     if (!ctype_) {
       next_pc_ = pc_ + 4;
+      instruction = GetCode32(ir);
+      rd = GetRd(ir);
+      rs1 = GetRs1(ir);
+      rs2 = GetRs2(ir);
+      imm = GetImm(ir);
     } else {
       next_pc_ = pc_ + 2;
-    }
-
-    if (ctype_) {
-      // Special case for c.add.
-      rs1 = rd = bitcrop(ir, 5, 7);
-      rs2 = bitcrop(ir, 5, 2);
-      // TODO: Add other types of parameter extraction.
-
+      std::tie(instruction, rd, rs1, rs2, imm) = GetCode16(ir);
     }
 
     switch (instruction) {
@@ -1100,15 +1095,6 @@ void RiscvCpu::Sret() {
   next_pc_ = csrs_[SEPC];
 }
 
-uint32_t RiscvCpu::GetCode(uint32_t ir) {
-  if ((ir & 0b11) == 0b11) {
-    return GetCode32(ir);
-  } else {
-    ctype_ = true;
-    return GetCode16(ir);
-  }
-}
-
 uint32_t RiscvCpu::GetCode32(uint32_t ir) {
   uint16_t opcode = bitcrop(ir, 7, 0);
   uint8_t funct3 = bitcrop(ir, 3, 12);
@@ -1312,25 +1298,59 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
   return instruction;
 }
 
-uint32_t RiscvCpu::GetCode16(uint32_t ir) {
+std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(uint32_t ir) {
   uint32_t opcode = (((ir >> 13) & 0b111) << 2) | (ir & 0b11);
   uint32_t instruction = INST_ERROR;
+  uint32_t rd = 0, rs1 = 0, rs2 = 0;
+  int32_t imm = 0;
   switch (opcode) {
-    case 0b10010: // c.add;
-      if (bitcrop(ir, 5, 7) == 0 || bitcrop(ir, 5, 2) == 0) {
-        // rd == x0 or rs2 == x0 is invalid.
-        break;
+    case 0b10010: // c.add.
+      if (bitcrop(ir, 1, 12) == 1) {
+        // c.add.
+        if (bitcrop(ir, 5, 7) == 0 || bitcrop(ir, 5, 2) == 0) {
+          // rd == x0 or rs2 == x0 is invalid.
+          break;
+        }
+        instruction = INST_ADD;
+        rs1 = rd = bitcrop(ir, 5, 7);
+        rs2 = bitcrop(ir, 5, 2);
       }
-      instruction = INST_ADD;
       break;
     case 0b00001:
       instruction = INST_ADDI;
+      rs1 = rd = bitcrop(ir, 5, 7);
+      imm = bitcrop(ir, 1, 12) << 5;
+      imm |= bitcrop(ir, 5, 2);
+      imm = SignExtend(imm, 6);
+      break;
+    case 0b01101:
+      instruction = INST_ADDI;
+      rs1 = rd = 2;
+      imm = bitcrop(ir, 1, 12) << 9;
+      imm |= bitcrop(ir, 1, 6) << 4;
+      imm |= bitcrop(ir, 1, 5) << 6;
+      imm |= bitcrop(ir, 2, 3) << 7;
+      imm |= bitcrop(ir, 1, 2) << 5;
+      imm = SignExtend(imm, 10);
+      break;
+    case 0b00000:
+      if (bitcrop(ir, 8, 5) == 0) {
+        std::cerr << "uimm must not be zero for c.addi4spn." << std::endl;
+        break;
+      }
+      instruction = INST_ADDI;
+      rs1 = 2;
+      rd = bitcrop(ir, 3, 2) + 8;
+      imm = bitcrop(ir, 2, 11) << 4;
+      imm |= bitcrop(ir, 4, 7) << 6;
+      imm |= bitcrop(ir, 1, 6) << 2;
+      imm |= bitcrop(ir, 1, 5) << 3;
       break;
     default:
       std::cerr << "Unsupported C Instruction." << std::endl;
       break;
   }
-  return instruction;
+  return std::make_tuple(instruction, rd, rs1, rs2, imm);
 }
 
 } // namespace RISCV_EMULATOR

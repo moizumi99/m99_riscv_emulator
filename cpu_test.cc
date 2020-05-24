@@ -75,21 +75,11 @@ std::pair<uint32_t, uint32_t> SplitImmediate(uint32_t value) {
 
 // I TYPE test cases starts here.
 enum ITYPE_TEST {
-  TEST_ADDI,
-  TEST_ANDI,
-  TEST_ORI,
-  TEST_XORI,
-  TEST_SLLI,
-  TEST_SRLI,
-  TEST_SRAI,
-  TEST_SLTI,
-  TEST_SLTIU,
-  TEST_EBREAK,
-  TEST_ADDIW,
-  TEST_SLLIW,
-  TEST_SRAIW,
-  TEST_SRLIW,
-  TEST_CADDI,
+  TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI,
+  TEST_SLLI, TEST_SRLI, TEST_SRAI,
+  TEST_SLTI, TEST_SLTIU, TEST_EBREAK,
+  TEST_ADDIW, TEST_SLLIW, TEST_SRAIW, TEST_SRLIW,
+  TEST_CADDI, TEST_CADDI16SP, TEST_CADDI4SPN,
 };
 
 bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
@@ -99,9 +89,24 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
        test_type == TEST_SRAIW || test_type == TEST_SRLIW)) {
     return false;
   }
-  if (!en_ctest && test_type == TEST_CADDI) {
+  if (!en_ctest && (test_type == TEST_CADDI || test_type == TEST_CADDI16SP)) {
     return false;
   }
+  if (test_type == TEST_CADDI16SP) {
+    rs1 = 2;
+    imm12 = SignExtend(imm12 & 0b1111100000, 12);
+    if (imm12 == 0) {
+      return false;
+    }
+  } else if (test_type == TEST_CADDI4SPN) {
+    rs1 = 2;
+    rd = (rd & 0b111) + 8;
+    imm12 &= 0b1111111100;
+    if (imm12 == 0) {
+      return false;
+    }
+  }
+
   int64_t expected;
   std::string test_case = "";
 
@@ -215,6 +220,19 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
       expected = value + imm12;
       test_case = "C.ADDI";
       break;
+    case TEST_CADDI16SP:
+      imm12 = SignExtend(imm12 & 0b1111100000, 10);
+      rd = rs1;
+      AddCmdCType(pointer, AsmCAddi16sp(imm12));
+      expected = value + imm12;
+      test_case = "C.ADDI16SP";
+      break;
+    case TEST_CADDI4SPN:
+      AddCmdCType(pointer, AsmCAddi4spn(rd, imm12));
+      expected = value + imm12;
+      test_case = "C.ADDI4SPN";
+      test_case = "C.ADDI4SPN";
+      break;
     default:
       printf("I TYPE Test case undefined.\n");
       return true;
@@ -249,16 +267,18 @@ void PrintITypeInstructionMessage(ITYPE_TEST test_case, bool error) {
                                                        {TEST_ORI,    "ORI"},
                                                        {TEST_XORI,   "XORI"},
                                                        {TEST_SLLI,   "SLLI"},
-                                                       {TEST_SRLI,   "SRLI"},
-                                                       {TEST_SRAI,   "SRAI"},
-                                                       {TEST_SLTI,   "SLTI"},
-                                                       {TEST_SLTIU,  "SLTIU"},
-                                                       {TEST_EBREAK, "EBREAK"},
-                                                       {TEST_ADDIW,  "ADDIW"},
-                                                       {TEST_SLLIW,  "SLLIW"},
-                                                       {TEST_SRAIW,  "SRAIW"},
-                                                       {TEST_SRLIW,  "SRLIW"},
-                                                       {TEST_CADDI, "C.ADDI"},
+                                                       {TEST_SRLI,      "SRLI"},
+                                                       {TEST_SRAI,      "SRAI"},
+                                                       {TEST_SLTI,      "SLTI"},
+                                                       {TEST_SLTIU,     "SLTIU"},
+                                                       {TEST_EBREAK,    "EBREAK"},
+                                                       {TEST_ADDIW,     "ADDIW"},
+                                                       {TEST_SLLIW,     "SLLIW"},
+                                                       {TEST_SRAIW,     "SRAIW"},
+                                                       {TEST_SRLIW,     "SRLIW"},
+                                                       {TEST_CADDI,     "C.ADDI"},
+                                                       {TEST_CADDI16SP, "C.ADDI16SP"},
+                                                       {TEST_CADDI4SPN, "C.ADDI4SPN"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -269,7 +289,9 @@ bool TestITypeLoop(bool verbose) {
   ITYPE_TEST test_set[] = {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI,
                            TEST_SRLI, TEST_SRAI, TEST_SLTI,
                            TEST_SLTIU, TEST_EBREAK, TEST_ADDIW, TEST_SLLIW,
-                           TEST_SRAIW, TEST_SRLIW,};
+                           TEST_SRAIW, TEST_SRLIW, TEST_CADDI, TEST_CADDI16SP,
+                           TEST_CADDI4SPN
+                           };
   for (ITYPE_TEST test_case: test_set) {
     bool error = false;
     for (int i = 0; i < kUnitTestMax && !error; i++) {

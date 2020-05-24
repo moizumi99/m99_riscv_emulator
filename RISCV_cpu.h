@@ -38,6 +38,8 @@ public:
 
   int RunCpu(uint64_t start_pc, bool verbose = true);
 
+  static std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> GetCode16(uint32_t ir);
+
 private:
   uint64_t
   VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
@@ -94,7 +96,6 @@ private:
 
   uint32_t GetCode32(uint32_t ir);
 
-  uint32_t GetCode16(uint32_t ir);
 
   std::pair<bool, bool> SystemCall();
 
