@@ -11,6 +11,8 @@ namespace CPU_TEST {
 
 MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd);
 
+MemorWrapperIterator AddCmdCType(MemorWrapperIterator &mem, uint16_t cmd);
+
 uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
 uint32_t AsmAddw(uint32_t rd, uint32_t rs1, uint32_t rs2);

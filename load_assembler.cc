@@ -15,6 +15,13 @@ MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd) {
   return mem;
 }
 
+MemorWrapperIterator AddCmdCType(MemorWrapperIterator &mem, uint16_t cmd) {
+
+  *(mem++) = cmd & 0xFF;
+  *(mem++) = (cmd >> 8) & 0xFF;
+  return mem;
+}
+
 MemorWrapperIterator LoadAssemblerSum(MemorWrapperIterator &mem) {
   AddCmd(mem, AsmAddi(T0, ZERO, 0));
   AddCmd(mem, AsmAddi(T1, ZERO, 0));

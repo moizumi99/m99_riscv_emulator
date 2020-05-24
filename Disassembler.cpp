@@ -18,9 +18,35 @@ std::string GetRegName(int reg) {
 }
 
 // TODO: Add tests for disassembly;
+std::string Disassemble16(uint32_t ir) {
+  uint16_t opcode = (bitcrop(ir, 3, 13) << 2) | bitcrop(ir, 2, 0);
+  std::string cmd = "UNDEF";
+  uint32_t rd, rs1, rs2;
+  int32_t imm;
+  switch (opcode) {
+    case 0b10010: // c.add
+      rd = bitcrop(ir, 5, 7);
+      rs2 = bitcrop(ir, 5, 2);
+      if (bitcrop(ir, 1, 12) == 1) {
+        cmd = "C.ADD " + GetRegName(rd) + ", " + GetRegName(rs2);
+      }
+      break;
+    case 0b00001:
+      rd = bitcrop(ir, 5, 7);
+      imm = bitcrop(ir, 1, 12) << 5;
+      imm |= bitcrop(ir, 5, 2);
+      cmd = "C.ADDI " + GetRegName(rd) + ", " + std::to_string(imm);
+      break;
+  }
+  return cmd;
+}
+
 
 std::string Disassemble(uint32_t ir) {
   uint16_t opcode = bitcrop(ir, 7, 0);
+  if ((opcode & 0b11) != 0b11) {
+    return Disassemble16(ir);
+  }
   uint8_t funct3 = bitcrop(ir, 3, 12);
   uint8_t funct7 = bitcrop(ir, 7, 25);
   uint32_t rd = GetRd(ir);

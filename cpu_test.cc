@@ -12,6 +12,7 @@ using namespace CPU_TEST;
 
 namespace {
 // CPU address bus width.
+bool en_ctest = true;
 bool en_64_bit = true;
 int xlen;
 
@@ -87,7 +88,8 @@ enum ITYPE_TEST {
   TEST_ADDIW,
   TEST_SLLIW,
   TEST_SRAIW,
-  TEST_SRLIW
+  TEST_SRLIW,
+  TEST_CADDI,
 };
 
 bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
@@ -95,6 +97,9 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
   if (!en_64_bit &&
       (test_type == TEST_ADDIW || test_type == TEST_SLLIW ||
        test_type == TEST_SRAIW || test_type == TEST_SRLIW)) {
+    return false;
+  }
+  if (!en_ctest && test_type == TEST_CADDI) {
     return false;
   }
   int64_t expected;
@@ -203,6 +208,13 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
       }
       test_case = "EBREAK";
       break;
+    case TEST_CADDI:
+      imm12 = SignExtend(imm12, 6);
+      rd = rs1;
+      AddCmdCType(pointer, AsmCAddi(rd, imm12));
+      expected = value + imm12;
+      test_case = "C.ADDI";
+      break;
     default:
       printf("I TYPE Test case undefined.\n");
       return true;
@@ -245,7 +257,8 @@ void PrintITypeInstructionMessage(ITYPE_TEST test_case, bool error) {
                                                        {TEST_ADDIW,  "ADDIW"},
                                                        {TEST_SLLIW,  "SLLIW"},
                                                        {TEST_SRAIW,  "SRAIW"},
-                                                       {TEST_SRLIW,  "SRLIW"}
+                                                       {TEST_SRLIW,  "SRLIW"},
+                                                       {TEST_CADDI, "C.ADDI"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -256,7 +269,7 @@ bool TestITypeLoop(bool verbose) {
   ITYPE_TEST test_set[] = {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI,
                            TEST_SRLI, TEST_SRAI, TEST_SLTI,
                            TEST_SLTIU, TEST_EBREAK, TEST_ADDIW, TEST_SLLIW,
-                           TEST_SRAIW, TEST_SRLIW};
+                           TEST_SRAIW, TEST_SRLIW,};
   for (ITYPE_TEST test_case: test_set) {
     bool error = false;
     for (int i = 0; i < kUnitTestMax && !error; i++) {
@@ -295,7 +308,8 @@ enum R_TYPE_TEST {
   TEST_SLLW,
   TEST_SRAW,
   TEST_SRLW,
-  TEST_SUBW
+  TEST_SUBW,
+  TEST_CADD
 };
 
 bool
@@ -306,6 +320,9 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
       (test_type == TEST_ADDW || test_type == TEST_SLLW ||
        test_type == TEST_SRAW || test_type == TEST_SRLW ||
        test_type == TEST_SUBW)) {
+    return false;
+  }
+  if (!en_ctest && test_type == TEST_CADD) {
     return false;
   }
 
@@ -428,6 +445,16 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
                  ? 1 : 0;
       test_case = "SLTU";
       break;
+    case TEST_CADD:
+      if (rs1 == 0 || rs2 == 0) {
+        // if rd == 0 || rs2 == 0, c.add is invalid.
+        return false;
+      }
+      rd = rs1;
+      AddCmdCType(pointer, AsmCAdd(rd, rs2));
+      expected = static_cast<int64_t>(value1) + static_cast<int64_t >(value2);
+      test_case = "C.ADD";
+      break;
     default:
       if (verbose) {
         printf("Undefined test case.\n");
@@ -476,7 +503,8 @@ void PrintRTypeInstructionMessage(R_TYPE_TEST test_case, bool error) {
                                                         {TEST_SLLW, "SLLW"},
                                                         {TEST_SRAW, "SRAW"},
                                                         {TEST_SRLW, "SRLW"},
-                                                        {TEST_SUBW, "SUBW"}
+                                                        {TEST_SUBW, "SUBW"},
+                                                        {TEST_CADD, "C.ADD"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -487,7 +515,8 @@ bool TestRTypeLoop(bool verbose = true) {
   R_TYPE_TEST test_sets[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR,
                              TEST_SLL, TEST_SRL, TEST_SRA,
                              TEST_SLT, TEST_SLTU, TEST_ADDW, TEST_SLLW,
-                             TEST_SRAW, TEST_SRLW, TEST_SUBW};
+                             TEST_SRAW, TEST_SRLW, TEST_SUBW,
+                             TEST_CADD};
   for (R_TYPE_TEST test_case: test_sets) {
     bool error = false;
     for (int i = 0; i < kUnitTestMax && !error; i++) {

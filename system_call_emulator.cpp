@@ -112,8 +112,9 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
   bool error_flag = false;
   if (reg[A7] == 93) {
     // Exit system call.
-    if (debug)
+    if (debug) {
       std::cerr << "Exit System Call" << std::endl;
+    }
     end_flag = true;
   } else if (reg[A7] == 64) {
     // Write.
@@ -132,8 +133,9 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     delete buffer;
   } else if (reg[A7] == 214) {
     // BRK.
-    if (debug)
+    if (debug) {
       std::cerr << "BRK System Call" << std::endl;
+    }
     if (reg[A0] == 0) {
       reg[A0] = brk;
     } else if (reg[A0] < top) {
@@ -144,8 +146,9 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     }
   } else if (reg[A7] == 63) {
     // READ.
-    if (debug)
+    if (debug) {
       std::cerr << "Read System Call" << std::endl;
+    }
     int length = reg[A2];
     unsigned char *buffer = new unsigned char[length];
     size_t return_value = read(reg[A0], buffer, length);
@@ -180,14 +183,16 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     reg[A0] = return_value;
   } else if (reg[A7] == 57) {
     // Close.
-    if (debug)
+    if (debug) {
       std::cerr << "Close System Call" << std::endl;
+    }
     int return_value = close(reg[A0]);
     reg[A0] = return_value;
   } else if (reg[A7] == 1024) {
     // Open.
-    if (debug)
+    if (debug) {
       std::cerr << "Open System Call" << std::endl;
+    }
     // These values are found in newlib/libc/include/sys/_default_fcntl.h
     constexpr uint32_t kO_READ = 0x000001;
     constexpr uint32_t kO_WRITE = 0x000002;

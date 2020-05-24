@@ -127,6 +127,10 @@ int32_t GetCsr(uint32_t ir) {
   return csr;
 }
 
+int32_t GetImm(uint32_t ir) {
+
+}
+
 int32_t GetImm13(uint32_t ir) {
   int32_t imm13 = 0;
   imm13 |= BitShift(ir, 1, 31, 12) | BitShift(ir, 6, 25, 5);

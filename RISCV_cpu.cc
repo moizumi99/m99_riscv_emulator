@@ -731,21 +731,34 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
       continue;
     }
-    // Change this line when C is supported.
-    next_pc_ = pc_ + 4;
-
-    // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
+   // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
+    ctype_ = (ir & 0b11) != 0b11;
     uint32_t instruction = GetCode(ir);
     uint32_t rd = GetRd(ir);
     uint32_t rs1 = GetRs1(ir);
     uint32_t rs2 = GetRs2(ir);
+    int32_t imm = GetImm(ir);
     int16_t imm12 = GetImm12(ir);
-    int16_t csr = GetCsr(ir);
-    uint8_t shamt = GetShamt(ir);
     int16_t imm13 = GetImm13(ir);
     int32_t imm21 = GetImm21(ir);
     int16_t imm12_stype = GetStypeImm12(ir);
     int32_t imm20 = GetImm20(ir);
+    uint8_t shamt = GetShamt(ir);
+    int16_t csr = GetCsr(ir);
+
+    if (!ctype_) {
+      next_pc_ = pc_ + 4;
+    } else {
+      next_pc_ = pc_ + 2;
+    }
+
+    if (ctype_) {
+      // Special case for c.add.
+      rs1 = rd = bitcrop(ir, 5, 7);
+      rs2 = bitcrop(ir, 5, 2);
+      // TODO: Add other types of parameter extraction.
+
+    }
 
     switch (instruction) {
       uint64_t temp64;
@@ -1093,8 +1106,16 @@ void RiscvCpu::Sret() {
   next_pc_ = csrs_[SEPC];
 }
 
-
 uint32_t RiscvCpu::GetCode(uint32_t ir) {
+  if (ir & 0b11 == 0b11) {
+    return GetCode32(ir);
+  } else {
+    ctype_ = true;
+    return GetCode16(ir);
+  }
+}
+
+uint32_t RiscvCpu::GetCode32(uint32_t ir) {
   uint16_t opcode = bitcrop(ir, 7, 0);
   uint8_t funct3 = bitcrop(ir, 3, 12);
   uint8_t funct7 = bitcrop(ir, 7, 25);
@@ -1293,6 +1314,27 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
   }
   if (instruction == INST_ERROR) {
     printf("Error decoding 0x%08x\n", ir);
+  }
+  return instruction;
+}
+
+uint32_t RiscvCpu::GetCode16(uint32_t ir) {
+  uint32_t opcode = (((ir >> 13) & 0b111) << 2) | (ir & 0b11);
+  uint32_t instruction = INST_ERROR;
+  switch (opcode) {
+    case 0b10010: // c.add;
+      if (bitcrop(ir, 5, 7) == 0 || bitcrop(ir, 5, 2) == 0) {
+        // rd == x0 or rs2 == x0 is invalid.
+        break;
+      }
+      instruction = INST_ADD;
+      break;
+    case 0b00001:
+      instruction = INST_ADDI;
+      break;
+    default:
+      std::cerr << "Unsupported C Instruction." << std::endl;
+      break;
   }
   return instruction;
 }

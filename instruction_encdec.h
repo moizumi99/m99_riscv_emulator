@@ -59,6 +59,8 @@ public:
   void SetValue(uint32_t value) override;
 };
 
+int32_t GetImm(uint32_t ir);
+
 uint32_t GetOpcode(uint32_t ir);
 
 uint32_t GetRd(uint32_t ir);
