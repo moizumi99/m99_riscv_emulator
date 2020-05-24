@@ -389,10 +389,14 @@ uint32_t AsmRemuw(uint32_t rd, uint32_t rs1, uint32_t rs2) {
   return AsmRType(OPCODE_ARITHLOG_64, FUNC_MULT, FUNC3_REMU, rd, rs1, rs2);
 }
 
-uint16_t AsmCAdd(uint32_t rd, uint32_t rs2) {
-  uint16_t cmd = 0b1001000000000010;
+uint16_t AsmCAddType(uint16_t cmd, uint32_t rd, uint32_t rs2) {
   cmd |= ((rd & 0x1F) << 7) | ((rs2 & 0x1F) << 2);
   return cmd;
+}
+
+uint16_t AsmCAdd(uint32_t rd, uint32_t rs2) {
+  uint16_t cmd = 0b1001000000000010;
+  return AsmCAddType(cmd, rd, rs2);
 }
 
 uint16_t AsmCEbreak() {
@@ -466,9 +470,7 @@ uint16_t AsmCLwsp(uint32_t rd, uint32_t uimm) {
 
 uint16_t AsmCMv(uint32_t rd, uint32_t rs2) {
   uint16_t cmd = 0b01000000000000010;
-  cmd |= (rd & 0x1F) << 7;
-  cmd |= (rs2 & 0x1F) << 2;
-  return cmd;
+  return AsmCAddType(cmd, rd, rs2);
 }
 
 uint16_t AsmCSdsp(uint32_t rs2, uint32_t uimm) {
