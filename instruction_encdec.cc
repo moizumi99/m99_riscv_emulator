@@ -127,6 +127,35 @@ int32_t GetCsr(uint32_t ir) {
   return csr;
 }
 
+int32_t GetImm(uint32_t ir) {
+  int32_t imm = 0;
+  uint16_t opcode = bitcrop(ir, 7, 0);
+  uint8_t funct3 = bitcrop(ir, 3, 12);
+  imm = GetImm12(ir);
+  switch (opcode) {
+    case OPCODE_ARITHLOG_I:
+    case OPCODE_ARITHLOG_I64:
+      if (funct3 == FUNC3_SL || funct3 == FUNC3_SR) {
+        imm = imm & 0b111111;
+      }
+      break;
+    case OPCODE_B:
+      imm = GetImm13(ir);
+      break;
+    case OPCODE_LUI:
+    case OPCODE_AUIPC:
+      imm = GetImm20(ir);
+      break;
+    case OPCODE_J:
+      imm = GetImm21(ir);
+      break;
+    case OPCODE_S:
+      imm = GetStypeImm12(ir);
+      break;
+  }
+  return imm;
+}
+
 int32_t GetImm13(uint32_t ir) {
   int32_t imm13 = 0;
   imm13 |= BitShift(ir, 1, 31, 12) | BitShift(ir, 6, 25, 5);

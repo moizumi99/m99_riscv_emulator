@@ -12,6 +12,7 @@ using namespace CPU_TEST;
 
 namespace {
 // CPU address bus width.
+bool en_ctest = true;
 bool en_64_bit = true;
 int xlen;
 
@@ -74,29 +75,59 @@ std::pair<uint32_t, uint32_t> SplitImmediate(uint32_t value) {
 
 // I TYPE test cases starts here.
 enum ITYPE_TEST {
-  TEST_ADDI,
-  TEST_ANDI,
-  TEST_ORI,
-  TEST_XORI,
-  TEST_SLLI,
-  TEST_SRLI,
-  TEST_SRAI,
-  TEST_SLTI,
-  TEST_SLTIU,
-  TEST_EBREAK,
-  TEST_ADDIW,
-  TEST_SLLIW,
-  TEST_SRAIW,
-  TEST_SRLIW
+  TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI,
+  TEST_SLLI, TEST_SRLI, TEST_SRAI,
+  TEST_SLTI, TEST_SLTIU, TEST_EBREAK,
+  TEST_ADDIW, TEST_SLLIW, TEST_SRAIW, TEST_SRLIW,
+  TEST_CADDI, TEST_CADDIW, TEST_CADDI16SP, TEST_CADDI4SPN,
+  TEST_CANDI, TEST_CLI, TEST_CLUI,
+  TEST_CSRAI, TEST_CSRLI,
 };
 
 bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
-               int32_t imm12, bool verbose) {
+               int32_t imm, bool verbose) {
   if (!en_64_bit &&
       (test_type == TEST_ADDIW || test_type == TEST_SLLIW ||
-       test_type == TEST_SRAIW || test_type == TEST_SRLIW)) {
+       test_type == TEST_SRAIW || test_type == TEST_SRLIW ||
+       test_type == TEST_CADDIW)) {
     return false;
   }
+  if (!en_ctest && (test_type == TEST_CADDI || test_type == TEST_CADDI16SP ||
+  test_type == TEST_CADDIW || test_type == TEST_CANDI ||
+  test_type == TEST_CSRAI || test_type == TEST_CSRLI)) {
+    return false;
+  }
+  if (test_type == TEST_CADDI16SP) {
+    rs1 = 2;
+    imm = SignExtend(imm & 0b1111100000, 12);
+    if (imm == 0) {
+      return false;
+    }
+  } else if (test_type == TEST_CADDI4SPN) {
+    rs1 = 2;
+    rd = (rd & 0b111) + 8;
+    imm &= 0b1111111100;
+    if (imm == 0) {
+      return false;
+    }
+  } else if (test_type == TEST_CANDI) {
+    rd = rs1 = (rs1 & 0b111) + 8;
+    imm &= 0b0111111;
+  } else if (test_type == TEST_CLI) {
+    rs1 = 0;
+    imm = SignExtend(imm, 6);
+  } else if (test_type == TEST_CLUI) {
+    rd = rs1 = 0;
+    imm = SignExtend(imm << 12, 18);
+    if (imm == 0) {
+      return false;
+    }
+  } else if (test_type == TEST_CSRAI || test_type == TEST_CSRLI) {
+    rs1 = rd = (rd & 0b111) + 8;
+    imm = en_64_bit ? (imm & 0b0111111) : (imm & 0b011111); // imm is unsigned here.
+  }
+
+
   int64_t expected;
   std::string test_case = "";
 
@@ -116,83 +147,83 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
   uint64_t temp64;
   switch (test_type) {
     case TEST_ADDI:
-      AddCmd(pointer, AsmAddi(rd, rs1, imm12));
-      expected = value + SignExtend(imm12 & 0x0FFF, 12);
+      AddCmd(pointer, AsmAddi(rd, rs1, imm));
+      expected = value + SignExtend(imm & 0x0FFF, 12);
       test_case = "ADDI";
       break;
     case TEST_ADDIW:
-      AddCmd(pointer, AsmAddiw(rd, rs1, imm12));
-      expected = value + SignExtend(imm12 & 0xFFF, 12);
+      AddCmd(pointer, AsmAddiw(rd, rs1, imm));
+      expected = value + SignExtend(imm & 0xFFF, 12);
       expected = SignExtend(expected & 0xFFFFFFFF, 32);
       test_case = "ADDIW";
       break;
     case TEST_ANDI:
-      AddCmd(pointer, AsmAndi(rd, rs1, imm12));
-      expected = value & SignExtend(imm12 & 0x0FFF, 12);
+      AddCmd(pointer, AsmAndi(rd, rs1, imm));
+      expected = value & SignExtend(imm & 0x0FFF, 12);
       test_case = "ANDI";
       break;
     case TEST_ORI:
-      AddCmd(pointer, AsmOri(rd, rs1, imm12));
-      expected = value | SignExtend(imm12 & 0x0FFF, 12);
+      AddCmd(pointer, AsmOri(rd, rs1, imm));
+      expected = value | SignExtend(imm & 0x0FFF, 12);
       test_case = "ORI";
       break;
     case TEST_XORI:
-      AddCmd(pointer, AsmXori(rd, rs1, imm12));
-      expected = value ^ SignExtend(imm12 & 0x0FFF, 12);
+      AddCmd(pointer, AsmXori(rd, rs1, imm));
+      expected = value ^ SignExtend(imm & 0x0FFF, 12);
       test_case = "XORI";
       break;
     case TEST_SLLI:
-      imm12 = imm12 & shift_mask;
-      AddCmd(pointer, AsmSlli(rd, rs1, imm12));
-      expected = static_cast<uint64_t>(value) << imm12;
+      imm = imm & shift_mask;
+      AddCmd(pointer, AsmSlli(rd, rs1, imm));
+      expected = static_cast<uint64_t>(value) << imm;
       test_case = "SLLI";
       break;
     case TEST_SLLIW:
-      imm12 = imm12 & 0b011111;
-      AddCmd(pointer, AsmSlliw(rd, rs1, imm12));
-      expected = static_cast<uint64_t>(value) << imm12;
+      imm = imm & 0b011111;
+      AddCmd(pointer, AsmSlliw(rd, rs1, imm));
+      expected = static_cast<uint64_t>(value) << imm;
       expected = SignExtend(expected & 0xFFFFFFFF, 32);
       test_case = "SLLIW";
       break;
     case TEST_SRLI:
-      imm12 = imm12 & shift_mask;
-      AddCmd(pointer, AsmSrli(rd, rs1, imm12));
+      imm = imm & shift_mask;
+      AddCmd(pointer, AsmSrli(rd, rs1, imm));
       temp64 = value;
       if (xlen == 32) {
         temp64 &= 0xFFFFFFFF;
       }
-      expected = static_cast<uint64_t>(temp64) >> imm12;
+      expected = static_cast<uint64_t>(temp64) >> imm;
       test_case = "SRLI";
       break;
     case TEST_SRLIW:
-      imm12 = imm12 & 0b011111;
-      AddCmd(pointer, AsmSrliw(rd, rs1, imm12));
-      expected = static_cast<uint64_t>(value & 0xFFFFFFFF) >> imm12;
+      imm = imm & 0b011111;
+      AddCmd(pointer, AsmSrliw(rd, rs1, imm));
+      expected = static_cast<uint64_t>(value & 0xFFFFFFFF) >> imm;
       expected = SignExtend(expected, 32);
       test_case = "SRLIW";
       break;
     case TEST_SRAI:
-      imm12 = imm12 & shift_mask;
-      AddCmd(pointer, AsmSrai(rd, rs1, imm12));
-      expected = static_cast<int64_t>(value) >> imm12;
+      imm = imm & shift_mask;
+      AddCmd(pointer, AsmSrai(rd, rs1, imm));
+      expected = static_cast<int64_t>(value) >> imm;
       test_case = "SRAI";
       break;
     case TEST_SRAIW:
-      imm12 = imm12 & 0b011111;
-      AddCmd(pointer, AsmSraiw(rd, rs1, imm12));
+      imm = imm & 0b011111;
+      AddCmd(pointer, AsmSraiw(rd, rs1, imm));
       temp32 = value & 0xFFFFFFFF;
-      expected = temp32 >> imm12;
+      expected = temp32 >> imm;
       test_case = "SRAIW";
       break;
     case TEST_SLTI:
-      AddCmd(pointer, AsmSlti(rd, rs1, imm12));
-      expected = value < imm12 ? 1 : 0;
+      AddCmd(pointer, AsmSlti(rd, rs1, imm));
+      expected = value < imm ? 1 : 0;
       test_case = "SLTI";
       break;
     case TEST_SLTIU:
-      AddCmd(pointer, AsmSltiu(rd, rs1, imm12));
+      AddCmd(pointer, AsmSltiu(rd, rs1, imm));
       expected =
-        static_cast<uint32_t>(value) < static_cast<uint32_t >(imm12) ? 1 : 0;
+        static_cast<uint32_t>(value) < static_cast<uint32_t >(imm) ? 1 : 0;
       test_case = "SLTIU";
       break;
     case TEST_EBREAK:
@@ -202,6 +233,59 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
         expected = value;
       }
       test_case = "EBREAK";
+      break;
+    case TEST_CADDI:
+    case TEST_CADDIW:
+      imm = SignExtend(imm, 6);
+      rd = rs1;
+      if (test_type == TEST_CADDI) {
+        AddCmdCType(pointer, AsmCAddi(rd, imm));
+      } else {
+        AddCmdCType(pointer, AsmCAddiw(rd, imm));
+      }
+      expected = value + imm;
+      test_case = test_type == TEST_CADDI ? "C.ADDI" : "C.ADDIW";
+      break;
+    case TEST_CADDI16SP:
+      imm = SignExtend(imm & 0b1111100000, 10);
+      rd = rs1;
+      AddCmdCType(pointer, AsmCAddi16sp(imm));
+      expected = value + imm;
+      test_case = "C.ADDI16SP";
+      break;
+    case TEST_CADDI4SPN:
+      AddCmdCType(pointer, AsmCAddi4spn(rd, imm));
+      expected = value + imm;
+      test_case = "C.ADDI4SPN";
+      break;
+    case TEST_CANDI:
+      AddCmdCType(pointer, AsmCAndi(rd, imm));
+      expected = value & SignExtend(imm, 6);
+      test_case = "C.ANDI";
+      break;
+    case TEST_CLI:
+      AddCmdCType(pointer, AsmCLi(rd, imm));
+      expected = SignExtend(imm, 6);
+      test_case = "C.LI";
+      break;
+    case TEST_CLUI:
+      AddCmdCType(pointer, AsmCLui(rd, imm));
+      expected = SignExtend(imm, 18);
+      test_case = "C.LUI";
+      break;
+    case TEST_CSRAI:
+      AddCmdCType(pointer, AsmCSrai(rd, imm));
+      expected = static_cast<int64_t>(value) >> imm;
+      test_case = "C.SRAI";
+      break;
+    case TEST_CSRLI:
+      AddCmdCType(pointer, AsmCSrli(rd, imm));
+      temp64 = value;
+      if (xlen == 32) {
+        temp64 &= 0xFFFFFFFF;
+      }
+      expected = static_cast<uint64_t>(temp64) >> imm;
+      test_case = "C.SRLI";
       break;
     default:
       printf("I TYPE Test case undefined.\n");
@@ -223,7 +307,7 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
   error |= return_value != expected;
   if (error & verbose) {
     printf("RD: %d, RS1: %d, Value: %d(%08x), imm12: %d(%03x)\n", rd, rs1,
-           value, value, imm12, imm12);
+           value, value, imm, imm);
   }
   if (verbose) {
     PrintErrorMessage(test_case, error, expected, return_value);
@@ -232,20 +316,29 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
 }
 
 void PrintITypeInstructionMessage(ITYPE_TEST test_case, bool error) {
-  std::map<ITYPE_TEST, const std::string> test_name = {{TEST_ADDI,   "ADDI"},
-                                                       {TEST_ANDI,   "ANDI"},
-                                                       {TEST_ORI,    "ORI"},
-                                                       {TEST_XORI,   "XORI"},
-                                                       {TEST_SLLI,   "SLLI"},
-                                                       {TEST_SRLI,   "SRLI"},
-                                                       {TEST_SRAI,   "SRAI"},
-                                                       {TEST_SLTI,   "SLTI"},
-                                                       {TEST_SLTIU,  "SLTIU"},
-                                                       {TEST_EBREAK, "EBREAK"},
-                                                       {TEST_ADDIW,  "ADDIW"},
-                                                       {TEST_SLLIW,  "SLLIW"},
-                                                       {TEST_SRAIW,  "SRAIW"},
-                                                       {TEST_SRLIW,  "SRLIW"}
+  std::map<ITYPE_TEST, const std::string> test_name = {{TEST_ADDI,      "ADDI"},
+                                                       {TEST_ANDI,      "ANDI"},
+                                                       {TEST_ORI,       "ORI"},
+                                                       {TEST_XORI,      "XORI"},
+                                                       {TEST_SLLI,      "SLLI"},
+                                                       {TEST_SRLI,      "SRLI"},
+                                                       {TEST_SRAI,      "SRAI"},
+                                                       {TEST_SLTI,      "SLTI"},
+                                                       {TEST_SLTIU,     "SLTIU"},
+                                                       {TEST_EBREAK,    "EBREAK"},
+                                                       {TEST_ADDIW,     "ADDIW"},
+                                                       {TEST_SLLIW,     "SLLIW"},
+                                                       {TEST_SRAIW,     "SRAIW"},
+                                                       {TEST_SRLIW,     "SRLIW"},
+                                                       {TEST_CADDI,     "C.ADDI"},
+                                                       {TEST_CADDIW,    "C.ADDIW"},
+                                                       {TEST_CADDI16SP, "C.ADDI16SP"},
+                                                       {TEST_CADDI4SPN, "C.ADDI4SPN"},
+                                                       {TEST_CANDI,     "C.ANDI"},
+                                                       {TEST_CLI,       "C.LI"},
+                                                       {TEST_CLUI, "C.LUI"},
+                                                       {TEST_CSRAI, "C.SRAI"},
+                                                       {TEST_CSRLI, "C.SRLI"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -256,7 +349,10 @@ bool TestITypeLoop(bool verbose) {
   ITYPE_TEST test_set[] = {TEST_ADDI, TEST_ANDI, TEST_ORI, TEST_XORI, TEST_SLLI,
                            TEST_SRLI, TEST_SRAI, TEST_SLTI,
                            TEST_SLTIU, TEST_EBREAK, TEST_ADDIW, TEST_SLLIW,
-                           TEST_SRAIW, TEST_SRLIW};
+                           TEST_SRAIW, TEST_SRLIW, TEST_CADDI, TEST_CADDIW,
+                           TEST_CADDI16SP, TEST_CADDI4SPN, TEST_CANDI, TEST_CLI,
+                           TEST_CLUI, TEST_CSRAI, TEST_CSRLI,
+                           };
   for (ITYPE_TEST test_case: test_set) {
     bool error = false;
     for (int i = 0; i < kUnitTestMax && !error; i++) {
@@ -281,21 +377,11 @@ bool TestITypeLoop(bool verbose) {
 
 // R-Type test cases start here.
 enum R_TYPE_TEST {
-  TEST_ADD,
-  TEST_SUB,
-  TEST_AND,
-  TEST_OR,
-  TEST_XOR,
-  TEST_SLL,
-  TEST_SRL,
-  TEST_SRA,
-  TEST_SLT,
-  TEST_SLTU,
-  TEST_ADDW,
-  TEST_SLLW,
-  TEST_SRAW,
-  TEST_SRLW,
-  TEST_SUBW
+  TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR,
+  TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU,
+  TEST_ADDW, TEST_SLLW, TEST_SRAW, TEST_SRLW, TEST_SUBW,
+  TEST_CADD, TEST_CAND, TEST_CADDW, TEST_COR,
+  TEST_CSUB, TEST_CSUBW, TEST_CXOR,
 };
 
 bool
@@ -305,8 +391,20 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
   if (!en_64_bit &&
       (test_type == TEST_ADDW || test_type == TEST_SLLW ||
        test_type == TEST_SRAW || test_type == TEST_SRLW ||
-       test_type == TEST_SUBW)) {
+       test_type == TEST_SUBW || test_type == TEST_CADDW ||
+       test_type == TEST_CSUBW)) {
     return false;
+  }
+  if (!en_ctest && (test_type == TEST_CADD || test_type == TEST_CAND ||
+    test_type == TEST_CADDW || test_type == TEST_COR || test_type == TEST_CSUB
+    || test_type == TEST_CSUBW || test_type == TEST_CXOR)) {
+    return false;
+  }
+
+  if (test_type == TEST_CAND || test_type == TEST_CADDW || test_type == TEST_COR
+      || test_type == TEST_CSUB || test_type == TEST_CSUBW || test_type == TEST_CXOR) {
+    rd = rs1 = (rs1 & 0b111) + 8;
+    rs2 = (rs2 & 0b111) + 8;
   }
 
   bool error = false;
@@ -428,6 +526,50 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
                  ? 1 : 0;
       test_case = "SLTU";
       break;
+    case TEST_CADD:
+      if (rs1 == 0 || rs2 == 0) {
+        // if rd == 0 || rs2 == 0, c.add is invalid.
+        return false;
+      }
+      rd = rs1;
+      AddCmdCType(pointer, AsmCAdd(rd, rs2));
+      expected = static_cast<int64_t>(value1) + static_cast<int64_t >(value2);
+      test_case = "C.ADD";
+      break;
+    case TEST_CAND:
+      AddCmdCType(pointer, AsmCAnd(rd, rs2));
+      expected = value1 & value2;
+      test_case = "C.AND";
+      break;
+    case TEST_CADDW:
+      AddCmdCType(pointer, AsmCAddw(rd, rs2));
+      expected =
+        (static_cast<int64_t>(value1) + static_cast<int64_t >(value2)) &
+        0xFFFFFFFF;
+      expected = SignExtend(expected, 32);
+      test_case = "CADDW";
+      break;
+    case TEST_COR:
+      AddCmdCType(pointer, AsmCOr(rd, rs2));
+      expected = value1 | value2;
+      test_case = "C.OR";
+      break;
+    case TEST_CSUB:
+      AddCmdCType(pointer, AsmCSub(rd, rs2));
+      expected = static_cast<int64_t >(value1) - static_cast<int64_t>(value2);
+      test_case = "C.SUB";
+      break;
+    case TEST_CSUBW:
+      AddCmdCType(pointer, AsmCSubw(rd, rs2));
+      expected = static_cast<int64_t >(value1) - static_cast<int64_t>(value2);
+      expected = SignExtend(expected & 0xFFFFFFFF, 32);
+      test_case = "C.SUBW";
+      break;
+    case TEST_CXOR:
+      AddCmdCType(pointer, AsmCXor(rd, rs2));
+      expected = value1 ^ value2;
+      test_case = "C.XOR";
+      break;
     default:
       if (verbose) {
         printf("Undefined test case.\n");
@@ -476,7 +618,15 @@ void PrintRTypeInstructionMessage(R_TYPE_TEST test_case, bool error) {
                                                         {TEST_SLLW, "SLLW"},
                                                         {TEST_SRAW, "SRAW"},
                                                         {TEST_SRLW, "SRLW"},
-                                                        {TEST_SUBW, "SUBW"}
+                                                        {TEST_SUBW, "SUBW"},
+                                                        {TEST_CADD, "C.ADD"},
+                                                        {TEST_CAND, "C.AND"},
+                                                        {TEST_CADDW, "C.ADDW"},
+                                                        { TEST_COR, "C.OR"},
+                                                        {TEST_CSUB, "C.SUB"},
+                                                        {TEST_CSUBW, "C.SUBW"},
+                                                        {TEST_CXOR, "C.XOR"},
+
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -487,7 +637,11 @@ bool TestRTypeLoop(bool verbose = true) {
   R_TYPE_TEST test_sets[] = {TEST_ADD, TEST_SUB, TEST_AND, TEST_OR, TEST_XOR,
                              TEST_SLL, TEST_SRL, TEST_SRA,
                              TEST_SLT, TEST_SLTU, TEST_ADDW, TEST_SLLW,
-                             TEST_SRAW, TEST_SRLW, TEST_SUBW};
+                             TEST_SRAW, TEST_SRLW, TEST_SUBW,
+                             TEST_CADD, TEST_CAND, TEST_CADDW,
+                             TEST_COR, TEST_CSUB, TEST_CSUBW,
+                             TEST_CXOR,
+                             };
   for (R_TYPE_TEST test_case: test_sets) {
     bool error = false;
     for (int i = 0; i < kUnitTestMax && !error; i++) {
@@ -868,17 +1022,24 @@ bool TestStoreLoop(bool verbose) {
 }
 // Store test cases end here.
 
-// B-Type tests start here
+// B-Type tests start here.
 enum B_TYPE_TEST {
-  TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU, TEST_BNE
+  TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU, TEST_BNE, TEST_CBEQZ,
+  TEST_CBNEZ, TEST_CJ, TEST_CJAL,
 };
+// c.j and c.jal are included here.
 
-std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ,  "BEQ"},
-                                                      {TEST_BGE,  "BGE"},
-                                                      {TEST_BGEU, "BGEU"},
-                                                      {TEST_BLT,  "BLT"},
-                                                      {TEST_BLTU, "BLTU"},
-                                                      {TEST_BNE,  "BNE"}};
+std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ,   "BEQ"},
+                                                      {TEST_BGE,   "BGE"},
+                                                      {TEST_BGEU,  "BGEU"},
+                                                      {TEST_BLT,   "BLT"},
+                                                      {TEST_BLTU,  "BLTU"},
+                                                      {TEST_BNE,   "BNE"},
+                                                      {TEST_CBEQZ, "C.BEQZ"},
+                                                      {TEST_CBNEZ, "C.BNEZ"},
+                                                      {TEST_CJ, "C.J"},
+                                                      {TEST_CJAL, "CJAL"},
+};
 
 void PrintBTypeInstructionMessage(B_TYPE_TEST test_case, bool error) {
   printf("%s test %s.\n", test_name[test_case].c_str(),
@@ -890,14 +1051,25 @@ TestBType(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1,
           uint32_t value2, int32_t offset,
           bool verbose = true) {
   bool error = false;
+  if (test_type == TEST_CJAL && en_64_bit) {
+    return false;
+  }
   std::string test_case = test_name[test_type];
+
+  if (test_type == TEST_CBEQZ || test_type == TEST_CBNEZ) {
+    rs1 = (rs1 & 0b111) + 8;
+    rs2 = 0;
+  }
+  if (test_type == TEST_CJ || test_type == TEST_CJAL) {
+    rs1 = rs2 = 0;
+  }
 
   value1 = (rs1 == ZERO) ? 0 : value1;
   value2 = (rs2 == ZERO) ? 0 : value2;
   value1 = (rs1 == rs2) ? value2 : value1;
 
   uint32_t start_point = kMemSize / 2;
-  MemorWrapperIterator pointer = memory->begin() + start_point;
+  MemoryWrapperIterator pointer = memory->begin() + start_point;
   uint32_t value20, value12;
   uint32_t expected;
   std::tie(value20, value12) = SplitImmediate(value1);
@@ -906,7 +1078,7 @@ TestBType(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1,
   std::tie(value20, value12) = SplitImmediate(value2);
   AddCmd(pointer, AsmLui(rs2, value20));
   AddCmd(pointer, AsmAddi(rs2, rs2, value12));
-  MemorWrapperIterator next_pos = pointer + offset;
+  MemoryWrapperIterator next_pos = pointer + offset;
   if (test_type == TEST_BEQ) {
     AddCmd(pointer, AsmBeq(rs1, rs2, offset));
     expected = (value1 == value2) ? 1 : 0;
@@ -927,6 +1099,18 @@ TestBType(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1,
   } else if (test_type == TEST_BNE) {
     AddCmd(pointer, AsmBne(rs1, rs2, offset));
     expected = value1 != value2 ? 1 : 0;
+  } else if (test_type == TEST_CBEQZ) {
+    AddCmdCType(pointer, AsmCBeqz(rs1, offset));
+    expected = value1 == value2 ? 1 : 0;
+  } else if (test_type == TEST_CBNEZ) {
+    AddCmdCType(pointer, AsmCBnez(rs1, offset));
+    expected = value1 != value2 ? 1 : 0;
+  } else if (test_type == TEST_CJ) {
+    AddCmdCType(pointer, AsmCJ(offset));
+    expected = 1;
+  } else if (test_type == TEST_CJAL) {
+    AddCmdCType(pointer, AsmCJal(offset));
+    expected = 1;
   }
   AddCmd(pointer, AsmAddi(A0, ZERO, 0));
   AddCmd(pointer, AsmXor(RA, RA, RA));
@@ -959,7 +1143,7 @@ TestBType(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1,
 bool TestBTypeLoop(bool verbose = true) {
   bool total_error = false;
   B_TYPE_TEST test_sets[] = {TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU,
-                             TEST_BNE};
+                             TEST_BNE, TEST_CBEQZ, TEST_CBNEZ, TEST_CJ, TEST_CJAL};
 
   for (B_TYPE_TEST test_case: test_sets) {
     bool error = false;
@@ -968,7 +1152,7 @@ bool TestBTypeLoop(bool verbose = true) {
       uint32_t rs2 = rnd() % 32;
       uint32_t value1;
       uint32_t value2;
-      uint32_t equal = rnd() % 2;
+      uint32_t equal = rnd() & 1;
       switch (test_case) {
         case TEST_BEQ:
         case TEST_BNE:
@@ -983,16 +1167,25 @@ bool TestBTypeLoop(bool verbose = true) {
           value1 = static_cast<uint32_t>(rnd());
           value2 = static_cast<uint32_t>(rnd());
           break;
-//                    default:
-//                        if (verbose) {
-//                            printf("Undefined test case %d\n", test_case);
-//                        }
-//                        return true;
+        case TEST_CBEQZ:
+        case TEST_CBNEZ:
+          value1 = equal ? 0 : rnd();
+          value2 = 0;
+          break;
+        case TEST_CJ:
+        case TEST_CJAL:
+          value1 = value2 = 0;
+          break;
       }
       int32_t offset = 0;
       while (-64 < offset && offset < 64) {
         constexpr int kRange = 1 << 12;
         offset = 2 * ((rnd() % kRange) - kRange / 2);
+        if (test_case == TEST_CBEQZ || test_case == TEST_CBNEZ) {
+          offset = SignExtend(offset, 9);
+        } else if (test_case == TEST_CJ || test_case == TEST_CJAL) {
+          offset = SignExtend(offset, 12);
+        }
       }
       bool test_error = TestBType(test_case, rs1, rs2, value1, value2, offset,
                                   false);
@@ -1010,26 +1203,59 @@ bool TestBTypeLoop(bool verbose = true) {
   return total_error;
 }
 // B-Type tests end here.
+enum JAL_TYPE_TEST {
+  TEST_JAL, TEST_JALR, TEST_CJALR, TEST_CJR,
+};
 
-void PrintJalrTypeInstructionMessage(bool error) {
-  printf("%s test %s.\n", "JALR", error ? "failed" : "passed");
+void PrintJalrTypeInstructionMessage(JAL_TYPE_TEST test_case, bool error, bool verbose = true) {
+  if (!verbose) {
+    return;
+  }
+  std::map<JAL_TYPE_TEST, const std::string> test_name = {{TEST_JAL, "JAL"},
+                                                          {TEST_JALR, "JALR"},
+                                                          {TEST_CJALR, "C.JALR"},
+                                                          {TEST_CJR, "C.JR"},
+  };
+  printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
 }
 
-bool TestJalrType(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value,
+bool TestJalrType(JAL_TYPE_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value,
                   bool verbose) {
-  std::string test_case = "JALR";
+  bool error = false;
+  std::string test_case = "";
 
-  if (rs1 == 0) {
+  if (rs1 == ZERO) {
     value = 0;
   }
+  if (test_type == TEST_CJR) {
+    offset = 0;
+    rd = ZERO;
+  }
+  if (test_type == TEST_CJALR) {
+    offset = 0;
+    rd = X1;
+  }
+
   uint32_t start_point = kMemSize / 4;
   auto pointer = memory->begin() + start_point;
-
+  uint64_t rd_address;
   uint32_t value20, value12;
   std::tie(value20, value12) = SplitImmediate(value);
   AddCmd(pointer, AsmLui(rs1, value20));
   AddCmd(pointer, AsmAddi(rs1, rs1, value12));
-  AddCmd(pointer, AsmJalr(rd, rs1, offset));
+  switch (test_type) {
+    case TEST_JALR:
+      AddCmd(pointer, AsmJalr(rd, rs1, offset));
+      break;
+    case TEST_CJALR:
+      AddCmdCType(pointer, AsmCJalr(rs1));
+      break;
+    case TEST_CJR:
+      AddCmdCType(pointer, AsmCJr(rs1));
+      break;
+  }
+  rd_address = pointer.GetAddress();
+  // Code should not reach here.
   AddCmd(pointer, AsmAddi(A0, ZERO, 1));
   AddCmd(pointer, AsmXor(RA, RA, RA));
   AddCmd(pointer, AsmJalr(ZERO, RA, 0));
@@ -1041,11 +1267,11 @@ bool TestJalrType(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value,
   RiscvCpu cpu(en_64_bit);
   RandomizeRegisters(cpu);
   cpu.SetMemory(memory);
-  bool error = cpu.RunCpu(start_point, verbose) != 0;
+  error = cpu.RunCpu(start_point, verbose) != 0;
   int64_t return_value = static_cast<int64_t>(cpu.ReadRegister(A0));
   error |= return_value != expected;
   if (rd != 0 && rd != RA && rd != A0) {
-    uint32_t expect = start_point + 12;
+    uint32_t expect = rd_address;
     uint32_t actual = cpu.ReadRegister(rd);
     error |= actual != expect;
     if (actual != expect) {
@@ -1067,23 +1293,24 @@ bool TestJalrType(uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value,
 
 bool TestJalrTypeLoop(bool verbose = true) {
   bool error = false;
-  for (int i = 0; i < kUnitTestMax && !error; i++) {
-    uint32_t rs1 = rnd() % 32;
-    uint32_t rd = rnd() % 32;
-    uint32_t offset = rnd() % 0x1000;
-    // if rs1 == 0, the offset is from address=0. Only positive values are valid.
-    if (rs1 == 0) {
-      offset &= 0x7FF;
+  JAL_TYPE_TEST test_sets[] = {TEST_JALR, TEST_CJALR, TEST_CJR};
+  for (auto test_case: test_sets) {
+    for (int i = 0; i < kUnitTestMax && !error; i++) {
+      uint32_t rs1 = rnd() % 32;
+      uint32_t rd = rnd() % 32;
+      uint32_t offset = rnd() % 0x1000;
+      // if rs1 == 0, the offset is from address=0. Only positive values are valid.
+      if (rs1 == 0) {
+        offset &= 0x7FF;
+      }
+      uint32_t value = kMemSize / 2 + (rnd() % (kMemSize / 4));
+      bool test_error = TestJalrType(test_case, rd, rs1, offset, value, false);
+      if (test_error) {
+        test_error = TestJalrType(test_case, rd, rs1, offset, value, true);
+      }
+      error |= test_error;
     }
-    uint32_t value = kMemSize / 2 + (rnd() % (kMemSize / 4));
-    bool test_error = TestJalrType(rd, rs1, offset, value, false);
-    if (test_error) {
-      test_error = TestJalrType(rd, rs1, offset, value, true);
-    }
-    error |= test_error;
-  }
-  if (verbose) {
-    PrintJalrTypeInstructionMessage(error);
+    PrintJalrTypeInstructionMessage(test_case, error, verbose);
   }
   return error;
 }

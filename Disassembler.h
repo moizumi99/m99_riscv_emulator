@@ -10,7 +10,7 @@
 
 namespace RISCV_EMULATOR {
 
-std::string Disassemble(uint32_t ir);
+std::string Disassemble(uint32_t ir, int mxl = 1);
 
 }
 

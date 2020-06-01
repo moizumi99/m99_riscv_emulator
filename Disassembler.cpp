@@ -18,9 +18,90 @@ std::string GetRegName(int reg) {
 }
 
 // TODO: Add tests for disassembly;
+// Disassemble16 and GetCode16 have very similar logic. Should be combined in some way.
+std::string Disassemble16(uint32_t ir, int mxl = 1) {
+  std::string cmd = "Unsupported C Instruction";
+  uint32_t instruction, rd, rs1, rs2;
+  int32_t imm;
+  std::tie(instruction, rd, rs1, rs2, imm) = RiscvCpu::GetCode16(ir, mxl);
+  uint16_t opcode = (bitcrop(ir, 3, 13) << 2) | bitcrop(ir, 2, 0);
+  switch (opcode) {
+    case 0b00000:
+      cmd = "C.ADDI4SPN " + GetRegName(rd) + ", SP, " + std::to_string(imm);
+      break;
+    case 0b00001:
+      cmd = "C.ADDI " + GetRegName(rd) + ", " + std::to_string(imm);
+      break;
+    case 0b00101:
+      if (mxl == 1) {
+        cmd = "C.JAL " + std::to_string(SignExtend(imm, 12));
+      } else {
+        cmd = "C.ADDIW " + GetRegName(rd) + ", " + std::to_string(imm);
+      }
+      break;
+    case 0b01001:
+      cmd = "C.LU " + GetRegName(rd) + ", " + std::to_string(imm);
+      break;
+    case 0b01101:
+      if (bitcrop(ir, 5, 7) == 0b00010) {
+        // c.addi16sp.
+        cmd = "C.ADDI16SP SP, SP, " + std::to_string(imm);
+      } else {
+        cmd = "C.LUT " + GetRegName(rd) + ", " + std::to_string(imm);
+      }
+      break;
+    case 0b10010: // c.add
+      if (bitcrop(ir, 1, 12) == 1) {
+        if (bitcrop(ir, 5, 2) == 0) {
+          cmd = "C.JALR " + GetRegName(rs1);
+        } else if (bitcrop(ir, 5, 7) != 0) {
+          cmd = "C.ADD " + GetRegName(rd) + ", " + GetRegName(rs2);
+        }
+      } else if (bitcrop(ir, 5, 2) == 0) {
+        cmd = "C.JR " + GetRegName(rs1);
+      }
+      break;
+    case 0b10001:
+      if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b11) {
+        // c.and.
+        cmd = "C.AND " + GetRegName(rd) + ", " + GetRegName(rs2);
+      } else if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b01) {
+        cmd = "C.XOR " + GetRegName(rd) + ", " + GetRegName(rs2);
+      } else if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b00) {
+        cmd = "C.SUB " + GetRegName(rd) + ", " + GetRegName(rs2);
+      } else if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b10) {
+        cmd = "C.OR " + GetRegName(rd) + ", " + GetRegName(rs2);
+      } else if (bitcrop(ir, 3, 10) == 0b111 && bitcrop(ir, 2, 5) == 0b01) {
+        cmd = "C.ADDW " + GetRegName(rd) + ", " + GetRegName(rs2);
+      } else if (bitcrop(ir, 3, 10) == 0b111 && bitcrop(ir, 2, 5) == 0b00) {
+        cmd = "C.SUBW " + GetRegName(rd) + ", " + GetRegName(rs2);
+      } else if (bitcrop(ir, 2, 10) == 0b01) {
+        cmd = "C.SRAI " + GetRegName(rd) + ", " + std::to_string(imm);
+      } else if (bitcrop(ir, 2, 10) == 0b00) {
+        cmd = "C.SRLI " + GetRegName(rd) + ", " + std::to_string(imm);
+      } else if (bitcrop(ir, 2, 10) == 0b10) {
+        cmd = "C.ANDI " + GetRegName(rd) + ", " + std::to_string(SignExtend(imm, 6));
+      }
+      break;
+    case 0b10101:
+      cmd = "C.J " + std::to_string(SignExtend(imm, 12));
+      break;
+    case 0b11001:
+      cmd = "C.BEQZ " + GetRegName(rs1) + ", x0, " + std::to_string(SignExtend(imm, 9));
+      break;
+    case 0b11101:
+      cmd = "C.BNEZ " + GetRegName(rs1) + ", x0, " + std::to_string(SignExtend(imm, 9));
+      break;
+  }
+  return cmd;
+}
 
-std::string Disassemble(uint32_t ir) {
+
+std::string Disassemble(uint32_t ir, int mxl) {
   uint16_t opcode = bitcrop(ir, 7, 0);
+  if ((opcode & 0b11) != 0b11) {
+    return Disassemble16(ir, mxl);
+  }
   uint8_t funct3 = bitcrop(ir, 3, 12);
   uint8_t funct7 = bitcrop(ir, 7, 25);
   uint32_t rd = GetRd(ir);

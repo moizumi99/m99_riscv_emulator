@@ -9,7 +9,9 @@ using namespace RISCV_EMULATOR;
 
 namespace CPU_TEST {
 
-MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd);
+MemoryWrapperIterator AddCmd(MemoryWrapperIterator &mem, uint32_t cmd);
+
+MemoryWrapperIterator AddCmdCType(MemoryWrapperIterator &mem, uint16_t cmd);
 
 uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
@@ -184,6 +186,62 @@ uint16_t AsmCSdsp(uint32_t rs2, uint32_t uimm);
 uint16_t AsmCSlli(uint32_t rd, uint32_t uimm);
 
 uint16_t AsmCSwsp(uint32_t rs2, uint32_t uimm);
+
+uint16_t AsmCAddi(uint32_t rd, int32_t imm);
+
+uint16_t AsmCAddi16sp(int32_t imm);
+
+uint16_t AsmCAddiw(uint32_t rd, int32_t imm);
+
+uint16_t AsmCAnd(uint32_t rd, uint32_t rs2);
+
+uint16_t AsmCAnd(uint32_t rd, uint32_t rs2);
+
+uint16_t AsmCAddw(uint32_t rd, uint32_t rs2);
+
+uint16_t AsmCOr(uint32_t rd, uint32_t rs2);
+
+uint16_t AsmCSub(uint32_t rd, uint32_t rs2);
+
+uint16_t AsmCSubw(uint32_t rd, uint32_t rs2);
+
+uint16_t AsmCXor(uint32_t rd, uint32_t rs2);
+
+uint16_t AsmCAndi(uint32_t rd, int32_t imm);
+
+uint16_t AsmCSrai(uint32_t rd, int32_t imm);
+
+uint16_t AsmCSrli(uint32_t rd, int32_t imm);
+
+uint16_t AsmCBeqz(uint32_t rs1, int32_t offset);
+
+uint16_t AsmCBnez(uint32_t rs1, int32_t offset);
+
+uint16_t AsmCJ(int32_t imm);
+
+uint16_t AsmCJal(int32_t imm);
+
+uint16_t AsmCLi(uint32_t rd, int32_t imm);
+
+uint16_t AsmCLui(uint32_t rd, int32_t imm);
+
+uint16_t AsmCAddi4spn(uint32_t rd, uint32_t uimm);
+
+uint16_t AsmCFld(uint32_t rd, uint32_t rs1, uint32_t uimm);
+
+uint16_t AsmCFlw(uint32_t rd, uint32_t rs1, uint32_t uimm);
+
+uint16_t AsmCFsd(uint32_t rs1, uint32_t rs2, uint32_t uimm);
+
+uint16_t AsmCFsw(uint32_t rs1, uint32_t rs2, uint32_t uimm);
+
+uint16_t AsmCLd(uint32_t rd, uint32_t rs1, uint32_t uimm);
+
+uint16_t AsmCLw(uint32_t rd, uint32_t rs1, uint32_t uimm);
+
+uint16_t AsmCSd(uint32_t rs1, uint32_t rs2, uint32_t uimm);
+
+uint16_t AsmCsw(uint32_t rs1, uint32_t rs2, uint32_t uimm);
 
 } // namespace RISCV_EMULATOR
 

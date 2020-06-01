@@ -38,6 +38,8 @@ public:
 
   int RunCpu(uint64_t start_pc, bool verbose = true);
 
+  static std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> GetCode16(uint32_t ir, int mxl);
+
 private:
   uint64_t
   VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
@@ -51,6 +53,7 @@ private:
   PrivilegeMode privilege_;
   std::shared_ptr<MemoryWrapper> memory_;
   std::vector<uint64_t> csrs_;
+  bool ctype_;
 
   void InitializeCsrs();
 
@@ -89,7 +92,8 @@ private:
 
   uint32_t LoadCmd(uint64_t pc);
 
-  uint32_t GetCode(uint32_t ir);
+  uint32_t GetCode32(uint32_t ir);
+
 
   std::pair<bool, bool> SystemCall();
 

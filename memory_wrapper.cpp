@@ -69,110 +69,114 @@ bool MemoryWrapper::operator!=(MemoryWrapper &r) {
   return mapping != r.mapping;
 }
 
-MemorWrapperIterator MemoryWrapper::begin() {
-  return MemorWrapperIterator(*this, 0);
+MemoryWrapperIterator MemoryWrapper::begin() {
+  return MemoryWrapperIterator(*this, 0);
 }
 
-MemorWrapperIterator MemoryWrapper::end() {
-  return MemorWrapperIterator(*this, kMaxAddress);
+MemoryWrapperIterator MemoryWrapper::end() {
+  return MemoryWrapperIterator(*this, kMaxAddress);
 }
 
 // Memory wrapper iterator definition starts here.
-MemorWrapperIterator::MemorWrapperIterator(MemoryWrapper &m, size_t p) : pos(p),
-                                                                         mw(
+MemoryWrapperIterator::MemoryWrapperIterator(MemoryWrapper &m, size_t p) : pos(p),
+                                                                           mw(
                                                                            &m) {}
 
-uint8_t &MemorWrapperIterator::operator*() {
+uint8_t &MemoryWrapperIterator::operator*() {
   return (*this->mw)[pos];
 }
 
-const uint8_t MemorWrapperIterator::operator*() const {
+size_t MemoryWrapperIterator::GetAddress() {
+  return pos;
+}
+
+const uint8_t MemoryWrapperIterator::operator*() const {
   return (*this->mw)[pos];
 }
 
-uint8_t &MemorWrapperIterator::operator[](size_t n) {
+uint8_t &MemoryWrapperIterator::operator[](size_t n) {
   return (*this->mw)[pos + n];
 }
 
-const uint8_t MemorWrapperIterator::operator[](size_t n) const {
+const uint8_t MemoryWrapperIterator::operator[](size_t n) const {
   return (*this->mw)[pos + n];
 }
 
-MemorWrapperIterator &MemorWrapperIterator::operator++() {
+MemoryWrapperIterator &MemoryWrapperIterator::operator++() {
   ++pos;
   return *this;
 }
 
-MemorWrapperIterator MemorWrapperIterator::operator++(int) {
-  MemorWrapperIterator copy = *this;
+MemoryWrapperIterator MemoryWrapperIterator::operator++(int) {
+  MemoryWrapperIterator copy = *this;
   ++pos;
   return copy;
 }
 
-MemorWrapperIterator &MemorWrapperIterator::operator--() {
+MemoryWrapperIterator &MemoryWrapperIterator::operator--() {
   --pos;
   return *this;
 }
 
-MemorWrapperIterator MemorWrapperIterator::operator--(int) {
-  MemorWrapperIterator copy = *this;
+MemoryWrapperIterator MemoryWrapperIterator::operator--(int) {
+  MemoryWrapperIterator copy = *this;
   --pos;
   return copy;
 }
 
-MemorWrapperIterator &MemorWrapperIterator::operator+=(size_t n) {
+MemoryWrapperIterator &MemoryWrapperIterator::operator+=(size_t n) {
   pos += n;
   return *this;
 }
 
-MemorWrapperIterator &MemorWrapperIterator::operator-=(size_t n) {
+MemoryWrapperIterator &MemoryWrapperIterator::operator-=(size_t n) {
   pos -= n;
   return *this;
 }
 
-MemorWrapperIterator MemorWrapperIterator::operator+(size_t n) {
-  MemorWrapperIterator copy = *this;
+MemoryWrapperIterator MemoryWrapperIterator::operator+(size_t n) {
+  MemoryWrapperIterator copy = *this;
   copy += n;
   return copy;
 }
 
-MemorWrapperIterator MemorWrapperIterator::operator-(size_t n) {
-  MemorWrapperIterator copy = *this;
+MemoryWrapperIterator MemoryWrapperIterator::operator-(size_t n) {
+  MemoryWrapperIterator copy = *this;
   copy -= n;
   return copy;
 }
 
 
-bool MemorWrapperIterator::operator==(const iterator &r) {
+bool MemoryWrapperIterator::operator==(const iterator &r) {
   return (mw == r.mw && pos == r.pos);
 }
 
-bool MemorWrapperIterator::operator!=(const iterator &r) {
+bool MemoryWrapperIterator::operator!=(const iterator &r) {
   return (mw != r.mw || pos != r.pos);
 }
 
-bool MemorWrapperIterator::operator<(const iterator &r) {
+bool MemoryWrapperIterator::operator<(const iterator &r) {
   return (mw == r.mw && pos < r.pos);
 }
 
-bool MemorWrapperIterator::operator>(const iterator &r) {
+bool MemoryWrapperIterator::operator>(const iterator &r) {
   return (mw == r.mw && pos > r.pos);
 }
 
-bool MemorWrapperIterator::operator<=(const iterator &r) {
+bool MemoryWrapperIterator::operator<=(const iterator &r) {
   return (mw == r.mw && pos <= r.pos);
 }
 
-bool MemorWrapperIterator::operator>=(const iterator &r) {
+bool MemoryWrapperIterator::operator>=(const iterator &r) {
   return (mw == r.mw && pos >= r.pos);
 }
 
-uint32_t LoadWd(const MemorWrapperIterator &&address) {
+uint32_t LoadWd(const MemoryWrapperIterator &&address) {
   return address[0] | (address[1] << 8) | (address[2] << 16) |
          (address[3] << 24);
 }
 
-void StoreWd(MemorWrapperIterator &&address, uint32_t data, int width) {
+void StoreWd(MemoryWrapperIterator &&address, uint32_t data, int width) {
   switch (width) {
     case 32:
       address[2] = (data >> 16) & 0xFF;

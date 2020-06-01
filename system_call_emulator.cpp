@@ -4,14 +4,19 @@
 
 #include <iostream>
 #include <sys/stat.h>
+
 #ifndef _WIN32
+
 #include <unistd.h>
+
 #else
 #endif
+
 #include <fcntl.h>
 
 #include "system_call_emulator.h"
 #include "RISCV_cpu.h"
+
 #ifdef _WIN32
 #include "io.h"
 #define CIO_open _open
@@ -138,8 +143,9 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
   bool error_flag = false;
   if (reg[A7] == 93) {
     // Exit system call.
-    if (debug)
+    if (debug) {
       std::cerr << "Exit System Call" << std::endl;
+    }
     end_flag = true;
   } else if (reg[A7] == 64) {
     // Write.
@@ -158,8 +164,9 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     delete buffer;
   } else if (reg[A7] == 214) {
     // BRK.
-    if (debug)
+    if (debug) {
       std::cerr << "BRK System Call" << std::endl;
+    }
     if (reg[A0] == 0) {
       reg[A0] = brk;
     } else if (reg[A0] < top) {
@@ -170,8 +177,9 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     }
   } else if (reg[A7] == 63) {
     // READ.
-    if (debug)
+    if (debug) {
       std::cerr << "Read System Call" << std::endl;
+    }
     int length = reg[A2];
     unsigned char *buffer = new unsigned char[length];
     size_t return_value = CIO_read(reg[A0], buffer, length);
@@ -206,24 +214,25 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     reg[A0] = return_value;
   } else if (reg[A7] == 57) {
     // Close.
-    if (debug)
+    if (debug) {
       std::cerr << "Close System Call" << std::endl;
-	int return_value;
+    }
+    int return_value;
 
-	// Try to prevent closing if open is not used
-	if (openHandles > 0)
-	{
-		return_value = CIO_close(reg[A0]);
-		openHandles--;
-	}
-	else
-		return_value = 0;
+    // Try to prevent closing if open is not used
+    if (openHandles > 0) {
+      return_value = CIO_close(reg[A0]);
+      openHandles--;
+    } else {
+      return_value = 0;
+    }
 
     reg[A0] = return_value;
   } else if (reg[A7] == 1024) {
     // Open.
-    if (debug)
+    if (debug) {
       std::cerr << "Open System Call" << std::endl;
+    }
     // These values are found in newlib/libc/include/sys/_default_fcntl.h
     constexpr uint32_t kO_READ = 0x000001;
     constexpr uint32_t kO_WRITE = 0x000002;
@@ -250,11 +259,11 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     flag |= (reg[A1] & kO_SYNC) ? O_SYNC : 0;
     flag |= (reg[A1] & kO_TRUNC) ? O_TRUNC : 0;
 #else
-	uint32_t flag = (reg[A1] & kO_WRITE) ? O_RDWR : O_RDONLY;
-	flag |= (reg[A1] & kO_APPEND) ? O_APPEND : 0;
-	flag |= (reg[A1] & kO_CREAT) ? O_CREAT : 0;
-	flag |= (reg[A1] & kO_EXCL) ? O_EXCL : 0;
-	flag |= (reg[A1] & kO_TRUNC) ? O_TRUNC : 0;
+    uint32_t flag = (reg[A1] & kO_WRITE) ? O_RDWR : O_RDONLY;
+    flag |= (reg[A1] & kO_APPEND) ? O_APPEND : 0;
+    flag |= (reg[A1] & kO_CREAT) ? O_CREAT : 0;
+    flag |= (reg[A1] & kO_EXCL) ? O_EXCL : 0;
+    flag |= (reg[A1] & kO_TRUNC) ? O_TRUNC : 0;
 #endif
     constexpr size_t kMax = 1024;
     size_t length = MemoryWrapperStrlen(mem, reg[A0], kMax);
@@ -271,7 +280,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
         std::cerr << "Flag = " << std::hex << flag << std::dec << std::endl;
       }
       return_value = CIO_open(buffer, flag, reg[A2]);
-	  if (return_value >= 0) openHandles++;
+      if (return_value >= 0) openHandles++;
       delete buffer;
     }
     reg[A0] = return_value;

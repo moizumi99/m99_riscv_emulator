@@ -651,7 +651,7 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       if (reg_[rs2] == 0) {
         temp64 = -1;
       } else if (static_cast<int64_t>(reg_[rs2]) == -1 &&
-                 reg_[rs1] == 1 << 31) {
+                 reg_[rs1] == (1lu << 31)) {
         // Overflow check.
         temp64 = 1 << 31;
       } else {
@@ -693,7 +693,7 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       if (reg_[rs2] == 0) {
         temp64 = reg_[rs1];
       } else if (static_cast<int64_t>(reg_[rs2]) == -1 &&
-                 reg_[rs1] == 1 << 31) {
+                 reg_[rs1] == (1lu << 31)) {
         // Overflow check.
         temp64 = 0;
       } else {
@@ -725,27 +725,29 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
                             privilege_ == PrivilegeMode::SUPERVISOR_MODE ? 'S'
                                                                          : 'M';
       printf("%c %016lx (%08lx): ", machine_status, pc_, ir);
-      std::cout << Disassemble(ir) << std::endl;
+      std::cout << Disassemble(ir, mxl_) << std::endl;
     }
     if (page_fault_) {
       Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
       continue;
     }
-    // Change this line when C is supported.
-    next_pc_ = pc_ + 4;
+   // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
+    ctype_ = (ir & 0b11) != 0b11;
 
-    // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
-    uint32_t instruction = GetCode(ir);
-    uint32_t rd = GetRd(ir);
-    uint32_t rs1 = GetRs1(ir);
-    uint32_t rs2 = GetRs2(ir);
-    int16_t imm12 = GetImm12(ir);
+    uint32_t instruction, rd, rs1, rs2;
+    int32_t imm;
     int16_t csr = GetCsr(ir);
-    uint8_t shamt = GetShamt(ir);
-    int16_t imm13 = GetImm13(ir);
-    int32_t imm21 = GetImm21(ir);
-    int16_t imm12_stype = GetStypeImm12(ir);
-    int32_t imm20 = GetImm20(ir);
+    if (!ctype_) {
+      next_pc_ = pc_ + 4;
+      instruction = GetCode32(ir);
+      rd = GetRd(ir);
+      rs1 = GetRs1(ir);
+      rs2 = GetRs2(ir);
+      imm = GetImm(ir);
+    } else {
+      next_pc_ = pc_ + 2;
+      std::tie(instruction, rd, rs1, rs2, imm) = GetCode16(ir, mxl_);
+    }
 
     switch (instruction) {
       uint64_t temp64;
@@ -769,7 +771,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_ANDI:
       case INST_ORI:
       case INST_XORI:
-        ImmediateInstruction(instruction, rd, rs1, imm12);
+        ImmediateInstruction(instruction, rd, rs1, imm);
         break;
       case INST_SLLI:
       case INST_SLLIW:
@@ -777,7 +779,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_SRLIW:
       case INST_SRAI:
       case INST_SRAIW:
-        ImmediateShiftInstruction(instruction, rd, rs1, shamt);
+        ImmediateShiftInstruction(instruction, rd, rs1, imm);
         break;
       case INST_SLT:
         reg_[rd] = (static_cast<int64_t>(reg_[rs1]) <
@@ -787,10 +789,10 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         reg_[rd] = (reg_[rs1] < reg_[rs2]) ? 1 : 0;
         break;
       case INST_SLTI:
-        reg_[rd] = static_cast<int64_t>(reg_[rs1]) < imm12 ? 1 : 0;
+        reg_[rd] = static_cast<int64_t>(reg_[rs1]) < imm ? 1 : 0;
         break;
       case INST_SLTIU:
-        reg_[rd] = reg_[rs1] < static_cast<uint64_t>(imm12) ? 1 : 0;
+        reg_[rd] = reg_[rs1] < static_cast<uint64_t>(imm) ? 1 : 0;
         break;
       case INST_BEQ:
       case INST_BGE:
@@ -798,21 +800,21 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_BLT:
       case INST_BLTU:
       case INST_BNE:
-        next_pc_ = BranchInstruction(instruction, rs1, rs2, imm13);
+        next_pc_ = BranchInstruction(instruction, rs1, rs2, imm);
         break;
       case INST_JAL:
         reg_[rd] = pc_ + 4;
-        next_pc_ = pc_ + imm21;
+        next_pc_ = pc_ + imm;
         if (next_pc_ == pc_) {
           error_flag_ = true;
         }
         break;
       case INST_JALR:
-        next_pc_ = (reg_[rs1] + imm12) & ~1;
+        next_pc_ = (reg_[rs1] + imm) & ~1;
         reg_[rd] = pc_ + 4;
         // Below lines are only for simulation purpose.
         // Remove once a better solution is found.
-        if (rd == ZERO && rs1 == RA && reg_[rs1] == 0 && imm12 == 0) {
+        if (rd == ZERO && rs1 == RA && reg_[rs1] == 0 && imm == 0) {
           end_flag_ = true;
         }
         break;
@@ -823,30 +825,30 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_LW:
       case INST_LWU:
       case INST_LD:
-        LoadInstruction(instruction, rd, rs1, imm12);
+        LoadInstruction(instruction, rd, rs1, imm);
         break;
       case INST_SB:
       case INST_SH:
       case INST_SW:
       case INST_SD:
-        StoreInstruction(instruction, rd, rs1, rs2, imm12_stype);
+        StoreInstruction(instruction, rd, rs1, rs2, imm);
         break;
       case INST_LUI:
-        temp64 = imm20 << 12;
+        temp64 = imm << 12;
         if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_AUIPC:
-        temp64 = pc_ + (imm20 << 12);
+        temp64 = pc_ + (imm << 12);
         if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_SYSTEM:
-        SystemInstruction(instruction, rd, imm12);
+        SystemInstruction(instruction, rd, imm);
         break;
       case INST_CSRRC:
       case INST_CSRRCI:
@@ -1093,8 +1095,7 @@ void RiscvCpu::Sret() {
   next_pc_ = csrs_[SEPC];
 }
 
-
-uint32_t RiscvCpu::GetCode(uint32_t ir) {
+uint32_t RiscvCpu::GetCode32(uint32_t ir) {
   uint16_t opcode = bitcrop(ir, 7, 0);
   uint8_t funct3 = bitcrop(ir, 3, 12);
   uint8_t funct7 = bitcrop(ir, 7, 25);
@@ -1295,6 +1296,178 @@ uint32_t RiscvCpu::GetCode(uint32_t ir) {
     printf("Error decoding 0x%08x\n", ir);
   }
   return instruction;
+}
+
+std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(uint32_t ir, int mxl) {
+  uint32_t opcode = (((ir >> 13) & 0b111) << 2) | (ir & 0b11);
+  uint32_t instruction = INST_ERROR;
+  uint32_t rd = 0, rs1 = 0, rs2 = 0;
+  int32_t imm = 0;
+  switch (opcode) {
+    case 0b10010: // c.add.
+      if (bitcrop(ir, 1, 12) == 1) {
+        if (bitcrop(ir, 5, 2) == 0) {
+          // c.jalr.
+          instruction = INST_JALR;
+          rs1 = bitcrop(ir, 5, 7);
+          rd = X1;
+          imm = 0;
+          break;
+        }
+        if (bitcrop(ir, 5, 7) == 0) {
+          // invalid.
+          break;
+        }
+        // c.add.
+        instruction = INST_ADD;
+        rs1 = rd = bitcrop(ir, 5, 7);
+        rs2 = bitcrop(ir, 5, 2);
+      } else {
+        if (bitcrop(ir, 5, 2) == 0) {
+          rs1 = bitcrop(ir, 5, 7);
+          rd = 0;
+          imm = 0;
+          instruction = INST_JALR;
+        }
+      }
+      break;
+    case 0b10001:
+      if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b11) {
+        // c.and.
+        instruction = INST_AND;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b01) {
+        instruction = INST_XOR;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b00) {
+        instruction = INST_SUB;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b10) {
+        instruction = INST_OR;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 3, 10) == 0b111 && bitcrop(ir, 2, 5) == 0b01) {
+        instruction = INST_ADDW;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 3, 10) == 0b111 && bitcrop(ir, 2, 5) == 0b00) {
+        instruction = INST_SUBW;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 1, 11) == 0b0) {
+        instruction = bitcrop(ir, 1, 10) == 1 ? INST_SRAI : INST_SRLI;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        imm = (bitcrop(ir, 1, 12) << 5) + bitcrop(ir, 5, 2);
+      } else if (bitcrop(ir, 1, 10) == 0b0) {
+        instruction = INST_ANDI;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        imm = (bitcrop(ir, 1, 12) << 5) + bitcrop(ir, 5, 2);
+        imm = SignExtend(imm, 6);
+      }
+      break;
+    case 0b00001:
+    case 0b00101:
+      if (opcode == 0b00101 && mxl == 1) {
+        instruction = INST_JAL;
+        rd = X1;
+        imm = bitcrop(ir, 1, 12) << 11;
+        imm |= bitcrop(ir, 1, 11) << 4;
+        imm |= bitcrop(ir, 2, 9) << 8;
+        imm |= bitcrop(ir, 1, 8) << 10;
+        imm |= bitcrop(ir, 1, 7) << 6;
+        imm |= bitcrop(ir, 1, 6) << 7;
+        imm |= bitcrop(ir, 3, 3) << 1;
+        imm |= bitcrop(ir, 1, 2) << 5;
+        imm = SignExtend(imm, 12);
+        break;
+      }
+      instruction = opcode == 0b01101 ? INST_ADDI : INST_ADDIW;
+      rs1 = rd = bitcrop(ir, 5, 7);
+      imm = bitcrop(ir, 1, 12) << 5;
+      imm |= bitcrop(ir, 5, 2);
+      imm = SignExtend(imm, 6);
+      break;
+    case 0b01001:
+      instruction = INST_ADDI;
+      rs1 = 0;
+      rd = bitcrop(ir, 5, 7);
+      imm = bitcrop(ir, 1, 12) << 5;
+      imm |= bitcrop(ir, 5, 2);
+      imm = SignExtend(imm, 6);
+      break;
+    case 0b01101:
+      rd = bitcrop(ir, 5, 7);
+      if (rd != X2) {
+        instruction = INST_LUI;
+        imm = bitcrop(ir, 1, 12) << 17;
+        imm |= bitcrop(ir, 5, 2) << 12;
+        imm = SignExtend(imm, 18);
+        if (imm == 0) {
+          // Invalid if imm is 0.
+          instruction = INST_ERROR;
+        }
+        break;
+      } else {
+        instruction = INST_ADDI;
+        rs1 = 2;
+        imm = bitcrop(ir, 1, 12) << 9;
+        imm |= bitcrop(ir, 1, 6) << 4;
+        imm |= bitcrop(ir, 1, 5) << 6;
+        imm |= bitcrop(ir, 2, 3) << 7;
+        imm |= bitcrop(ir, 1, 2) << 5;
+        imm = SignExtend(imm, 10);
+        if (imm == 0) {
+          // Invalid if imm is 0.
+          instruction = INST_ERROR;
+        }
+      }
+      break;
+    case 0b10101:
+      instruction = INST_JAL;
+      rd = 0;
+      imm = bitcrop(ir, 1, 12) << 11;
+      imm |= bitcrop(ir, 1, 11) << 4;
+      imm |= bitcrop(ir, 2, 9) << 8;
+      imm |= bitcrop(ir, 1, 8) << 10;
+      imm |= bitcrop(ir, 1, 7) << 6;
+      imm |= bitcrop(ir, 1, 6) << 7;
+      imm |= bitcrop(ir, 3, 3) << 1;
+      imm |= bitcrop(ir, 1, 2) << 5;
+      imm = SignExtend(imm, 12);
+      break;
+    case 0b11001:
+    case 0b11101:
+      instruction = opcode == 0b11001 ? INST_BEQ : INST_BNE;
+      rs1 = bitcrop(ir, 3, 7) + 8;
+      rs2 = 0;
+      imm = bitcrop(ir, 1, 12) << 8;
+      imm |= bitcrop(ir, 2, 10) << 3;
+      imm |= bitcrop(ir, 2, 5) << 6;
+      imm |= bitcrop(ir, 2, 3) << 1;
+      imm |= bitcrop(ir, 1, 2) << 5;
+      imm = SignExtend(imm, 9);
+      break;
+    case 0b00000:
+      if (bitcrop(ir, 8, 5) == 0) {
+        std::cerr << "uimm must not be zero for c.addi4spn." << std::endl;
+        break;
+      }
+      instruction = INST_ADDI;
+      rs1 = 2;
+      rd = bitcrop(ir, 3, 2) + 8;
+      imm = bitcrop(ir, 2, 11) << 4;
+      imm |= bitcrop(ir, 4, 7) << 6;
+      imm |= bitcrop(ir, 1, 6) << 2;
+      imm |= bitcrop(ir, 1, 5) << 3;
+      break;
+    default:
+      std::cerr << "Unsupported C Instruction." << std::endl;
+      break;
+  }
+  return std::make_tuple(instruction, rd, rs1, rs2, imm);
 }
 
 } // namespace RISCV_EMULATOR
