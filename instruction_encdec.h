@@ -77,7 +77,7 @@ int32_t GetImm13(uint32_t ir);
 
 int32_t GetImm21(uint32_t ir);
 
-uint32_t GetImm20(uint32_t ir);
+int32_t GetImm20(uint32_t ir);
 
 int32_t GetStypeImm12(uint32_t ir);
 

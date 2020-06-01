@@ -6,7 +6,7 @@ using namespace RISCV_EMULATOR;
 
 namespace CPU_TEST {
 
-MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd) {
+MemoryWrapperIterator AddCmd(MemoryWrapperIterator &mem, uint32_t cmd) {
 
   *(mem++) = cmd & 0xFF;
   *(mem++) = (cmd >> 8) & 0xFF;
@@ -15,14 +15,14 @@ MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd) {
   return mem;
 }
 
-MemorWrapperIterator AddCmdCType(MemorWrapperIterator &mem, uint16_t cmd) {
+MemoryWrapperIterator AddCmdCType(MemoryWrapperIterator &mem, uint16_t cmd) {
 
   *(mem++) = cmd & 0xFF;
   *(mem++) = (cmd >> 8) & 0xFF;
   return mem;
 }
 
-MemorWrapperIterator LoadAssemblerSum(MemorWrapperIterator &mem) {
+MemoryWrapperIterator LoadAssemblerSum(MemoryWrapperIterator &mem) {
   AddCmd(mem, AsmAddi(T0, ZERO, 0));
   AddCmd(mem, AsmAddi(T1, ZERO, 0));
   AddCmd(mem, AsmAddi(T2, ZERO, 10));
@@ -37,7 +37,7 @@ MemorWrapperIterator LoadAssemblerSum(MemorWrapperIterator &mem) {
   return mem;
 }
 
-MemorWrapperIterator LoadAssemblerSort(MemorWrapperIterator &mem) {
+MemoryWrapperIterator LoadAssemblerSort(MemoryWrapperIterator &mem) {
   // A1 is n and A3 points to A[0]
   // A4 is i, A5 is j, a6 is x
   AddCmd(mem, AsmAddi(A3, A0, 4)); // 0

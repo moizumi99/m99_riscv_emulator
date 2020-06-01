@@ -190,9 +190,8 @@ uint32_t GetShamt(uint32_t ir) {
   return shamt;
 }
 
-uint32_t GetImm20(uint32_t ir) {
-  uint32_t imm20 = bitcrop(ir, 20, 12);
-  imm20 = SignExtend(imm20, 20);
+int32_t GetImm20(uint32_t ir) {
+  int32_t imm20 = bitcrop(ir, 20, 12) << 12;
   return imm20;
 }
 

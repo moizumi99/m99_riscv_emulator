@@ -38,7 +38,7 @@ public:
 
   int RunCpu(uint64_t start_pc, bool verbose = true);
 
-  static std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> GetCode16(uint32_t ir);
+  static std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> GetCode16(uint32_t ir, int mxl);
 
 private:
   uint64_t
@@ -91,8 +91,6 @@ private:
   void Sret();
 
   uint32_t LoadCmd(uint64_t pc);
-
-  uint32_t GetCode(uint32_t ir);
 
   uint32_t GetCode32(uint32_t ir);
 

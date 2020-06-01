@@ -725,7 +725,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
                             privilege_ == PrivilegeMode::SUPERVISOR_MODE ? 'S'
                                                                          : 'M';
       printf("%c %016lx (%08lx): ", machine_status, pc_, ir);
-      std::cout << Disassemble(ir) << std::endl;
+      std::cout << Disassemble(ir, mxl_) << std::endl;
     }
     if (page_fault_) {
       Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
@@ -746,7 +746,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       imm = GetImm(ir);
     } else {
       next_pc_ = pc_ + 2;
-      std::tie(instruction, rd, rs1, rs2, imm) = GetCode16(ir);
+      std::tie(instruction, rd, rs1, rs2, imm) = GetCode16(ir, mxl_);
     }
 
     switch (instruction) {
@@ -834,14 +834,14 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         StoreInstruction(instruction, rd, rs1, rs2, imm);
         break;
       case INST_LUI:
-        temp64 = imm << 12;
+        temp64 = imm;
         if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_AUIPC:
-        temp64 = pc_ + (imm << 12);
+        temp64 = pc_ + SignExtend(imm, 32);
         if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
@@ -1298,7 +1298,7 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
   return instruction;
 }
 
-std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(uint32_t ir) {
+std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(uint32_t ir, int mxl) {
   uint32_t opcode = (((ir >> 13) & 0b111) << 2) | (ir & 0b11);
   uint32_t instruction = INST_ERROR;
   uint32_t rd = 0, rs1 = 0, rs2 = 0;
@@ -1306,32 +1306,149 @@ std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(
   switch (opcode) {
     case 0b10010: // c.add.
       if (bitcrop(ir, 1, 12) == 1) {
-        // c.add.
-        if (bitcrop(ir, 5, 7) == 0 || bitcrop(ir, 5, 2) == 0) {
-          // rd == x0 or rs2 == x0 is invalid.
+        if (bitcrop(ir, 5, 2) == 0) {
+          // c.jalr.
+          instruction = INST_JALR;
+          rs1 = bitcrop(ir, 5, 7);
+          rd = X1;
+          imm = 0;
           break;
         }
+        if (bitcrop(ir, 5, 7) == 0) {
+          // invalid.
+          break;
+        }
+        // c.add.
         instruction = INST_ADD;
         rs1 = rd = bitcrop(ir, 5, 7);
         rs2 = bitcrop(ir, 5, 2);
+      } else {
+        if (bitcrop(ir, 5, 2) == 0) {
+          rs1 = bitcrop(ir, 5, 7);
+          rd = 0;
+          imm = 0;
+          instruction = INST_JALR;
+        }
+      }
+      break;
+    case 0b10001:
+      if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b11) {
+        // c.and.
+        instruction = INST_AND;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b01) {
+        instruction = INST_XOR;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b00) {
+        instruction = INST_SUB;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 3, 10) == 0b011 && bitcrop(ir, 2, 5) == 0b10) {
+        instruction = INST_OR;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 3, 10) == 0b111 && bitcrop(ir, 2, 5) == 0b01) {
+        instruction = INST_ADDW;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 3, 10) == 0b111 && bitcrop(ir, 2, 5) == 0b00) {
+        instruction = INST_SUBW;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        rs2 = bitcrop(ir, 3, 2) + 8;
+      } else if (bitcrop(ir, 1, 11) == 0b0) {
+        instruction = bitcrop(ir, 1, 10) == 1 ? INST_SRAI : INST_SRLI;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        imm = (bitcrop(ir, 1, 12) << 5) + bitcrop(ir, 5, 2);
+      } else if (bitcrop(ir, 1, 10) == 0b0) {
+        instruction = INST_ANDI;
+        rd = rs1 = bitcrop(ir, 3, 7) + 8;
+        imm = (bitcrop(ir, 1, 12) << 5) + bitcrop(ir, 5, 2);
+        imm = SignExtend(imm, 6);
       }
       break;
     case 0b00001:
-      instruction = INST_ADDI;
+    case 0b00101:
+      if (opcode == 0b00101 && mxl == 1) {
+        instruction = INST_JAL;
+        rd = X1;
+        imm = bitcrop(ir, 1, 12) << 11;
+        imm |= bitcrop(ir, 1, 11) << 4;
+        imm |= bitcrop(ir, 2, 9) << 8;
+        imm |= bitcrop(ir, 1, 8) << 10;
+        imm |= bitcrop(ir, 1, 7) << 6;
+        imm |= bitcrop(ir, 1, 6) << 7;
+        imm |= bitcrop(ir, 3, 3) << 1;
+        imm |= bitcrop(ir, 1, 2) << 5;
+        imm = SignExtend(imm, 12);
+        break;
+      }
+      instruction = opcode == 0b01101 ? INST_ADDI : INST_ADDIW;
       rs1 = rd = bitcrop(ir, 5, 7);
       imm = bitcrop(ir, 1, 12) << 5;
       imm |= bitcrop(ir, 5, 2);
       imm = SignExtend(imm, 6);
       break;
-    case 0b01101:
+    case 0b01001:
       instruction = INST_ADDI;
-      rs1 = rd = 2;
-      imm = bitcrop(ir, 1, 12) << 9;
-      imm |= bitcrop(ir, 1, 6) << 4;
-      imm |= bitcrop(ir, 1, 5) << 6;
-      imm |= bitcrop(ir, 2, 3) << 7;
+      rs1 = 0;
+      rd = bitcrop(ir, 5, 7);
+      imm = bitcrop(ir, 1, 12) << 5;
+      imm |= bitcrop(ir, 5, 2);
+      imm = SignExtend(imm, 6);
+      break;
+    case 0b01101:
+      rd = bitcrop(ir, 5, 7);
+      if (rd != X2) {
+        instruction = INST_LUI;
+        imm = bitcrop(ir, 1, 12) << 17;
+        imm |= bitcrop(ir, 5, 2) << 12;
+        imm = SignExtend(imm, 18);
+        if (imm == 0) {
+          // Invalid if imm is 0.
+          instruction = INST_ERROR;
+        }
+        break;
+      } else {
+        instruction = INST_ADDI;
+        rs1 = 2;
+        imm = bitcrop(ir, 1, 12) << 9;
+        imm |= bitcrop(ir, 1, 6) << 4;
+        imm |= bitcrop(ir, 1, 5) << 6;
+        imm |= bitcrop(ir, 2, 3) << 7;
+        imm |= bitcrop(ir, 1, 2) << 5;
+        imm = SignExtend(imm, 10);
+        if (imm == 0) {
+          // Invalid if imm is 0.
+          instruction = INST_ERROR;
+        }
+      }
+      break;
+    case 0b10101:
+      instruction = INST_JAL;
+      rd = 0;
+      imm = bitcrop(ir, 1, 12) << 11;
+      imm |= bitcrop(ir, 1, 11) << 4;
+      imm |= bitcrop(ir, 2, 9) << 8;
+      imm |= bitcrop(ir, 1, 8) << 10;
+      imm |= bitcrop(ir, 1, 7) << 6;
+      imm |= bitcrop(ir, 1, 6) << 7;
+      imm |= bitcrop(ir, 3, 3) << 1;
       imm |= bitcrop(ir, 1, 2) << 5;
-      imm = SignExtend(imm, 10);
+      imm = SignExtend(imm, 12);
+      break;
+    case 0b11001:
+    case 0b11101:
+      instruction = opcode == 0b11001 ? INST_BEQ : INST_BNE;
+      rs1 = bitcrop(ir, 3, 7) + 8;
+      rs2 = 0;
+      imm = bitcrop(ir, 1, 12) << 8;
+      imm |= bitcrop(ir, 2, 10) << 3;
+      imm |= bitcrop(ir, 2, 5) << 6;
+      imm |= bitcrop(ir, 2, 3) << 1;
+      imm |= bitcrop(ir, 1, 2) << 5;
+      imm = SignExtend(imm, 9);
       break;
     case 0b00000:
       if (bitcrop(ir, 8, 5) == 0) {

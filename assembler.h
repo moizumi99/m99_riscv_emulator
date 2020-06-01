@@ -9,9 +9,9 @@ using namespace RISCV_EMULATOR;
 
 namespace CPU_TEST {
 
-MemorWrapperIterator AddCmd(MemorWrapperIterator &mem, uint32_t cmd);
+MemoryWrapperIterator AddCmd(MemoryWrapperIterator &mem, uint32_t cmd);
 
-MemorWrapperIterator AddCmdCType(MemorWrapperIterator &mem, uint16_t cmd);
+MemoryWrapperIterator AddCmdCType(MemoryWrapperIterator &mem, uint16_t cmd);
 
 uint32_t AsmAdd(uint32_t rd, uint32_t rs1, uint32_t rs2);
 

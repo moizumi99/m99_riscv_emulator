@@ -12,7 +12,7 @@
 
 namespace RISCV_EMULATOR {
 
-class MemorWrapperIterator; // Forward declaration.
+class MemoryWrapperIterator; // Forward declaration.
 class MemoryWrapper;
 
 constexpr int GenerateBitMask(const int bits) {
@@ -44,9 +44,9 @@ public:
 
   void Write64(size_t i, uint64_t value);
 
-  MemorWrapperIterator begin();
+  MemoryWrapperIterator begin();
 
-  MemorWrapperIterator end();
+  MemoryWrapperIterator end();
 
   bool operator==(MemoryWrapper &r);
 
@@ -58,11 +58,13 @@ private:
   std::array<std::vector<uint8_t>, kMapEntry> mapping;
 };
 
-class MemorWrapperIterator {
+class MemoryWrapperIterator {
 public:
-  using iterator = MemorWrapperIterator;
+  using iterator = MemoryWrapperIterator;
 
-  MemorWrapperIterator(MemoryWrapper &, size_t = 0);
+  MemoryWrapperIterator(MemoryWrapper &, size_t = 0);
+
+  size_t GetAddress();
 
   uint8_t &operator*();
 
@@ -110,9 +112,9 @@ private:
   class MemoryWrapper *mw;
 };
 
-uint32_t LoadWd(const MemorWrapperIterator &&address);
+uint32_t LoadWd(const MemoryWrapperIterator &&address);
 
-void StoreWd(MemorWrapperIterator &&address, uint32_t data, int width = 32);
+void StoreWd(MemoryWrapperIterator &&address, uint32_t data, int width = 32);
 
 } // namespace RISCV_EMULATOR
 
