@@ -32,6 +32,9 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
     case 0b00001:
       cmd = "C.ADDI " + GetRegName(rd) + ", " + std::to_string(imm);
       break;
+    case 0b00010:
+      cmd = "C.SLLI " + GetRegName(rd) + ", " + std::to_string(imm);
+      break;
     case 0b00101:
       if (mxl == 1) {
         cmd = "C.JAL " + std::to_string(SignExtend(imm, 12));
@@ -39,8 +42,18 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
         cmd = "C.ADDIW " + GetRegName(rd) + ", " + std::to_string(imm);
       }
       break;
+    case 0b01000:
+      cmd = "C.LW " + GetRegName(rd) + ", " + std::to_string(imm) + "(" + GetRegName(rs1) + ")";
+      break;
     case 0b01001:
       cmd = "C.LU " + GetRegName(rd) + ", " + std::to_string(imm);
+      break;
+    case 0b01010:
+      cmd = "C.LWSP " + GetRegName(rd) + ", " + std::to_string(imm) + "(SP)";
+      break;
+    case 0b01100:
+      cmd = "C.LD " + GetRegName(rd) + ", " + std::to_string(imm) + "(" +
+        GetRegName(rs1) + ")";
       break;
     case 0b01101:
       if (bitcrop(ir, 5, 7) == 0b00010) {
@@ -50,15 +63,22 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
         cmd = "C.LUT " + GetRegName(rd) + ", " + std::to_string(imm);
       }
       break;
+    case 0b01110:
+      cmd = "C.LDSP " + GetRegName(rd) + ", " + std::to_string(imm) + "(SP)";
+      break;
     case 0b10010: // c.add
       if (bitcrop(ir, 1, 12) == 1) {
-        if (bitcrop(ir, 5, 2) == 0) {
+        if (bitcrop(ir, 5, 2) == 0 && bitcrop(ir, 5, 7) == 0) {
+          cmd = "C.EBREAK";
+        } else if (bitcrop(ir, 5, 2) == 0) {
           cmd = "C.JALR " + GetRegName(rs1);
         } else if (bitcrop(ir, 5, 7) != 0) {
           cmd = "C.ADD " + GetRegName(rd) + ", " + GetRegName(rs2);
         }
       } else if (bitcrop(ir, 5, 2) == 0) {
         cmd = "C.JR " + GetRegName(rs1);
+      } else {
+        cmd = "C.MV " + GetRegName(rd) + ", " + GetRegName(rs2);
       }
       break;
     case 0b10001:
@@ -86,12 +106,22 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
     case 0b10101:
       cmd = "C.J " + std::to_string(SignExtend(imm, 12));
       break;
+    case 0b11000:
+      cmd = "C.SW " + GetRegName(rs2) + ", " + std::to_string(imm) + "(" + GetRegName(rs1) + ")";
     case 0b11001:
-      cmd = "C.BEQZ " + GetRegName(rs1) + ", x0, " + std::to_string(SignExtend(imm, 9));
+      cmd = "C.BEQZ " + GetRegName(rs1) + ", " + std::to_string(SignExtend(imm, 9));
+      break;
+    case 0b11010:
+      cmd = "C.SWSP " + GetRegName(rs2) + ", " + std::to_string(imm) + "(SP)";
+      break;
+    case 0b11100:
+      cmd = "C.SD " + GetRegName(rs2) + ", " + std::to_string(imm) + "(" + GetRegName(rs1) + ")";
       break;
     case 0b11101:
-      cmd = "C.BNEZ " + GetRegName(rs1) + ", x0, " + std::to_string(SignExtend(imm, 9));
+      cmd = "C.BNEZ " + GetRegName(rs1) + ", " + std::to_string(SignExtend(imm, 9));
       break;
+    case 0b11110:
+      cmd = "C.SDSP " + GetRegName(rs2) + ", " + std::to_string(imm) + "(SP)";
   }
   return cmd;
 }

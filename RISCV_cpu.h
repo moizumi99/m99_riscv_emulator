@@ -81,7 +81,7 @@ private:
   void StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
                         uint32_t rs2, int32_t imm12_stype);
 
-  void SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm12);
+  void SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm);
 
   void MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
                             uint32_t rs2);

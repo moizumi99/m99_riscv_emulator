@@ -497,22 +497,22 @@ void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
 }
 
 void
-RiscvCpu::SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm12) {
-  if (imm12 == 0b000000000000) {
+RiscvCpu::SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm) {
+  if (imm == 0b000000000000) {
     // ECALL
     if (ecall_emulation_) {
       std::tie(error_flag_, end_flag_) = SystemCall();
     } else {
       Ecall();
     }
-  } else if (imm12 == 0b000000000001) {
+  } else if (imm == 0b000000000001) {
     // EBREAK
     // Debug function is not implemented yet.
-  } else if (imm12 == 0b001100000010) {
+  } else if (imm == 0b001100000010) {
     Mret();
-  } else if (imm12 == 0b000100000010) {
+  } else if (imm == 0b000100000010) {
     Sret();
-  } else if (((imm12 >> 5) == 0b0001001) && (rd == 0b00000)) {
+  } else if (((imm >> 5) == 0b0001001) && (rd == 0b00000)) {
     // sfence.vma.
     // TODO: Implement this function.
     ;
@@ -1265,7 +1265,7 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
     case OPCODE_AUIPC: // AUIPC
       instruction = INST_AUIPC;
       break;
-    case OPCODE_SYSTEM: // EBREAK
+    case OPCODE_SYSTEM: // System instructions.
       if (funct3 == FUNC3_SYSTEM) {
         instruction = INST_SYSTEM;
       } else if (funct3 == FUNC3_CSRRC) {
@@ -1304,9 +1304,119 @@ std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(
   uint32_t rd = 0, rs1 = 0, rs2 = 0;
   int32_t imm = 0;
   switch (opcode) {
+    case 0b00000:
+      if (bitcrop(ir, 8, 5) == 0) {
+        std::cerr << "uimm must not be zero for c.addi4spn." << std::endl;
+        break;
+      }
+      instruction = INST_ADDI;
+      rs1 = 2;
+      rd = bitcrop(ir, 3, 2) + 8;
+      imm = bitcrop(ir, 2, 11) << 4;
+      imm |= bitcrop(ir, 4, 7) << 6;
+      imm |= bitcrop(ir, 1, 6) << 2;
+      imm |= bitcrop(ir, 1, 5) << 3;
+      break;
+    case 0b00001:
+    case 0b00101:
+      if (opcode == 0b00101 && mxl == 1) {
+        instruction = INST_JAL;
+        rd = X1;
+        imm = bitcrop(ir, 1, 12) << 11;
+        imm |= bitcrop(ir, 1, 11) << 4;
+        imm |= bitcrop(ir, 2, 9) << 8;
+        imm |= bitcrop(ir, 1, 8) << 10;
+        imm |= bitcrop(ir, 1, 7) << 6;
+        imm |= bitcrop(ir, 1, 6) << 7;
+        imm |= bitcrop(ir, 3, 3) << 1;
+        imm |= bitcrop(ir, 1, 2) << 5;
+        imm = SignExtend(imm, 12);
+        break;
+      }
+      instruction = opcode == 0b01101 ? INST_ADDI : INST_ADDIW;
+      rs1 = rd = bitcrop(ir, 5, 7);
+      imm = bitcrop(ir, 1, 12) << 5;
+      imm |= bitcrop(ir, 5, 2);
+      imm = SignExtend(imm, 6);
+      break;
+    case 0b00010:
+      instruction = INST_SLLI;
+      rs1 = rd = bitcrop(ir, 5, 7);
+      imm = bitcrop(ir, 1, 12) << 5 | bitcrop(ir, 5, 2);
+      break;
+    case 0b01000:
+      instruction = INST_LW;
+      rs1 = bitcrop(ir, 3, 7) + 8;
+      rd = bitcrop(ir, 3, 2) + 8;
+      imm = bitcrop(ir, 3, 10) << 3;
+      imm |= bitcrop(ir, 1, 6) << 2;
+      imm |= bitcrop(ir, 1, 5) << 6;
+      break;
+    case 0b01001:
+      instruction = INST_ADDI;
+      rs1 = 0;
+      rd = bitcrop(ir, 5, 7);
+      imm = bitcrop(ir, 1, 12) << 5;
+      imm |= bitcrop(ir, 5, 2);
+      imm = SignExtend(imm, 6);
+      break;
+    case 0b01010:
+      instruction = INST_LW;
+      rd = bitcrop(ir, 5, 7);
+      rs1 = X2;
+      imm = bitcrop(ir, 1, 12) << 5;
+      imm |= bitcrop(ir, 3, 4) << 2;
+      imm |= bitcrop(ir, 2, 2) << 6;
+      break;
+    case 0b01100:
+      instruction = INST_LD;
+      rd = bitcrop(ir, 3, 2) + 8;
+      rs1 = bitcrop(ir, 3, 7) + 8;
+      imm = bitcrop(ir, 3, 10)  << 3 | bitcrop(ir, 2, 5) << 6;
+      break;
+    case 0b01110:
+      instruction = INST_LD;
+      rd = bitcrop(ir, 5, 7);
+      rs1 = 2;
+      imm = bitcrop(ir, 1, 12) << 5;
+      imm |= bitcrop(ir, 2, 5) << 3;
+      imm |= bitcrop(ir, 3, 2) << 6;
+      break;
+    case 0b01101:
+      rd = bitcrop(ir, 5, 7);
+      if (rd != X2) {
+        instruction = INST_LUI;
+        imm = bitcrop(ir, 1, 12) << 17;
+        imm |= bitcrop(ir, 5, 2) << 12;
+        imm = SignExtend(imm, 18);
+        if (imm == 0) {
+          // Invalid if imm is 0.
+          instruction = INST_ERROR;
+        }
+        break;
+      } else {
+        instruction = INST_ADDI;
+        rs1 = 2;
+        imm = bitcrop(ir, 1, 12) << 9;
+        imm |= bitcrop(ir, 1, 6) << 4;
+        imm |= bitcrop(ir, 1, 5) << 6;
+        imm |= bitcrop(ir, 2, 3) << 7;
+        imm |= bitcrop(ir, 1, 2) << 5;
+        imm = SignExtend(imm, 10);
+        if (imm == 0) {
+          // Invalid if imm is 0.
+          instruction = INST_ERROR;
+        }
+      }
+      break;
     case 0b10010: // c.add.
       if (bitcrop(ir, 1, 12) == 1) {
-        if (bitcrop(ir, 5, 2) == 0) {
+        if (bitcrop(ir, 5, 2) == 0 & bitcrop(ir, 5, 7) == 0) {
+          // c.ebreak.
+          instruction = INST_SYSTEM;
+          imm = 1;
+          break;
+        } else if (bitcrop(ir, 5, 2) == 0) {
           // c.jalr.
           instruction = INST_JALR;
           rs1 = bitcrop(ir, 5, 7);
@@ -1324,10 +1434,16 @@ std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(
         rs2 = bitcrop(ir, 5, 2);
       } else {
         if (bitcrop(ir, 5, 2) == 0) {
+          instruction = INST_JALR;
           rs1 = bitcrop(ir, 5, 7);
           rd = 0;
           imm = 0;
-          instruction = INST_JALR;
+        } else {
+          // c.mv.
+          instruction = INST_ADD;
+          rd = bitcrop(ir, 5, 7);
+          rs2 = bitcrop(ir, 5, 2);
+          rs1 = 0;
         }
       }
       break;
@@ -1368,63 +1484,6 @@ std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(
         imm = SignExtend(imm, 6);
       }
       break;
-    case 0b00001:
-    case 0b00101:
-      if (opcode == 0b00101 && mxl == 1) {
-        instruction = INST_JAL;
-        rd = X1;
-        imm = bitcrop(ir, 1, 12) << 11;
-        imm |= bitcrop(ir, 1, 11) << 4;
-        imm |= bitcrop(ir, 2, 9) << 8;
-        imm |= bitcrop(ir, 1, 8) << 10;
-        imm |= bitcrop(ir, 1, 7) << 6;
-        imm |= bitcrop(ir, 1, 6) << 7;
-        imm |= bitcrop(ir, 3, 3) << 1;
-        imm |= bitcrop(ir, 1, 2) << 5;
-        imm = SignExtend(imm, 12);
-        break;
-      }
-      instruction = opcode == 0b01101 ? INST_ADDI : INST_ADDIW;
-      rs1 = rd = bitcrop(ir, 5, 7);
-      imm = bitcrop(ir, 1, 12) << 5;
-      imm |= bitcrop(ir, 5, 2);
-      imm = SignExtend(imm, 6);
-      break;
-    case 0b01001:
-      instruction = INST_ADDI;
-      rs1 = 0;
-      rd = bitcrop(ir, 5, 7);
-      imm = bitcrop(ir, 1, 12) << 5;
-      imm |= bitcrop(ir, 5, 2);
-      imm = SignExtend(imm, 6);
-      break;
-    case 0b01101:
-      rd = bitcrop(ir, 5, 7);
-      if (rd != X2) {
-        instruction = INST_LUI;
-        imm = bitcrop(ir, 1, 12) << 17;
-        imm |= bitcrop(ir, 5, 2) << 12;
-        imm = SignExtend(imm, 18);
-        if (imm == 0) {
-          // Invalid if imm is 0.
-          instruction = INST_ERROR;
-        }
-        break;
-      } else {
-        instruction = INST_ADDI;
-        rs1 = 2;
-        imm = bitcrop(ir, 1, 12) << 9;
-        imm |= bitcrop(ir, 1, 6) << 4;
-        imm |= bitcrop(ir, 1, 5) << 6;
-        imm |= bitcrop(ir, 2, 3) << 7;
-        imm |= bitcrop(ir, 1, 2) << 5;
-        imm = SignExtend(imm, 10);
-        if (imm == 0) {
-          // Invalid if imm is 0.
-          instruction = INST_ERROR;
-        }
-      }
-      break;
     case 0b10101:
       instruction = INST_JAL;
       rd = 0;
@@ -1438,6 +1497,21 @@ std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(
       imm |= bitcrop(ir, 1, 2) << 5;
       imm = SignExtend(imm, 12);
       break;
+    case 0b11000:
+      instruction = INST_SW;
+      rs1 = bitcrop(ir, 3, 7) + 8;
+      rs2 = bitcrop(ir, 3, 2) + 8;
+      imm = bitcrop(ir, 3, 10) << 3;
+      imm |= bitcrop(ir, 1, 6) << 2;
+      imm |= bitcrop(ir, 1, 5) << 6;
+      break;
+    case 0b11100:
+      instruction = INST_SD;
+      rs1 = bitcrop(ir, 3, 7) + 8;
+      rs2 = bitcrop(ir, 3, 2) + 8;
+      imm = bitcrop(ir, 3, 10) << 3;
+      imm |= bitcrop(ir, 2, 5) << 6;
+      break;
     case 0b11001:
     case 0b11101:
       instruction = opcode == 0b11001 ? INST_BEQ : INST_BNE;
@@ -1450,18 +1524,19 @@ std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(
       imm |= bitcrop(ir, 1, 2) << 5;
       imm = SignExtend(imm, 9);
       break;
-    case 0b00000:
-      if (bitcrop(ir, 8, 5) == 0) {
-        std::cerr << "uimm must not be zero for c.addi4spn." << std::endl;
-        break;
-      }
-      instruction = INST_ADDI;
+    case 0b11010:
+      instruction = INST_SW;
       rs1 = 2;
-      rd = bitcrop(ir, 3, 2) + 8;
-      imm = bitcrop(ir, 2, 11) << 4;
-      imm |= bitcrop(ir, 4, 7) << 6;
-      imm |= bitcrop(ir, 1, 6) << 2;
-      imm |= bitcrop(ir, 1, 5) << 3;
+      rs2 = bitcrop(ir, 5, 2);
+      imm = bitcrop(ir, 4, 9) << 2;
+      imm |= bitcrop(ir, 2, 7) << 6;
+      break;
+    case 0b11110:
+      instruction = INST_SD;
+      rs1 = X2;
+      rs2 = bitcrop(ir, 5, 2);
+      imm = bitcrop(ir, 3, 10) << 3;
+      imm |= bitcrop(ir, 3, 7) << 6;
       break;
     default:
       std::cerr << "Unsupported C Instruction." << std::endl;

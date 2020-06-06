@@ -81,7 +81,8 @@ enum ITYPE_TEST {
   TEST_ADDIW, TEST_SLLIW, TEST_SRAIW, TEST_SRLIW,
   TEST_CADDI, TEST_CADDIW, TEST_CADDI16SP, TEST_CADDI4SPN,
   TEST_CANDI, TEST_CLI, TEST_CLUI,
-  TEST_CSRAI, TEST_CSRLI,
+  TEST_CSRAI, TEST_CSRLI, TEST_CSLLI,
+  TEST_CEBREAK,
 };
 
 bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
@@ -93,8 +94,10 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
     return false;
   }
   if (!en_ctest && (test_type == TEST_CADDI || test_type == TEST_CADDI16SP ||
-  test_type == TEST_CADDIW || test_type == TEST_CANDI ||
-  test_type == TEST_CSRAI || test_type == TEST_CSRLI)) {
+                    test_type == TEST_CADDIW || test_type == TEST_CANDI ||
+                    test_type == TEST_CSLLI ||
+                    test_type == TEST_CSRAI || test_type == TEST_CSRLI ||
+                    test_type == TEST_CEBREAK)) {
     return false;
   }
   if (test_type == TEST_CADDI16SP) {
@@ -124,7 +127,11 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
     }
   } else if (test_type == TEST_CSRAI || test_type == TEST_CSRLI) {
     rs1 = rd = (rd & 0b111) + 8;
-    imm = en_64_bit ? (imm & 0b0111111) : (imm & 0b011111); // imm is unsigned here.
+    imm = en_64_bit ? (imm & 0b0111111) : (imm &
+                                           0b011111); // imm is unsigned here.
+  } else if (test_type == TEST_CSLLI) {
+    rs1 = rd;
+    imm &= 0b111111;
   }
 
 
@@ -273,6 +280,12 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
       expected = SignExtend(imm, 18);
       test_case = "C.LUI";
       break;
+    case TEST_CSLLI:
+      imm = imm & shift_mask;
+      AddCmdCType(pointer, AsmCSlli(rd, imm));
+      expected = static_cast<uint64_t>(value) << imm;
+      test_case = "C.SLLI";
+      break;
     case TEST_CSRAI:
       AddCmdCType(pointer, AsmCSrai(rd, imm));
       expected = static_cast<int64_t>(value) >> imm;
@@ -286,6 +299,14 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
       }
       expected = static_cast<uint64_t>(temp64) >> imm;
       test_case = "C.SRLI";
+      break;
+    case TEST_CEBREAK:
+      AddCmdCType(pointer, AsmCEbreak());
+      expected = cpu.ReadRegister(rd);
+      if (rs1 == rd) {
+        expected = value;
+      }
+      test_case = "C.EBREAK";
       break;
     default:
       printf("I TYPE Test case undefined.\n");
@@ -316,29 +337,34 @@ bool TestIType(ITYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t value,
 }
 
 void PrintITypeInstructionMessage(ITYPE_TEST test_case, bool error) {
-  std::map<ITYPE_TEST, const std::string> test_name = {{TEST_ADDI,      "ADDI"},
-                                                       {TEST_ANDI,      "ANDI"},
-                                                       {TEST_ORI,       "ORI"},
-                                                       {TEST_XORI,      "XORI"},
-                                                       {TEST_SLLI,      "SLLI"},
-                                                       {TEST_SRLI,      "SRLI"},
-                                                       {TEST_SRAI,      "SRAI"},
-                                                       {TEST_SLTI,      "SLTI"},
-                                                       {TEST_SLTIU,     "SLTIU"},
-                                                       {TEST_EBREAK,    "EBREAK"},
-                                                       {TEST_ADDIW,     "ADDIW"},
-                                                       {TEST_SLLIW,     "SLLIW"},
-                                                       {TEST_SRAIW,     "SRAIW"},
-                                                       {TEST_SRLIW,     "SRLIW"},
-                                                       {TEST_CADDI,     "C.ADDI"},
-                                                       {TEST_CADDIW,    "C.ADDIW"},
-                                                       {TEST_CADDI16SP, "C.ADDI16SP"},
-                                                       {TEST_CADDI4SPN, "C.ADDI4SPN"},
-                                                       {TEST_CANDI,     "C.ANDI"},
-                                                       {TEST_CLI,       "C.LI"},
-                                                       {TEST_CLUI, "C.LUI"},
-                                                       {TEST_CSRAI, "C.SRAI"},
-                                                       {TEST_CSRLI, "C.SRLI"},
+  std::map<ITYPE_TEST, const std::string> test_name = {{TEST_ADDI,   "ADDI"},
+                                                       {TEST_ANDI,   "ANDI"},
+                                                       {TEST_ORI,    "ORI"},
+                                                       {TEST_XORI,   "XORI"},
+                                                       {TEST_SLLI,   "SLLI"},
+                                                       {TEST_SRLI,   "SRLI"},
+                                                       {TEST_SRAI,   "SRAI"},
+                                                       {TEST_SLTI,   "SLTI"},
+                                                       {TEST_SLTIU,  "SLTIU"},
+                                                       {TEST_EBREAK, "EBREAK"},
+                                                       {TEST_ADDIW,  "ADDIW"},
+                                                       {TEST_SLLIW,  "SLLIW"},
+                                                       {TEST_SRAIW,  "SRAIW"},
+                                                       {TEST_SRLIW,  "SRLIW"},
+                                                       {TEST_CADDI,  "C.ADDI"},
+                                                       {TEST_CADDIW, "C.ADDIW"},
+                                                       {TEST_CADDI16SP,
+                                                                     "C.ADDI16SP"},
+                                                       {TEST_CADDI4SPN,
+                                                                     "C.ADDI4SPN"},
+                                                       {TEST_CANDI,  "C.ANDI"},
+                                                       {TEST_CLI,    "C.LI"},
+                                                       {TEST_CLUI,   "C.LUI"},
+                                                       {TEST_CSLLI,  "C.SLLI"},
+                                                       {TEST_CSRAI,  "C.SRAI"},
+                                                       {TEST_CSRLI,  "C.SRLI"},
+                                                       {TEST_CEBREAK,
+                                                                     "C.EBREAK"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -351,8 +377,9 @@ bool TestITypeLoop(bool verbose) {
                            TEST_SLTIU, TEST_EBREAK, TEST_ADDIW, TEST_SLLIW,
                            TEST_SRAIW, TEST_SRLIW, TEST_CADDI, TEST_CADDIW,
                            TEST_CADDI16SP, TEST_CADDI4SPN, TEST_CANDI, TEST_CLI,
-                           TEST_CLUI, TEST_CSRAI, TEST_CSRLI,
-                           };
+                           TEST_CLUI, TEST_CSLLI, TEST_CSRAI, TEST_CSRLI,
+                           TEST_CEBREAK,
+  };
   for (ITYPE_TEST test_case: test_set) {
     bool error = false;
     for (int i = 0; i < kUnitTestMax && !error; i++) {
@@ -381,7 +408,7 @@ enum R_TYPE_TEST {
   TEST_SLL, TEST_SRL, TEST_SRA, TEST_SLT, TEST_SLTU,
   TEST_ADDW, TEST_SLLW, TEST_SRAW, TEST_SRLW, TEST_SUBW,
   TEST_CADD, TEST_CAND, TEST_CADDW, TEST_COR,
-  TEST_CSUB, TEST_CSUBW, TEST_CXOR,
+  TEST_CSUB, TEST_CSUBW, TEST_CXOR, TEST_CMV,
 };
 
 bool
@@ -396,13 +423,16 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
     return false;
   }
   if (!en_ctest && (test_type == TEST_CADD || test_type == TEST_CAND ||
-    test_type == TEST_CADDW || test_type == TEST_COR || test_type == TEST_CSUB
-    || test_type == TEST_CSUBW || test_type == TEST_CXOR)) {
+                    test_type == TEST_CADDW || test_type == TEST_COR ||
+                    test_type == TEST_CSUB
+                    || test_type == TEST_CSUBW || test_type == TEST_CXOR ||
+                    test_type == TEST_CMV)) {
     return false;
   }
 
   if (test_type == TEST_CAND || test_type == TEST_CADDW || test_type == TEST_COR
-      || test_type == TEST_CSUB || test_type == TEST_CSUBW || test_type == TEST_CXOR) {
+      || test_type == TEST_CSUB || test_type == TEST_CSUBW ||
+      test_type == TEST_CXOR) {
     rd = rs1 = (rs1 & 0b111) + 8;
     rs2 = (rs2 & 0b111) + 8;
   }
@@ -570,6 +600,14 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
       expected = value1 ^ value2;
       test_case = "C.XOR";
       break;
+    case TEST_CMV:
+      AddCmdCType(pointer, AsmCMv(rd, rs2));
+      expected = static_cast<int64_t >(value2);
+      test_case = "C.MV";
+      if (rs2 == 0) {
+        return false;
+      }
+      break;
     default:
       if (verbose) {
         printf("Undefined test case.\n");
@@ -604,28 +642,29 @@ TestRType(R_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
 }
 
 void PrintRTypeInstructionMessage(R_TYPE_TEST test_case, bool error) {
-  std::map<R_TYPE_TEST, const std::string> test_name = {{TEST_ADD,  "ADD"},
-                                                        {TEST_SUB,  "SUB"},
-                                                        {TEST_AND,  "AND"},
-                                                        {TEST_OR,   "OR"},
-                                                        {TEST_XOR,  "XOR"},
-                                                        {TEST_SLL,  "SLL"},
-                                                        {TEST_SRL,  "SRL"},
-                                                        {TEST_SRA,  "SRA"},
-                                                        {TEST_SLT,  "SLT"},
-                                                        {TEST_SLTU, "SLTU"},
-                                                        {TEST_ADDW, "ADDW"},
-                                                        {TEST_SLLW, "SLLW"},
-                                                        {TEST_SRAW, "SRAW"},
-                                                        {TEST_SRLW, "SRLW"},
-                                                        {TEST_SUBW, "SUBW"},
-                                                        {TEST_CADD, "C.ADD"},
-                                                        {TEST_CAND, "C.AND"},
+  std::map<R_TYPE_TEST, const std::string> test_name = {{TEST_ADD,   "ADD"},
+                                                        {TEST_SUB,   "SUB"},
+                                                        {TEST_AND,   "AND"},
+                                                        {TEST_OR,    "OR"},
+                                                        {TEST_XOR,   "XOR"},
+                                                        {TEST_SLL,   "SLL"},
+                                                        {TEST_SRL,   "SRL"},
+                                                        {TEST_SRA,   "SRA"},
+                                                        {TEST_SLT,   "SLT"},
+                                                        {TEST_SLTU,  "SLTU"},
+                                                        {TEST_ADDW,  "ADDW"},
+                                                        {TEST_SLLW,  "SLLW"},
+                                                        {TEST_SRAW,  "SRAW"},
+                                                        {TEST_SRLW,  "SRLW"},
+                                                        {TEST_SUBW,  "SUBW"},
+                                                        {TEST_CADD,  "C.ADD"},
+                                                        {TEST_CAND,  "C.AND"},
                                                         {TEST_CADDW, "C.ADDW"},
-                                                        { TEST_COR, "C.OR"},
-                                                        {TEST_CSUB, "C.SUB"},
+                                                        {TEST_COR,   "C.OR"},
+                                                        {TEST_CSUB,  "C.SUB"},
                                                         {TEST_CSUBW, "C.SUBW"},
-                                                        {TEST_CXOR, "C.XOR"},
+                                                        {TEST_CXOR,  "C.XOR"},
+                                                        {TEST_CMV,   "C.MV"},
 
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
@@ -640,8 +679,8 @@ bool TestRTypeLoop(bool verbose = true) {
                              TEST_SRAW, TEST_SRLW, TEST_SUBW,
                              TEST_CADD, TEST_CAND, TEST_CADDW,
                              TEST_COR, TEST_CSUB, TEST_CSUBW,
-                             TEST_CXOR,
-                             };
+                             TEST_CXOR, TEST_CMV,
+  };
   for (R_TYPE_TEST test_case: test_sets) {
     bool error = false;
     for (int i = 0; i < kUnitTestMax && !error; i++) {
@@ -756,7 +795,8 @@ bool TestLuiLoop(bool verbose) {
 
 // LOAD test cases start here.
 enum LOAD_TEST {
-  TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW, TEST_LWU, TEST_LD
+  TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW, TEST_LWU, TEST_LD,
+  TEST_CLD, TEST_CLDSP, TEST_CLW, TEST_CLWSP,
 };
 
 bool TestLoad(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
@@ -765,8 +805,31 @@ bool TestLoad(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
   if (!en_64_bit && (test_type == TEST_LWU || test_type == TEST_LD)) {
     return false;
   }
+  if (!en_ctest && (test_type == TEST_CLD || test_type == TEST_CLDSP
+                    || test_type == TEST_CLWSP || test_type == TEST_CLW)) {
+    return false;
+  }
   bool error = false;
   std::string test_case = "";
+
+  if (test_type == TEST_CLD) {
+    rd = (rd & 0b111) + 8;
+    rs1 = (rs1 & 0b111) + 8;
+    offset1 = offset1 & 0b11111000;
+  } else if (test_type == TEST_CLDSP) {
+    rs1 = X2;
+    offset1 = 0b0111111000;
+  } else if (test_type == TEST_CLWSP) {
+    rs1 = X2;
+    offset1 = offset1 & 0b11111100;
+    if (rd == 0) {
+      return false;
+    }
+  } else if (test_type == TEST_CLW) {
+    rs1 = (rs1 & 0b111) + 8;
+    rd = (rd & 0b111) + 8;
+    offset1 = offset1 & 0b1111100;
+  }
 
   if (rs1 == ZERO) {
     offset0 = 0;
@@ -816,6 +879,23 @@ bool TestLoad(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
       AddCmd(pointer, AsmLd(rd, rs1, offset1));
       expected = val;
       break;
+    case TEST_CLD:
+      AddCmdCType(pointer, AsmCLd(rd, rs1, offset1));
+      expected = val;
+      break;
+    case TEST_CLW:
+      AddCmdCType(pointer, AsmCLw(rd, rs1, offset1));
+      expected = val & 0xFFFFFFFF;
+      expected = SignExtend(expected, 32);
+      break;
+    case TEST_CLDSP:
+      AddCmdCType(pointer, AsmCLdsp(rd, offset1));
+      expected = val;
+      break;
+    case TEST_CLWSP:
+      AddCmdCType(pointer, AsmCLwsp(rd, offset1));
+      expected = SignExtend(val & 0xFFFFFFFF, 32);
+      break;
     default:
       if (verbose) {
         printf("Undefined test case %d\n", test_type);
@@ -838,7 +918,8 @@ bool TestLoad(LOAD_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset0,
   if (verbose) {
     PrintErrorMessage(test_case, error, expected, return_value);
     if (error) {
-      printf("rd: %2d, rs1: %2d, offset0: %08X, offset1: %08X, val: %08lX\n", rd,
+      printf("rd: %2d, rs1: %2d, offset0: %08X, offset1: %08X, val: %08lX\n",
+             rd,
              rs1, offset0, offset1, val);
     }
   }
@@ -850,13 +931,17 @@ void PrintLoadInstructionMessage(LOAD_TEST test_case, bool error,
   if (!verbose) {
     return;
   }
-  std::map<LOAD_TEST, const std::string> test_name = {{TEST_LB,  "LB"},
-                                                      {TEST_LBU, "LBU"},
-                                                      {TEST_LH,  "LH"},
-                                                      {TEST_LHU, "LHU"},
-                                                      {TEST_LW,  "LW"},
-                                                      {TEST_LWU, "LWU"},
-                                                      {TEST_LD,  "LD"},
+  std::map<LOAD_TEST, const std::string> test_name = {{TEST_LB,    "LB"},
+                                                      {TEST_LBU,   "LBU"},
+                                                      {TEST_LH,    "LH"},
+                                                      {TEST_LHU,   "LHU"},
+                                                      {TEST_LW,    "LW"},
+                                                      {TEST_LWU,   "LWU"},
+                                                      {TEST_LD,    "LD"},
+                                                      {TEST_CLD,   "CLD"},
+                                                      {TEST_CLW,   "CLW"},
+                                                      {TEST_CLDSP, "CLDSP"},
+                                                      {TEST_CLWSP, "CLWSP"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -865,7 +950,8 @@ void PrintLoadInstructionMessage(LOAD_TEST test_case, bool error,
 bool TestLoadLoop(bool verbose) {
   bool error = false;
   LOAD_TEST test_sets[] = {TEST_LB, TEST_LBU, TEST_LH, TEST_LHU, TEST_LW,
-                           TEST_LWU, TEST_LD};
+                           TEST_LWU, TEST_LD, TEST_CLD, TEST_CLW,
+                           TEST_CLDSP, TEST_CLWSP};
   for (auto test_case: test_sets) {
     for (int i = 0; i < kUnitTestMax && !error; i++) {
       uint32_t rs1 = rnd() % 32;
@@ -876,6 +962,11 @@ bool TestLoadLoop(bool verbose) {
         uint32_t offset0_effective;
         offset0 = rnd() % kMemSize;
         offset1 = rnd() & 0x0FFF;
+        if (test_case == TEST_CLD) {
+          offset1 &= 0b11111000;
+        } else if (test_case == TEST_CLW) {
+          offset1 &= 0b1111100;
+        }
         offset0_effective = (rs1 == ZERO) ? 0 : offset0;
         offset = offset0_effective + SignExtend(offset1, 12);
       }
@@ -895,16 +986,51 @@ bool TestLoadLoop(bool verbose) {
 
 // Store test cases start here.
 enum STORE_TEST {
-  TEST_SW, TEST_SH, TEST_SB, TEST_SD
+  TEST_SW,
+  TEST_SH,
+  TEST_SB,
+  TEST_SD,
+  TEST_CSD,
+  TEST_CSDSP,
+  TEST_CSW,
+  TEST_CSWSP,
 };
 
 bool
 TestStore(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0,
           uint32_t offset1, uint32_t value,
           bool verbose) {
+  if (!en_64_bit && (test_type == TEST_SD || test_type == TEST_CSD
+                     || test_type == TEST_CSDSP)) {
+    return false;
+  }
+  if (!en_ctest && (test_type == TEST_CSD || test_type == TEST_CSDSP
+                    || test_type == TEST_CSW || test_type == TEST_CSWSP)) {
+    return false;
+  }
   bool error = false;
   std::string test_case = "";
   MemoryWrapper &mem = *memory;
+
+  if (test_type == TEST_CSD) {
+    rs1 = (rs1 & 0b111) + 8;
+    rs2 = (rs2 & 0b111) + 8;
+    assert((offset1 & ~0b11111000) == 0);
+  } else if (test_type == TEST_CSDSP) {
+    rs1 = X2;
+    assert((offset1 & ~0b111111000) == 0);
+  } else if (test_type == TEST_CSW) {
+    rs1 = (rs1 & 0b111) + 8;
+    rs2 = (rs1 & 0b111) + 8;
+    assert((offset1 & ~0b1111100) == 0);
+  } else if (test_type == TEST_CSWSP) {
+    rs1 = X2;
+    assert((offset1 & ~0b11111100) == 0);
+  }
+
+  if (rs1 == rs2) {
+    value = offset0;
+  }
 
   // STORE test code
   auto pointer = memory->begin();
@@ -916,7 +1042,7 @@ TestStore(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0,
   std::tie(offset20, offset12) = SplitImmediate(offset0);
   AddCmd(pointer, AsmLui(rs1, offset20));
   AddCmd(pointer, AsmAddi(rs1, rs1, offset12));
-  AddCmd(pointer, AsmSw(rs1, rs2, offset1));
+  AddCmd(pointer, AsmSd(rs1, ZERO, offset1));
   int64_t expected;
   switch (test_type) {
     case TEST_SW:
@@ -937,7 +1063,28 @@ TestStore(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0,
     case TEST_SD:
       test_case = "SD";
       AddCmd(pointer, AsmSd(rs1, rs2, offset1));
+      // SD works with 64 bit. Extend to 64 bit boundary.
       expected = SignExtend(static_cast<uint64_t >(value), 32);
+      break;
+    case TEST_CSD:
+      test_case = "C.SD";
+      AddCmdCType(pointer, AsmCSd(rs1, rs2, offset1));
+      expected = SignExtend(static_cast<uint64_t >(value), 32);
+      break;
+    case TEST_CSDSP:
+      test_case = "C.CSDSP";
+      AddCmdCType(pointer, AsmCSdsp(rs2, offset1));
+      expected = SignExtend(static_cast<uint64_t >(value), 32);
+      break;
+    case TEST_CSW:
+      test_case = "C.SW";
+      AddCmdCType(pointer, AsmCsw(rs1, rs2, offset1));
+      expected = value & 0xFFFFFFFF;
+      break;
+    case TEST_CSWSP:
+      test_case = "C.SWSP";
+      AddCmdCType(pointer, AsmCSwsp(rs2, offset1));
+      expected = value & 0xFFFFFFFF;
       break;
     default:
       if (verbose) {
@@ -956,9 +1103,25 @@ TestStore(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0,
   error = cpu.RunCpu(0, verbose) != 0;
   offset0 = (rs1 == ZERO) ? 0 : offset0;
   uint32_t address = offset0 + SignExtend(offset1, 12);
-  int size =
-    test_type == TEST_SH ? 2 : (test_type == TEST_SW ? 4 : (test_type == TEST_SD
-                                                            ? 8 : 1));
+  int size;
+  switch (test_type) {
+    case TEST_SB:
+      size = 1;
+      break;
+    case TEST_SH:
+      size = 2;
+      break;
+    case TEST_SW:
+    case TEST_CSW:
+    case TEST_CSWSP:
+      size = 4;
+      break;
+    case TEST_SD:
+    case TEST_CSD:
+    case TEST_CSDSP:
+      size = 8;
+      break;
+  }
   uint64_t result = 0;
   for (int i = 0; i < size; ++i) {
     result |= static_cast<uint64_t>(mem[address + i]) << (8 * i);
@@ -980,10 +1143,14 @@ void PrintStoreInstructionMessage(STORE_TEST test_case, bool error,
   if (!verbose) {
     return;
   }
-  std::map<STORE_TEST, const std::string> test_name = {{TEST_SW, "SW"},
-                                                       {TEST_SH, "SH"},
-                                                       {TEST_SB, "SB"},
-                                                       {TEST_SD, "SD"},
+  std::map<STORE_TEST, const std::string> test_name = {{TEST_SW,    "SW"},
+                                                       {TEST_SH,    "SH"},
+                                                       {TEST_SB,    "SB"},
+                                                       {TEST_SD,    "SD"},
+                                                       {TEST_CSD,   "CSD"},
+                                                       {TEST_CSDSP, "CSDSP"},
+                                                       {TEST_CSW,   "CSW"},
+                                                       {TEST_CSWSP, "CSWSP"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -991,7 +1158,8 @@ void PrintStoreInstructionMessage(STORE_TEST test_case, bool error,
 
 bool TestStoreLoop(bool verbose) {
   bool error = false;
-  STORE_TEST test_sets[] = {TEST_SW, TEST_SH, TEST_SB, TEST_SD};
+  STORE_TEST test_sets[] = {TEST_SW, TEST_SH, TEST_SB, TEST_SD, TEST_CSD,
+                            TEST_CSDSP, TEST_CSW, TEST_CSWSP};
   for (auto test_case: test_sets) {
     for (int i = 0; i < kUnitTestMax && !error; i++) {
       int32_t rs1 = rnd() % 32;
@@ -1001,13 +1169,19 @@ bool TestStoreLoop(bool verbose) {
         int32_t offset0_effective;
         offset0 = rnd() % kMemSize;
         offset1 = rnd() & 0x0FFF;
+        if (test_case == TEST_CSD) {
+          offset1 &= 0b11111000;
+        } else if (test_case == TEST_CSDSP) {
+          offset1 &= 0b111111000;
+        } else if (test_case == TEST_CSW) {
+          offset1 &= 0b1111100;
+        } else if (test_case == TEST_CSWSP) {
+          offset1 &= 0b11111100;
+        }
         offset0_effective = (rs1 == ZERO) ? 0 : offset0;
         offset = offset0_effective + SignExtend(offset1, 12);
       }
       int32_t value = rnd() & 0xFFFFFFFF;
-      if (rs1 == rs2) {
-        value = offset0;
-      }
       bool test_error = TestStore(test_case, rs1, rs2, offset0, offset1, value,
                                   false);
       if (test_error && verbose) {
@@ -1037,8 +1211,8 @@ std::map<B_TYPE_TEST, const std::string> test_name = {{TEST_BEQ,   "BEQ"},
                                                       {TEST_BNE,   "BNE"},
                                                       {TEST_CBEQZ, "C.BEQZ"},
                                                       {TEST_CBNEZ, "C.BNEZ"},
-                                                      {TEST_CJ, "C.J"},
-                                                      {TEST_CJAL, "CJAL"},
+                                                      {TEST_CJ,    "C.J"},
+                                                      {TEST_CJAL,  "CJAL"},
 };
 
 void PrintBTypeInstructionMessage(B_TYPE_TEST test_case, bool error) {
@@ -1052,6 +1226,10 @@ TestBType(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1,
           bool verbose = true) {
   bool error = false;
   if (test_type == TEST_CJAL && en_64_bit) {
+    return false;
+  }
+  if (!en_ctest && (test_type == TEST_CBNEZ || test_type == TEST_CBEQZ ||
+                    test_type == TEST_CJ || test_type == TEST_CJAL)) {
     return false;
   }
   std::string test_case = test_name[test_type];
@@ -1143,7 +1321,8 @@ TestBType(B_TYPE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t value1,
 bool TestBTypeLoop(bool verbose = true) {
   bool total_error = false;
   B_TYPE_TEST test_sets[] = {TEST_BEQ, TEST_BGE, TEST_BGEU, TEST_BLT, TEST_BLTU,
-                             TEST_BNE, TEST_CBEQZ, TEST_CBNEZ, TEST_CJ, TEST_CJAL};
+                             TEST_BNE, TEST_CBEQZ, TEST_CBNEZ, TEST_CJ,
+                             TEST_CJAL};
 
   for (B_TYPE_TEST test_case: test_sets) {
     bool error = false;
@@ -1202,27 +1381,34 @@ bool TestBTypeLoop(bool verbose = true) {
   }
   return total_error;
 }
+
 // B-Type tests end here.
 enum JAL_TYPE_TEST {
   TEST_JAL, TEST_JALR, TEST_CJALR, TEST_CJR,
 };
 
-void PrintJalrTypeInstructionMessage(JAL_TYPE_TEST test_case, bool error, bool verbose = true) {
+void PrintJalrTypeInstructionMessage(JAL_TYPE_TEST test_case, bool error,
+                                     bool verbose = true) {
   if (!verbose) {
     return;
   }
-  std::map<JAL_TYPE_TEST, const std::string> test_name = {{TEST_JAL, "JAL"},
-                                                          {TEST_JALR, "JALR"},
+  std::map<JAL_TYPE_TEST, const std::string> test_name = {{TEST_JAL,   "JAL"},
+                                                          {TEST_JALR,  "JALR"},
                                                           {TEST_CJALR, "C.JALR"},
-                                                          {TEST_CJR, "C.JR"},
+                                                          {TEST_CJR,   "C.JR"},
   };
-  printf("%s test %s.\n", test_name[test_case].c_str(), error ? "failed" : "passed");
+  printf("%s test %s.\n", test_name[test_case].c_str(),
+         error ? "failed" : "passed");
 }
 
-bool TestJalrType(JAL_TYPE_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t offset, uint32_t value,
+bool TestJalrType(JAL_TYPE_TEST test_type, uint32_t rd, uint32_t rs1,
+                  uint32_t offset, uint32_t value,
                   bool verbose) {
   bool error = false;
   std::string test_case = "";
+  if (!en_ctest && (test_type == TEST_CJR || test_type == TEST_CJALR)) {
+    return false;
+  }
 
   if (rs1 == ZERO) {
     value = 0;
@@ -1234,6 +1420,9 @@ bool TestJalrType(JAL_TYPE_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t o
   if (test_type == TEST_CJALR) {
     offset = 0;
     rd = X1;
+    if (rs1 == 0) {
+      return false;
+    }
   }
 
   uint32_t start_point = kMemSize / 4;
@@ -1325,10 +1514,11 @@ enum MULT_TYPE_TEST {
 
 bool
 TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
-          int64_t value1, int64_t value2,
-          bool verbose) {
-  bool w_instruction = test_type == TEST_MULW || test_type == TEST_DIVUW || test_type == TEST_DIVW
-                             || test_type == TEST_REMUW || test_type == TEST_REMW;
+             int64_t value1, int64_t value2,
+             bool verbose) {
+  bool w_instruction =
+    test_type == TEST_MULW || test_type == TEST_DIVUW || test_type == TEST_DIVW
+    || test_type == TEST_REMUW || test_type == TEST_REMW;
 
   if (!en_64_bit && w_instruction) {
     return false;
@@ -1379,7 +1569,8 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
         expected = (value1 * static_cast<uint64_t >(value2 & 0xFFFFFFFF))
           >> xlen;
       } else {
-        temp128 = static_cast<__int128 >(value1) * static_cast<uint64_t>(value2);
+        temp128 =
+          static_cast<__int128 >(value1) * static_cast<uint64_t>(value2);
         expected = temp128 >> xlen;
       }
       test_case = "MULHSU";
@@ -1387,11 +1578,12 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
     case TEST_MULHU:
       AddCmd(pointer, AsmMulhu(rd, rs1, rs2));
       if (xlen == 32) {
-        expected = static_cast<uint64_t>(value1 & 0xFFFFFFFF) * static_cast<uint64_t >(value2 & 0xFFFFFFFF);
+        expected = static_cast<uint64_t>(value1 & 0xFFFFFFFF) *
+                   static_cast<uint64_t >(value2 & 0xFFFFFFFF);
         expected = expected >> xlen;
       } else {
         temp128 = static_cast<__int128 >(static_cast<uint64_t >(value1)) *
-          static_cast<uint64_t>(value2);
+                  static_cast<uint64_t>(value2);
         expected = temp128 >> xlen;
       }
       test_case = "MULHU";
@@ -1433,7 +1625,8 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
         expected = ~0;
       } else {
         expected =
-          static_cast<uint64_t>(value1 & 0xFFFFFFFF) / static_cast<uint64_t>(value2 & 0xFFFFFFFF);
+          static_cast<uint64_t>(value1 & 0xFFFFFFFF) /
+          static_cast<uint64_t>(value2 & 0xFFFFFFFF);
       }
       test_case = "DIVUW";
       break;
@@ -1443,7 +1636,8 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
         expected = -1;
       } else {
         expected =
-          static_cast<int64_t>(SignExtend(value1, 32)) / static_cast<int64_t>(SignExtend(value2, 32));
+          static_cast<int64_t>(SignExtend(value1, 32)) /
+          static_cast<int64_t>(SignExtend(value2, 32));
       }
       test_case = "DIVW";
       break;
@@ -1476,7 +1670,8 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
         expected = value1;
       } else {
         expected =
-          static_cast<uint64_t>(value1 & 0xFFFFFFFF) % static_cast<uint64_t>(value2 & 0xFFFFFFFF);
+          static_cast<uint64_t>(value1 & 0xFFFFFFFF) %
+          static_cast<uint64_t>(value2 & 0xFFFFFFFF);
       }
       test_case = "REMUW";
       break;
@@ -1486,7 +1681,8 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
         expected = value1;
       } else {
         expected =
-          static_cast<int64_t>(SignExtend(value1, 32)) % static_cast<int64_t>(SignExtend(value2, 32));
+          static_cast<int64_t>(SignExtend(value1, 32)) %
+          static_cast<int64_t>(SignExtend(value2, 32));
       }
       test_case = "REMW";
       break;
@@ -1513,7 +1709,8 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
   int64_t return_value = static_cast<int64_t>(cpu.ReadRegister(A0));
   error |= return_value != expected;
   if (error & verbose) {
-    printf("RD: %d, RS1: %d, RS2: %d, Value1: %ld(%08lx), value2: %ld(%08lx)\n", rd,
+    printf("RD: %d, RS1: %d, RS2: %d, Value1: %ld(%08lx), value2: %ld(%08lx)\n",
+           rd,
            rs1, rs2, value1, value1,
            value2, value2);
   }
@@ -1524,19 +1721,19 @@ TestMultType(MULT_TYPE_TEST test_type, int32_t rd, int32_t rs1, int32_t rs2,
 }
 
 void PrintMultTypeInstructionMessage(MULT_TYPE_TEST test_case, bool error) {
-  std::map<MULT_TYPE_TEST, const std::string> test_name = {{TEST_MUL,  "MUL"},
-                                                           {TEST_MULH, "MULH"},
+  std::map<MULT_TYPE_TEST, const std::string> test_name = {{TEST_MUL,    "MUL"},
+                                                           {TEST_MULH,   "MULH"},
                                                            {TEST_MULHSU, "MULHSU"},
-                                                           {TEST_MULHU, "MULHU"},
-                                                        {TEST_MULW,  "MULW"},
-                                                           {TEST_DIV, "DIV"},
-                                                           {TEST_DIVU, "DIVU"},
-                                                           {TEST_DIVUW, "DIVUW"},
-                                                           {TEST_DIVW, "DIVW"},
-                                                           {TEST_REM, "REM"},
-                                                           {TEST_REMU, "REMU"},
-                                                           {TEST_REMUW, "REMUW"},
-                                                           {TEST_REMW, "REMW"},
+                                                           {TEST_MULHU,  "MULHU"},
+                                                           {TEST_MULW,   "MULW"},
+                                                           {TEST_DIV,    "DIV"},
+                                                           {TEST_DIVU,   "DIVU"},
+                                                           {TEST_DIVUW,  "DIVUW"},
+                                                           {TEST_DIVW,   "DIVW"},
+                                                           {TEST_REM,    "REM"},
+                                                           {TEST_REMU,   "REMU"},
+                                                           {TEST_REMUW,  "REMUW"},
+                                                           {TEST_REMW,   "REMW"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -1544,9 +1741,10 @@ void PrintMultTypeInstructionMessage(MULT_TYPE_TEST test_case, bool error) {
 
 bool TestMultTypeLoop(bool verbose = true) {
   bool total_error = false;
-  MULT_TYPE_TEST test_sets[] = {TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU, TEST_MULW,
-                                  TEST_DIV, TEST_DIVU, TEST_DIVUW, TEST_DIVW,
-                                  TEST_REM, TEST_REMU, TEST_REMUW, TEST_REMW,
+  MULT_TYPE_TEST test_sets[] = {TEST_MUL, TEST_MULH, TEST_MULHSU, TEST_MULHU,
+                                TEST_MULW,
+                                TEST_DIV, TEST_DIVU, TEST_DIVUW, TEST_DIVW,
+                                TEST_REM, TEST_REMU, TEST_REMUW, TEST_REMW,
   };
   for (MULT_TYPE_TEST test_case: test_sets) {
     bool error = false;
@@ -1557,9 +1755,10 @@ bool TestMultTypeLoop(bool verbose = true) {
       int32_t value1 = static_cast<int32_t>(rnd());
       int32_t value2 = static_cast<int32_t>(rnd());
       bool test_error = TestMultType(test_case, rd, rs1, rs2, value1, value2,
-                                  false);
+                                     false);
       if (test_error && verbose) {
-        test_error = TestMultType(test_case, rd, rs1, rs2, value1, value2, true);
+        test_error = TestMultType(test_case, rd, rs1, rs2, value1, value2,
+                                  true);
       }
       error |= test_error;
     }
