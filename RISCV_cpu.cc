@@ -72,7 +72,13 @@ void RiscvCpu::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
 uint32_t RiscvCpu::LoadCmd(uint64_t pc) {
   auto &mem = *memory_;
   uint64_t physical_address = VirtualToPhysical(pc);
-  return mem.Read32(physical_address);
+  uint32_t cmd = mem.Read32(physical_address);
+  if (!page_fault_ && (pc & 0b11) != 0 && (cmd & 0b11) == 0b11) {
+    uint64_t physical_address_upper = VirtualToPhysical(pc + 2);
+    uint32_t cmd_upper = mem.Read32(physical_address_upper);
+    cmd = (cmd & 0xFFFF) | (cmd_upper & 0xFFFF) << 16;
+  }
+  return  cmd;
 }
 
 void RiscvCpu::SetRegister(uint32_t num, uint64_t value) { reg_[num] = value; }
@@ -467,6 +473,7 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   } else { // instruction == INST_LD
     load_data = LoadWd(address, 64); // LD
   }
+
   reg_[rd] = load_data;
 }
 
@@ -474,6 +481,25 @@ void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
                                 uint32_t rs2, int32_t imm12_stype) {
   uint64_t dst_address = reg_[rs1] + imm12_stype;
   uint64_t address = VirtualToPhysical(dst_address, true);
+  if (!page_fault_) {
+    switch (instruction) {
+      case INST_SH:
+        if ((dst_address & 1)) {
+          VirtualToPhysical(dst_address + 1, true);
+        }
+        break;
+      case INST_SW:
+        if ((dst_address & 0b11) != 0) {
+          VirtualToPhysical(dst_address + 2, true);
+        }
+        break;
+      case INST_SD:
+        if ((dst_address & 0b111) != 0) {
+          VirtualToPhysical(dst_address + 6, true);
+        }
+        break;
+    }
+  }
   if (page_fault_) {
     Trap(ExceptionCode::STORE_PAGE_FAULT);
     return;
@@ -490,9 +516,11 @@ void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   }
   StoreWd(address, reg_[rs2], width);
   if (mxl_ == 1) {
-    host_write_ |= (address & 0xFFFFFFFF) == kToHost;
+    host_write_ |= (address & 0xFFFFFFFF) == kToHost0 ? 1 : 0;
+    host_write_ |= (address & 0xFFFFFFFF) == kToHost1 ? 2 : 0;
   } else {
-    host_write_ |= address == kToHost;
+    host_write_ |= address == kToHost0 ? 1 : 0;
+    host_write_ |= address == kToHost1 ? 2 : 0;
   }
 }
 
@@ -712,7 +740,7 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   error_flag_ = false;
   end_flag_ = false;
-  host_write_ = false;
+  host_write_ = 0;
 
   next_pc_ = start_pc;
   do {
@@ -748,7 +776,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       next_pc_ = pc_ + 2;
       std::tie(instruction, rd, rs1, rs2, imm) = GetCode16(ir, mxl_);
     }
-
+    uint64_t t; // t stores the next pc temporarily.
     switch (instruction) {
       uint64_t temp64;
       case INST_ADD:
@@ -803,15 +831,16 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         next_pc_ = BranchInstruction(instruction, rs1, rs2, imm);
         break;
       case INST_JAL:
-        reg_[rd] = pc_ + 4;
+        reg_[rd] = next_pc_;
         next_pc_ = pc_ + imm;
         if (next_pc_ == pc_) {
           error_flag_ = true;
         }
         break;
       case INST_JALR:
+        t = next_pc_;
         next_pc_ = (reg_[rs1] + imm) & ~1;
-        reg_[rd] = pc_ + 4;
+        reg_[rd] = t;
         // Below lines are only for simulation purpose.
         // Remove once a better solution is found.
         if (rd == ZERO && rs1 == RA && reg_[rs1] == 0 && imm == 0) {
@@ -834,14 +863,14 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         StoreInstruction(instruction, rd, rs1, rs2, imm);
         break;
       case INST_LUI:
-        temp64 = imm << 12;
+        temp64 = imm;
         if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
         reg_[rd] = temp64;
         break;
       case INST_AUIPC:
-        temp64 = pc_ + (imm << 12);
+        temp64 = pc_ + imm;
         if (xlen_ == 32) {
           temp64 = Sext32bit(temp64);
         }
@@ -894,7 +923,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       DumpRegisters();
     }
 
-    if (host_emulation_ && host_write_) {
+    if (host_emulation_ && host_write_ != 0) {
       HostEmulation();
     }
 
@@ -912,13 +941,23 @@ void RiscvCpu::HostEmulation() {
   uint8_t device;
   uint32_t command;
   uint64_t value = 0;
+  if ((host_write_ & 0b10) != 0) {
+    payload = mxl_ == 1 ? memory_->Read32(kToHost1) : memory_->Read64(kToHost1);
+    value = payload >> 1;
+    reg_[A0] = value;
+    end_flag_ = true;
+    host_write_ = 0;
+    return;
+  }
+
   if (mxl_ == 1) {
     // This address should be physical.
-    payload = memory_->Read32(kToHost);
+    payload = memory_->Read32(kToHost0);
     device = 0;
     command = 0;
   } else {
-    payload = memory_->Read64(kToHost);
+    // This address should be physical.
+    payload = memory_->Read64(kToHost0);
     device = (payload >> 56) & 0xFF;
     command = (payload >> 48) & 0x3FFFF;
   }
@@ -952,7 +991,7 @@ void RiscvCpu::HostEmulation() {
   } else {
     std::cerr << "Unsupported Host Device " << device << std::endl;
   }
-  host_write_ = false;
+  host_write_ = 0;
 }
 
 void RiscvCpu::Ecall() {
@@ -1333,7 +1372,7 @@ std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(
         imm = SignExtend(imm, 12);
         break;
       }
-      instruction = opcode == 0b01101 ? INST_ADDI : INST_ADDIW;
+      instruction = (opcode >> 2) == 0 ? INST_ADDI : INST_ADDIW;
       rs1 = rd = bitcrop(ir, 5, 7);
       imm = bitcrop(ir, 1, 12) << 5;
       imm |= bitcrop(ir, 5, 2);
@@ -1411,7 +1450,7 @@ std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(
       break;
     case 0b10010: // c.add.
       if (bitcrop(ir, 1, 12) == 1) {
-        if (bitcrop(ir, 5, 2) == 0 & bitcrop(ir, 5, 7) == 0) {
+        if (bitcrop(ir, 5, 2) == 0 && bitcrop(ir, 5, 7) == 0) {
           // c.ebreak.
           instruction = INST_SYSTEM;
           imm = 1;

@@ -41,6 +41,7 @@ core_test:  $(TEST_TARGETS) $(TARGET)
 	./rv32um-v-tests.sh
 	./rv64um-p-tests.sh
 	./rv64um-v-tests.sh
+	./rvuc-tests.sh
 
 .PHONY: wrapper_test
 wrapper_test: $(WRAPPER_TESTS)

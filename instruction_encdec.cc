@@ -144,7 +144,7 @@ int32_t GetImm(uint32_t ir) {
       break;
     case OPCODE_LUI:
     case OPCODE_AUIPC:
-      imm = GetImm20(ir);
+      imm = GetImm20(ir) << 12;
       break;
     case OPCODE_J:
       imm = GetImm21(ir);

@@ -135,11 +135,12 @@ public:
 private:
   void HostEmulation();
 
-  static constexpr uint64_t kToHost = 0x80001000;
+  static constexpr uint64_t kToHost0 = 0x80001000;
+  static constexpr uint64_t kToHost1 = 0x80003000;
   static constexpr uint64_t kFromHost = 0x80001040;
   bool ecall_emulation_ = false;
   bool host_emulation_ = false;
-  bool host_write_;
+  int host_write_;
   uint64_t top_ = 0x80000000;
   uint64_t bottom_ = 0x40000000;
   uint64_t brk_ = bottom_;

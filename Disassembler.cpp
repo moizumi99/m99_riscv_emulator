@@ -46,7 +46,7 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
       cmd = "C.LW " + GetRegName(rd) + ", " + std::to_string(imm) + "(" + GetRegName(rs1) + ")";
       break;
     case 0b01001:
-      cmd = "C.LU " + GetRegName(rd) + ", " + std::to_string(imm);
+      cmd = "C.LI " + GetRegName(rd) + ", " + std::to_string(imm);
       break;
     case 0b01010:
       cmd = "C.LWSP " + GetRegName(rd) + ", " + std::to_string(imm) + "(SP)";
@@ -60,7 +60,7 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
         // c.addi16sp.
         cmd = "C.ADDI16SP SP, SP, " + std::to_string(imm);
       } else {
-        cmd = "C.LUT " + GetRegName(rd) + ", " + std::to_string(imm);
+        cmd = "C.LUI " + GetRegName(rd) + ", " + std::to_string(imm);
       }
       break;
     case 0b01110:
@@ -278,7 +278,7 @@ std::string Disassemble(uint32_t ir, int mxl) {
              std::to_string(imm13);
       break;
     case OPCODE_J: // jal
-      cmd = "JAL " + GetRegName(rd) + std::to_string(imm21);
+      cmd = "JAL " + GetRegName(rd) + ", " + std::to_string(imm21);
       break;
     case OPCODE_JALR: // jalr
       if (funct3 == FUNC3_JALR) {
