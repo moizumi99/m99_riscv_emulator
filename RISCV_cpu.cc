@@ -9,6 +9,7 @@
 #include <tuple>
 #include <stdint.h>
 #include <cassert>
+#include <map>
 
 namespace RISCV_EMULATOR {
 
@@ -465,25 +466,11 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
 }
 
 int RiscvCpu::StoreWidth(uint32_t instruction) {
-  int width;
-  switch (instruction) {
-    case INST_SB:
-      width = 1;
-      break;
-    case INST_SH:
-      width = 2;
-      break;
-    case INST_SW:
-      width = 4;
-      break;
-    case INST_SD:
-      width = 8;
-      break;
-    default:
-      throw std::invalid_argument(
-        "Not a Store instruction " + std::to_string(instruction));
-  }
-  return width;
+  std::map<uint32_t, int> store_words = {{INST_SB, 1},
+                                         {INST_SH, 2},
+                                         {INST_SW, 4},
+                                         {INST_SD, 8}};
+  return store_words[instruction];
 }
 
 int RiscvCpu::StoreAccessWidth(uint32_t width, uint64_t address) {
@@ -508,7 +495,7 @@ int RiscvCpu::StoreAccessWidth(uint32_t width, uint64_t address) {
           "Not a right store size " + std::to_string(width));
     }
   }
-  return  access_width;
+  return access_width;
 }
 
 void RiscvCpu::CheckHostWrite(uint64_t address) {
