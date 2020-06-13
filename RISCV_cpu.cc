@@ -78,7 +78,7 @@ uint32_t RiscvCpu::LoadCmd(uint64_t pc) {
     uint32_t cmd_upper = mem.Read32(physical_address_upper);
     cmd = (cmd & 0xFFFF) | (cmd_upper & 0xFFFF) << 16;
   }
-  return  cmd;
+  return cmd;
 }
 
 void RiscvCpu::SetRegister(uint32_t num, uint64_t value) { reg_[num] = value; }
@@ -118,22 +118,9 @@ uint64_t RiscvCpu::LoadWd(uint64_t physical_address, int width) {
 
 void RiscvCpu::StoreWd(uint64_t physical_address, uint64_t data, int width) {
   auto &mem = *memory_;
-  switch (width) {
-    case 64:
-      mem[physical_address + 7] = (data >> 56) & 0xFF;
-      mem[physical_address + 6] = (data >> 48) & 0xFF;
-      mem[physical_address + 5] = (data >> 40) & 0xFF;
-      mem[physical_address + 4] = (data >> 32) & 0xFF;
-    case 32:
-      mem[physical_address + 3] = (data >> 24) & 0xFF;
-      mem[physical_address + 2] = (data >> 16) & 0xFF;
-    case 16:
-      mem[physical_address + 1] = (data >> 8) & 0xFF;
-    case 8:
-      mem[physical_address] = data & 0xFF;
-      break;
-    default:
-      throw std::invalid_argument("Store width is not 8, 16, 32, or 64.");
+  assert(width <= 8);
+  for (int offset = 0; offset < width; ++offset) {
+    mem[physical_address + offset] = (data >> offset * 8) & 0xFF;
   }
 }
 
@@ -477,44 +464,55 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   reg_[rd] = load_data;
 }
 
-void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
-                                uint32_t rs2, int32_t imm12_stype) {
-  uint64_t dst_address = reg_[rs1] + imm12_stype;
-  uint64_t address = VirtualToPhysical(dst_address, true);
-  if (!page_fault_) {
-    switch (instruction) {
-      case INST_SH:
-        if ((dst_address & 1)) {
-          VirtualToPhysical(dst_address + 1, true);
-        }
+int RiscvCpu::StoreWidth(uint32_t instruction) {
+  int width;
+  switch (instruction) {
+    case INST_SB:
+      width = 1;
+      break;
+    case INST_SH:
+      width = 2;
+      break;
+    case INST_SW:
+      width = 4;
+      break;
+    case INST_SD:
+      width = 8;
+      break;
+    default:
+      throw std::invalid_argument(
+        "Not a Store instruction " + std::to_string(instruction));
+  }
+  return width;
+}
+
+int RiscvCpu::StoreAccessWidth(uint32_t width, uint64_t address) {
+  bool burst_overflow = ((address & 0b111) + width - 1) >> 3;
+  int access_width = width;
+  if (burst_overflow) {
+    switch (width) {
+      case 1:
+        access_width = 1;
         break;
-      case INST_SW:
-        if ((dst_address & 0b11) != 0) {
-          VirtualToPhysical(dst_address + 2, true);
-        }
+      case 2:
+        access_width = 2 - (address & 0b1);
         break;
-      case INST_SD:
-        if ((dst_address & 0b111) != 0) {
-          VirtualToPhysical(dst_address + 6, true);
-        }
+      case 4:
+        access_width = 4 - (address & 0b11);
         break;
+      case 8:
+        access_width = 8 - (address & 0b111);
+        break;
+      default:
+        throw std::invalid_argument(
+          "Not a right store size " + std::to_string(width));
     }
   }
-  if (page_fault_) {
-    Trap(ExceptionCode::STORE_PAGE_FAULT);
-    return;
-  }
-  int width;
-  if (instruction == INST_SB) {
-    width = 8;
-  } else if (instruction == INST_SH) {
-    width = 16;
-  } else if (instruction == INST_SW) {
-    width = 32;
-  } else { // if instruction === INST_SD.
-    width = 64;
-  }
-  StoreWd(address, reg_[rs2], width);
+  return  access_width;
+}
+
+void RiscvCpu::CheckHostWrite(uint64_t address) {
+  // Check if the write is to host communication.
   if (mxl_ == 1) {
     host_write_ |= (address & 0xFFFFFFFF) == kToHost0 ? 1 : 0;
     host_write_ |= (address & 0xFFFFFFFF) == kToHost1 ? 2 : 0;
@@ -522,6 +520,34 @@ void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     host_write_ |= address == kToHost0 ? 1 : 0;
     host_write_ |= address == kToHost1 ? 2 : 0;
   }
+}
+
+void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                                uint32_t rs2, int32_t imm12_stype) {
+  int width = StoreWidth(instruction);
+  uint64_t dst_address = reg_[rs1] + imm12_stype;
+  // Check if the access crosses memory access unit (64 bit).
+  uint64_t address = VirtualToPhysical(dst_address, true);
+  if (page_fault_) {
+    Trap(ExceptionCode::STORE_PAGE_FAULT);
+    return;
+  }
+  int access_width = StoreAccessWidth(width, dst_address);
+  int next_width = width - access_width;
+  int64_t data = reg_[rs2] & GenerateBitMask(access_width * 8);
+  StoreWd(address, data, access_width);
+  if (!page_fault_ && next_width > 0) {
+    uint64_t next_address = VirtualToPhysical(dst_address + access_width, true);
+    if (!page_fault_) {
+      uint64_t next_data = reg_[rs2] >> (access_width * 8);
+      StoreWd(next_address, next_data, next_width);
+    }
+  }
+  if (page_fault_) {
+    Trap(ExceptionCode::STORE_PAGE_FAULT);
+    return;
+  }
+  CheckHostWrite(address);
 }
 
 void
@@ -629,7 +655,7 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     case INST_MULHSU:
       if (xlen_ == 32) {
         temp64 = (static_cast<int64_t>(reg_[rs1]) *
-          (reg_[rs2] & 0xFFFFFFFF)) >> 32;
+                  (reg_[rs2] & 0xFFFFFFFF)) >> 32;
       } else {
         temp64 = GetMulhsu64(static_cast<int64_t>(reg_[rs1]),
                              reg_[rs2]);
@@ -759,7 +785,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
       continue;
     }
-   // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
+    // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
     ctype_ = (ir & 0b11) != 0b11;
 
     uint32_t instruction, rd, rs1, rs2;
@@ -1337,7 +1363,8 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
   return instruction;
 }
 
-std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(uint32_t ir, int mxl) {
+std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t>
+RiscvCpu::GetCode16(uint32_t ir, int mxl) {
   uint32_t opcode = (((ir >> 13) & 0b111) << 2) | (ir & 0b11);
   uint32_t instruction = INST_ERROR;
   uint32_t rd = 0, rs1 = 0, rs2 = 0;
@@ -1411,7 +1438,7 @@ std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(
       instruction = INST_LD;
       rd = bitcrop(ir, 3, 2) + 8;
       rs1 = bitcrop(ir, 3, 7) + 8;
-      imm = bitcrop(ir, 3, 10)  << 3 | bitcrop(ir, 2, 5) << 6;
+      imm = bitcrop(ir, 3, 10) << 3 | bitcrop(ir, 2, 5) << 6;
       break;
     case 0b01110:
       instruction = INST_LD;
