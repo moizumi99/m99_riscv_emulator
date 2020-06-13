@@ -477,23 +477,8 @@ int RiscvCpu::StoreAccessWidth(uint32_t width, uint64_t address) {
   bool burst_overflow = ((address & 0b111) + width - 1) >> 3;
   int access_width = width;
   if (burst_overflow) {
-    switch (width) {
-      case 1:
-        access_width = 1;
-        break;
-      case 2:
-        access_width = 2 - (address & 0b1);
-        break;
-      case 4:
-        access_width = 4 - (address & 0b11);
-        break;
-      case 8:
-        access_width = 8 - (address & 0b111);
-        break;
-      default:
-        throw std::invalid_argument(
-          "Not a right store size " + std::to_string(width));
-    }
+    const int mask = width == width == 2 ? 0b1 : (width == 4 ? 0b11 : (width == 8 ? 0b111 : 0));
+    width = width - (address & mask);
   }
   return access_width;
 }
@@ -523,16 +508,14 @@ void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   int next_width = width - access_width;
   int64_t data = reg_[rs2] & GenerateBitMask(access_width * 8);
   StoreWd(address, data, access_width);
-  if (!page_fault_ && next_width > 0) {
+  if (next_width > 0) {
     uint64_t next_address = VirtualToPhysical(dst_address + access_width, true);
-    if (!page_fault_) {
-      uint64_t next_data = reg_[rs2] >> (access_width * 8);
-      StoreWd(next_address, next_data, next_width);
+    if (page_fault_) {
+      Trap(ExceptionCode::STORE_PAGE_FAULT);
+      return;
     }
-  }
-  if (page_fault_) {
-    Trap(ExceptionCode::STORE_PAGE_FAULT);
-    return;
+    uint64_t next_data = reg_[rs2] >> (access_width * 8);
+    StoreWd(next_address, next_data, next_width);
   }
   CheckHostWrite(address);
 }
