@@ -94,14 +94,15 @@ private:
 
   uint32_t GetCode32(uint32_t ir);
 
-  int StoreWidth(uint32_t instruction);
-  int StoreAccessWidth(uint32_t width, uint64_t address);
+  int GetLoadWidth(uint32_t instruction);
+  int GetStoreWidth(uint32_t instruction);
+  int GetAccessWidth(uint32_t width, uint64_t address);
 
   void CheckHostWrite(uint64_t address);
 
   std::pair<bool, bool> SystemCall();
 
-  uint64_t LoadWd(uint64_t physical_address, int width = 32);
+  uint64_t LoadWd(uint64_t physical_address, int width = 4);
 
   void StoreWd(uint64_t physical_address, uint64_t data, int width = 4);
 

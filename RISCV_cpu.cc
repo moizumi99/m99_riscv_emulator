@@ -110,10 +110,13 @@ std::pair<bool, bool> RiscvCpu::SystemCall() {
 }
 
 uint64_t RiscvCpu::LoadWd(uint64_t physical_address, int width) {
-  assert(width == 32 || width == 64);
+  assert(1 <= width && width <= 8);
   auto &mem = *memory_;
-  uint64_t result = (width == 32) ? mem.Read32(physical_address) : mem.Read64(
-    physical_address);
+  uint64_t result = 0;
+  for (int offset = 0; offset < width; ++offset) {
+    uint64_t loaded_byte = mem[physical_address + offset];
+    result |= loaded_byte << offset * 8;
+  }
   return result;
 }
 
@@ -437,6 +440,16 @@ void RiscvCpu::ImmediateShiftInstruction(uint32_t instruction, uint32_t rd,
   }
 }
 
+int RiscvCpu::GetLoadWidth(uint32_t instruction) {
+  std::map<uint32_t, int> load_size = {{INST_LB,  1},
+                                       {INST_LBU, 1},
+                                       {INST_LH,  2},
+                                       {INST_LHU, 2},
+                                       {INST_LW,  4},
+                                       {INST_LWU, 4},
+                                       {INST_LD,  8}};
+  return load_size[instruction];
+}
 void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
                                int32_t imm12) {
   uint64_t source_address = reg_[rs1] + imm12;
@@ -445,27 +458,29 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     Trap(ExceptionCode::LOAD_PAGE_FAULT);
     return;
   }
-  uint64_t load_data;
-  if (instruction == INST_LB) {
-    load_data = SignExtend(LoadWd(address) & 0xFF, 8); // LB
-  } else if (instruction == INST_LBU) {
-    load_data = LoadWd(address) & 0xFF; // LBU
-  } else if (instruction == INST_LH) {
-    load_data = SignExtend(LoadWd(address) & 0xFFFF, 16); // LH
-  } else if (instruction == INST_LHU) {
-    load_data = LoadWd(address) & 0xFFFF; // LHU
-  } else if (instruction == INST_LW) {
-    load_data = SignExtend(LoadWd(address), 32); // LW
+  int width = GetLoadWidth(instruction);
+  int access_width = GetAccessWidth(width, address);
+  int next_width = width - access_width;
+  uint64_t load_data = LoadWd(address, access_width);
+ if (next_width > 0) {
+    uint64_t next_address = VirtualToPhysical(address + access_width, false);
+    if (page_fault_) {
+      Trap(ExceptionCode::LOAD_PAGE_FAULT);
+      return;
+    }
+    uint64_t load_data_high = LoadWd(next_address, next_width);
+    load_data |= (load_data_high << access_width * 8);
+  }
+  if (instruction == INST_LB || instruction == INST_LH || instruction == INST_LW) {
+    load_data = SignExtend(load_data, width * 8);
   } else if (instruction == INST_LWU) {
-    load_data = LoadWd(address); // LWU
-  } else { // instruction == INST_LD
-    load_data = LoadWd(address, 64); // LD
+    load_data &= 0xFFFFFFFF;
   }
 
   reg_[rd] = load_data;
 }
 
-int RiscvCpu::StoreWidth(uint32_t instruction) {
+int RiscvCpu::GetStoreWidth(uint32_t instruction) {
   std::map<uint32_t, int> store_words = {{INST_SB, 1},
                                          {INST_SH, 2},
                                          {INST_SW, 4},
@@ -473,12 +488,12 @@ int RiscvCpu::StoreWidth(uint32_t instruction) {
   return store_words[instruction];
 }
 
-int RiscvCpu::StoreAccessWidth(uint32_t width, uint64_t address) {
+int RiscvCpu::GetAccessWidth(uint32_t width, uint64_t address) {
   bool burst_overflow = ((address & 0b111) + width - 1) >> 3;
   int access_width = width;
   if (burst_overflow) {
     const int mask = width == width == 2 ? 0b1 : (width == 4 ? 0b11 : (width == 8 ? 0b111 : 0));
-    width = width - (address & mask);
+    access_width = width - (address & mask);
   }
   return access_width;
 }
@@ -496,7 +511,6 @@ void RiscvCpu::CheckHostWrite(uint64_t address) {
 
 void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
                                 uint32_t rs2, int32_t imm12_stype) {
-  int width = StoreWidth(instruction);
   uint64_t dst_address = reg_[rs1] + imm12_stype;
   // Check if the access crosses memory access unit (64 bit).
   uint64_t address = VirtualToPhysical(dst_address, true);
@@ -504,7 +518,8 @@ void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     Trap(ExceptionCode::STORE_PAGE_FAULT);
     return;
   }
-  int access_width = StoreAccessWidth(width, dst_address);
+  int width = GetStoreWidth(instruction);
+  int access_width = GetAccessWidth(width, dst_address);
   int next_width = width - access_width;
   int64_t data = reg_[rs2] & GenerateBitMask(access_width * 8);
   StoreWd(address, data, access_width);
