@@ -215,7 +215,7 @@ void Load32BitElfFile(std::vector<uint8_t> &program, MemoryWrapper &memory) {
                   << ", size " << static_cast<int>(phdr->p_filesz) << ". ";
 
         for (Elf32_Word i = 0; i < phdr->p_filesz; i++) {
-          memory[phdr->p_vaddr + i] = program[phdr->p_offset + i];
+          memory.WriteByte(phdr->p_vaddr + i, program[phdr->p_offset + i]);
         }
         std::cerr << "Loaded" << std::endl;
         break;
@@ -233,7 +233,7 @@ void Load32BitElfFile(std::vector<uint8_t> &program, MemoryWrapper &memory) {
     std::cerr << ", end address: " << shdr->sh_addr + shdr->sh_size
               << std::endl;
     for (uint32_t i = shdr->sh_addr; i < shdr->sh_addr + shdr->sh_size; i++) {
-      memory[i] = 0;
+      memory.WriteByte(i, 0);
     }
   } else {
     std::cerr << "No BSS found." << std::endl;
@@ -255,7 +255,7 @@ void Load64BitElfFile(std::vector<uint8_t> &program, MemoryWrapper &memory) {
                   << ", size " << static_cast<int>(phdr->p_filesz) << ". ";
 
         for (Elf64_Word i = 0; i < phdr->p_filesz; i++) {
-          memory[phdr->p_vaddr + i] = program[phdr->p_offset + i];
+          memory.WriteByte(phdr->p_vaddr + i, program[phdr->p_offset + i]);
         }
         std::cerr << "Loaded" << std::endl;
         break;
@@ -273,7 +273,7 @@ void Load64BitElfFile(std::vector<uint8_t> &program, MemoryWrapper &memory) {
     std::cerr << ", end address: " << shdr->sh_addr + shdr->sh_size
               << std::endl;
     for (uint32_t i = shdr->sh_addr; i < shdr->sh_addr + shdr->sh_size; i++) {
-      memory[i] = 0;
+      memory.WriteByte(i, 0);
     }
   } else {
     std::cerr << "No BSS found." << std::endl;

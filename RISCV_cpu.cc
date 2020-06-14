@@ -114,7 +114,7 @@ uint64_t RiscvCpu::LoadWd(uint64_t physical_address, int width) {
   auto &mem = *memory_;
   uint64_t result = 0;
   for (int offset = 0; offset < width; ++offset) {
-    uint64_t loaded_byte = mem[physical_address + offset];
+    uint64_t loaded_byte = mem.ReadByte(physical_address + offset);
     result |= loaded_byte << offset * 8;
   }
   return result;
@@ -124,7 +124,7 @@ void RiscvCpu::StoreWd(uint64_t physical_address, uint64_t data, int width) {
   auto &mem = *memory_;
   assert(width <= 8);
   for (int offset = 0; offset < width; ++offset) {
-    mem[physical_address + offset] = (data >> offset * 8) & 0xFF;
+    mem.WriteByte(physical_address + offset, (data >> offset * 8) & 0xFF);
   }
 }
 
@@ -154,8 +154,8 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
       cause == STORE_PAGE_FAULT) {
     tval = faulting_address_;
   } else if (cause == ILLEGAL_INSTRUCTION) {
-    tval = (*memory_)[pc_] | ((*memory_)[pc_ + 1] << 8) |
-           ((*memory_)[pc_ + 2] << 16) | ((*memory_)[pc_ + 3] << 24);
+    tval = memory_->ReadByte(pc_) | (memory_->ReadByte(pc_ + 1) << 8) |
+      (memory_->ReadByte(pc_ + 2) << 16) | (memory_->ReadByte(pc_ + 3) << 24);
   }
   // TODO: Implement other tval cases.
 

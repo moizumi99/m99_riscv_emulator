@@ -1123,7 +1123,7 @@ TestStore(STORE_TEST test_type, uint32_t rs1, uint32_t rs2, uint32_t offset0,
   }
   uint64_t result = 0;
   for (int i = 0; i < size; ++i) {
-    result |= static_cast<uint64_t>(mem[address + i]) << (8 * i);
+    result |= static_cast<uint64_t>(mem.ReadByte(address + i)) << (8 * i);
   }
   error |= result != expected;
   if (verbose) {

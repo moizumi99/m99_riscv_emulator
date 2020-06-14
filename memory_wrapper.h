@@ -32,10 +32,6 @@ class MemoryWrapper {
   static constexpr int kMapEntry = 1 << kEntryBits;
   static constexpr size_t kMaxAddress = ((1ull << kTotalBits) - 1);
 public:
-  uint8_t &operator[](size_t i);
-
-  const uint8_t operator[](size_t i) const;
-
   const uint8_t ReadByte(size_t i) const;
 
   void WriteByte(size_t i, uint8_t data);

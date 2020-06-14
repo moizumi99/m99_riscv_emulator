@@ -32,13 +32,13 @@ bool MemoryWrapperTest(size_t start, size_t end, int val) {
   bool result = true;
   MemoryWrapper mw;
   for (size_t j = start; j < end; j++) {
-    mw[j] = GetHash8(j + val);
+    mw.WriteByte(j, GetHash8(j + val));
   }
 
   for (size_t j = start; j < end && result; j++) {
-    bool local_result = mw[j] == GetHash8(j + val);
+    bool local_result = mw.ReadByte(j) == GetHash8(j + val);
     if (!local_result) {
-      std::cout << "mw[" << j << "] = " << static_cast<int>(mw[j])
+      std::cout << "mw.Read(" << j << ") = " << static_cast<int>(mw.ReadByte(j))
                 << ", expectation = " << GetHash8(j)
                 << std::endl;
     }

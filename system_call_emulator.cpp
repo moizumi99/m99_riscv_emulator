@@ -117,7 +117,7 @@ size_t
 MemoryWrapperStrlen(const MemoryWrapper &mem, size_t address, size_t max) {
   size_t counter = 0;
   size_t index = address;
-  while (mem[index++] && counter < max) {
+  while (mem.ReadByte(index++) && counter < max) {
     ++counter;
   }
   return counter;
@@ -126,7 +126,7 @@ MemoryWrapperStrlen(const MemoryWrapper &mem, size_t address, size_t max) {
 char *MemoryWrapperCopy(const MemoryWrapper &mem, size_t address, size_t length,
                         char *dst) {
   for (size_t i = 0; i < length; ++i) {
-    dst[i] = mem[address + i];
+    dst[i] = mem.ReadByte(address + i);
   }
   return dst;
 }
@@ -156,7 +156,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     int length = reg[A2];
     unsigned char *buffer = new unsigned char[length];
     for (int i = 0; i < length; i++) {
-      buffer[i] = mem[reg[A1] + i];
+      buffer[i] = mem.ReadByte(reg[A1] + i);
     }
     std::cerr << std::endl;
     ssize_t return_value = CIO_write(reg[A0], buffer, length);
@@ -185,7 +185,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     size_t return_value = CIO_read(reg[A0], buffer, length);
     reg[A0] = (uint32_t) return_value;
     for (int i = 0; i < length; i++) {
-      mem[reg[A1] + i] = buffer[i];
+      mem.WriteByte(reg[A1] + i, buffer[i]);
     }
     delete buffer;
   } else if (reg[A7] == 80) {
@@ -209,7 +209,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
       ShowGuestStat(guest_stat);
     }
     for (unsigned int i = 0; i < sizeof(Riscv32NewlibStat); i++) {
-      mem[reg[A1] + i] = statbuf_p[i];
+      mem.WriteByte(reg[A1] + i, statbuf_p[i]);
     }
     reg[A0] = return_value;
   } else if (reg[A7] == 57) {

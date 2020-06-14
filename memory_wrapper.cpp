@@ -31,35 +31,15 @@ const uint8_t MemoryWrapper::ReadByte(size_t i) const {
   return mapping[entry][offset];
 }
 
-uint8_t &MemoryWrapper::operator[](size_t i) {
-  int entry = (i >> kOffsetBits) & kEntryMask;
-  int offset = i & kOffsetMask;
-  if (!CheckRange(entry)) {
-    mapping[entry].resize(1 << kOffsetBits, 0);
-  };
-  return mapping[entry][offset];
-}
-
-const uint8_t MemoryWrapper::operator[](size_t i) const {
-  int entry = (i >> kOffsetBits) & kEntryMask;
-  if (!CheckRange(entry)) {
-    return 0;
-  }
-  int offset = i & kOffsetMask;
-  return mapping[entry][offset];
-}
 
 const uint32_t MemoryWrapper::Read32(size_t i) const {
   return ReadByte(i) | (ReadByte(i + 1) << 8) | (ReadByte(i + 2) << 16) |
          (ReadByte(i + 3) << 24);
-//  return (*this)[i] | ((*this)[i + 1] << 8) | ((*this)[i + 2] << 16) |
-//         ((*this)[i + 3] << 24);
 }
 
 const uint64_t MemoryWrapper::Read64(size_t i) const {
   uint64_t read_data = 0;
   for (int offset = 0; offset < 8; offset++) {
-//    read_data |= static_cast<uint64_t>((*this)[i + offset]) << offset * 8;
     read_data |= static_cast<uint64_t>(ReadByte(i + offset)) << offset * 8;
   }
   return read_data;
