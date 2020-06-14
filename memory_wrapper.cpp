@@ -14,53 +14,77 @@ bool MemoryWrapper::CheckRange(int entry) const {
   return !mapping[entry].empty();
 }
 
-void MemoryWrapper::WriteByte(size_t i, uint8_t data) {
-  int entry = (i >> kOffsetBits) & kEntryMask;
-  int offset = i & kOffsetMask;
-  if (!CheckRange(entry)) {
-    mapping[entry].resize(1 << kOffsetBits, 0);
-  };
-  mapping[entry][offset] = data;
-}
-
 const uint8_t MemoryWrapper::ReadByte(size_t i) const {
-  int entry = (i >> kOffsetBits) & kEntryMask;
-  if (!CheckRange(entry)) {
-    return 0;
-  }
-  int offset = i & kOffsetMask;
-  return mapping[entry][offset];
+  uint64_t dram_address = (i >> 3) << 3;
+  uint64_t read_data = Read64(dram_address);
+  int byte_offset = i & 0b111;
+  read_data = read_data >> byte_offset * 8;
+  return static_cast<uint32_t>(read_data & 0xFF);
 }
 
+void MemoryWrapper::WriteByte(size_t i, uint8_t data) {
+  std::array<uint64_t, 8> mask = {
+    0xFFFFFFFFFFFFFF00,
+    0xFFFFFFFFFFFF00FF,
+    0xFFFFFFFFFF00FFFF,
+    0xFFFFFFFF00FFFFFF,
+    0xFFFFFF00FFFFFFFF,
+    0xFFFF00FFFFFFFFFF,
+    0xFF00FFFFFFFFFFFF,
+    0x00FFFFFFFFFFFFFF
+  };
+  uint64_t dram_address = (i >> 3) << 3;
+  uint64_t original_data = Read64(dram_address);
+  uint64_t write_data = data;
+  int byte_offset = i & 0b111;
+  write_data = (original_data & mask[byte_offset]) | (write_data << byte_offset * 8);
+  Write64(dram_address, write_data);
+}
 
 const uint32_t MemoryWrapper::Read32(size_t i) const {
   assert((i & 0b11) == 0);
-  return ReadByte(i) | (ReadByte(i + 1) << 8) | (ReadByte(i + 2) << 16) |
-         (ReadByte(i + 3) << 24);
-}
-
-const uint64_t MemoryWrapper::Read64(size_t i) const {
-  assert((i & 0b111) == 0);
-  uint64_t read_data = 0;
-  for (int offset = 0; offset < 8; offset++) {
-    read_data |= static_cast<uint64_t>(ReadByte(i + offset)) << offset * 8;
+  uint64_t dram_address = (i >> 3) << 3;
+  uint64_t read_data = Read64(dram_address);
+  if (i & 0b100) {
+    read_data = read_data >> 32;
   }
-  return read_data;
+  return static_cast<uint32_t>(read_data & 0xFFFFFFFF);
 }
 
 void MemoryWrapper::Write32(size_t i, uint32_t value) {
   assert((i & 0b11) == 0);
-  WriteByte(i, value & 0xFF);
-  WriteByte(i + 1, (value >> 8) & 0xFF);
-  WriteByte(i + 2, (value >> 16) & 0xFF);
-  WriteByte(i + 3, (value >> 24) & 0xFF);
+  uint64_t dram_address = (i >> 3) << 3;
+  uint64_t original_data = Read64(dram_address);
+  uint64_t write_data = value;
+  if (i & 0b100) {
+    write_data = (original_data & 0x00000000FFFFFFFF) | (write_data << 32);
+  } else {
+    write_data = (original_data & 0xFFFFFFFF00000000) | write_data;
+  }
+  Write64(dram_address, write_data);
+}
+
+const uint64_t MemoryWrapper::Read64(size_t i) const {
+  assert((i & 0b111) == 0);
+  int entry = (i >> kOffsetBits) & kEntryMask;
+  uint64_t read_data = 0;
+  if (CheckRange(entry)) {
+    int offset = i & kOffsetMask;
+    int word_offset = offset >> kWordBits;
+    read_data = mapping[entry][word_offset];
+  }
+  return read_data;
 }
 
 void MemoryWrapper::Write64(size_t i, uint64_t value) {
   assert((i & 0b111) == 0);
-  for (int offset = 0; offset < 8; ++offset) {
-    WriteByte(i + offset, (value >> offset * 8) & 0xFF);
+  int entry = (i >> kOffsetBits) & kEntryMask;
+  if (!CheckRange(entry)) {
+    mapping[entry].resize(1 << (kOffsetBits - kWordBits));
   }
+  int offset = i & kOffsetMask;
+  int word_offset = offset >> kWordBits;
+  mapping[entry][word_offset] = value;
 }
 
 bool MemoryWrapper::operator==(MemoryWrapper &r) {

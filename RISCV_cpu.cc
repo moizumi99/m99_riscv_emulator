@@ -954,6 +954,8 @@ void RiscvCpu::HostEmulation() {
   uint32_t command;
   uint64_t value = 0;
   if ((host_write_ & 0b10) != 0) {
+//    payload = memory_->Read64(kToHost1);
+//    payload = (mxl_ == 1) ? payload & 0xFFFFFFFF : payload;
     payload = mxl_ == 1 ? memory_->Read32(kToHost1) : memory_->Read64(kToHost1);
     value = payload >> 1;
     reg_[A0] = value;
