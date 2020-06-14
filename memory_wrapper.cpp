@@ -2,6 +2,7 @@
 // Created by moiz on 1/19/20.
 //
 #include <stdexcept>
+#include <cassert>
 #include "memory_wrapper.h"
 
 namespace RISCV_EMULATOR {
@@ -33,11 +34,13 @@ const uint8_t MemoryWrapper::ReadByte(size_t i) const {
 
 
 const uint32_t MemoryWrapper::Read32(size_t i) const {
+  assert((i & 0b11) == 0);
   return ReadByte(i) | (ReadByte(i + 1) << 8) | (ReadByte(i + 2) << 16) |
          (ReadByte(i + 3) << 24);
 }
 
 const uint64_t MemoryWrapper::Read64(size_t i) const {
+  assert((i & 0b111) == 0);
   uint64_t read_data = 0;
   for (int offset = 0; offset < 8; offset++) {
     read_data |= static_cast<uint64_t>(ReadByte(i + offset)) << offset * 8;
@@ -46,6 +49,7 @@ const uint64_t MemoryWrapper::Read64(size_t i) const {
 }
 
 void MemoryWrapper::Write32(size_t i, uint32_t value) {
+  assert((i & 0b11) == 0);
   WriteByte(i, value & 0xFF);
   WriteByte(i + 1, (value >> 8) & 0xFF);
   WriteByte(i + 2, (value >> 16) & 0xFF);
@@ -53,6 +57,7 @@ void MemoryWrapper::Write32(size_t i, uint32_t value) {
 }
 
 void MemoryWrapper::Write64(size_t i, uint64_t value) {
+  assert((i & 0b111) == 0);
   for (int offset = 0; offset < 8; ++offset) {
     WriteByte(i + offset, (value >> offset * 8) & 0xFF);
   }

@@ -73,10 +73,11 @@ void RiscvCpu::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
 uint32_t RiscvCpu::LoadCmd(uint64_t pc) {
   auto &mem = *memory_;
   uint64_t physical_address = VirtualToPhysical(pc);
-  uint32_t cmd = mem.Read32(physical_address);
-  if (!page_fault_ && (pc & 0b11) != 0 && (cmd & 0b11) == 0b11) {
+  uint64_t data = mem.Read64((physical_address >> 3) << 3);
+  uint32_t cmd = (data >> ((physical_address & 0b111) * 8)) & 0xFFFFFFFF;
+  if (!page_fault_ && (pc & 0b110) == 0b110 && (cmd & 0b11) == 0b11) {
     uint64_t physical_address_upper = VirtualToPhysical(pc + 2);
-    uint32_t cmd_upper = mem.Read32(physical_address_upper);
+    uint64_t cmd_upper = mem.Read64((physical_address_upper >> 3) << 3);
     cmd = (cmd & 0xFFFF) | (cmd_upper & 0xFFFF) << 16;
   }
   return cmd;
