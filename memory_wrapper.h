@@ -36,6 +36,10 @@ public:
 
   const uint8_t operator[](size_t i) const;
 
+  const uint8_t ReadByte(size_t i) const;
+
+  void WriteByte(size_t i, uint8_t data);
+
   const uint32_t Read32(size_t i) const;
 
   const uint64_t Read64(size_t i) const;
@@ -58,63 +62,6 @@ private:
   std::array<std::vector<uint8_t>, kMapEntry> mapping;
 };
 
-class MemoryWrapperIterator {
-public:
-  using iterator = MemoryWrapperIterator;
-
-  MemoryWrapperIterator(MemoryWrapper &, size_t = 0);
-
-  size_t GetAddress();
-
-  uint8_t &operator*();
-
-  const uint8_t operator*() const;
-
-  uint8_t &operator->() = delete;
-
-  const uint8_t &operator->() const = delete;
-
-  uint8_t &operator[](size_t);
-
-  const uint8_t operator[](size_t) const;
-
-  iterator &operator++();
-
-  iterator operator++(int);
-
-  iterator &operator--();
-
-  iterator operator--(int);
-
-  iterator &operator+=(size_t);
-
-  iterator &operator-=(size_t);
-
-  iterator operator+(size_t);
-
-  iterator operator-(size_t);
-
-  bool operator==(const iterator &r);
-
-  bool operator!=(const iterator &r);
-
-  bool operator<(const iterator &r);
-
-  bool operator>(const iterator &r);
-
-  bool operator<=(const iterator &r);
-
-  bool operator>=(const iterator &r);
-
-private:
-  size_t pos;
-
-  class MemoryWrapper *mw;
-};
-
-uint32_t LoadWd(const MemoryWrapperIterator &&address);
-
-void StoreWd(MemoryWrapperIterator &&address, uint32_t data, int width = 32);
 
 } // namespace RISCV_EMULATOR
 

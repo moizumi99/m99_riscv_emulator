@@ -51,86 +51,6 @@ bool MemoryWrapperTest(size_t start, size_t end, int val) {
   return result;
 }
 
-bool MemoryWrapperIteratorTest1(size_t start, size_t end, int val) {
-  // Test for *, ++, <, != operation
-  bool result = true;
-  MemoryWrapper mw;
-  auto b = mw.begin() + start;
-  auto e = mw.begin() + end;
-  int value = val;
-  for (auto i = b; i < e; i++, value++) {
-    *i = GetHash8(value);
-  }
-
-  value = val;
-  int index = 0;
-  for (auto i = b; i != e && result; i++, value++, index++) {
-    bool local_result = *i == GetHash8(value);
-    if (!local_result) {
-      std::cout << "At " << index << ", *i = " << static_cast<int>(*i)
-                << ", expectation = " << GetHash8(value)
-                << std::endl;
-    }
-    result &= local_result;
-  }
-  if (!result) {
-    std::cout << "Memory Wrapper Iterator test 1 failed. (" << start << ", "
-              << end << ")" << std::endl;
-  }
-  return result;
-}
-
-bool MemoryWrapperIteratorTest2(size_t start, size_t end, int val) {
-  // Test for [] operation
-  bool result = true;
-  MemoryWrapper mw;
-  auto i = mw.begin();
-  for (size_t index = start; index < end; index++) {
-    i[index] = GetHash8(index + val);
-  }
-
-  for (size_t index = start; index < end && result; index++) {
-    bool local_result = i[index] == GetHash8(index + val);
-    if (!local_result) {
-      std::cout << "i[" << index << "] = " << static_cast<int>(i[index])
-                << ", expectation = " << GetHash8(index + val)
-                << std::endl;
-    }
-    result &= local_result;
-  }
-  if (!result) {
-    std::cout << "Memory wrapper iterator test 2 failed. (" << start << ", "
-              << end << ")" << std::endl;
-  }
-  return result;
-}
-
-bool MemoryWrapperIteratorTest3(size_t start, size_t end, int val) {
-  // Test for +, -. --, >, operation
-  bool result = true;
-  MemoryWrapper mw;
-  auto i = mw.begin();
-  for (size_t index = start; index < end; index++) {
-    *(i + index) = GetHash8(index + val);
-  }
-
-  auto b = mw.begin() + start;
-  int index = end - 1;
-  for (auto e = mw.begin() + end - 1; e > b && result; e--, index--) {
-    bool local_result = *e == GetHash8(index + val);
-    if (!local_result) {
-      std::cout << "At " << index << ", *e = " << static_cast<int>(*e)
-                << ", expectation = " << GetHash8(index + val)
-                << std::endl;
-    }
-    result &= local_result;
-  }
-  if (!result) {
-    std::cout << "Memory Wrapper Iterator test 3 failed. (" << start << ", "
-              << end << ")" << std::endl;
-  }
-  return result;
-}
 
 std::mt19937 rnd;
 constexpr int kSeed = 155719;
@@ -146,9 +66,6 @@ bool RunTestSingle(size_t start, size_t end, int val, bool verbose = false) {
     std::cout << "Start: " << start << ", end: " << end << std::endl;
   }
   result = result && MemoryWrapperTest(start, end, val);
-  result = result && MemoryWrapperIteratorTest1(start, end, val);
-  result = result && MemoryWrapperIteratorTest2(start, end, val);
-  result = result && MemoryWrapperIteratorTest3(start, end, val);
   return result;
 }
 

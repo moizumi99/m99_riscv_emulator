@@ -9,9 +9,9 @@ using namespace RISCV_EMULATOR;
 
 namespace CPU_TEST {
 
-MemoryWrapperIterator LoadAssemblerSum(MemoryWrapperIterator &mem);
+uint64_t LoadAssemblerSum(MemoryWrapper &mem, uint64_t address);
 
-MemoryWrapperIterator LoadAssemblerSort(MemoryWrapperIterator &mem);
+uint64_t LoadAssemblerSort(MemoryWrapper &mem, uint64_t address);
 
 } // namespace CPU_TEST {
 
