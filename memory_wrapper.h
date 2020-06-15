@@ -26,7 +26,7 @@ constexpr int GenerateBitMask(const int bits) {
 class MemoryWrapper {
   static constexpr int kTotalBits = 32;
   static constexpr int kOffsetBits = 20;
-  static constexpr int kWordBits = 3;
+  static constexpr int kWordBits = 2;
   static constexpr int kOffsetMask = GenerateBitMask(kOffsetBits);
   static constexpr int kEntryBits = kTotalBits - kOffsetBits;
   static constexpr int kEntryMask = GenerateBitMask(kEntryBits);
@@ -56,7 +56,7 @@ public:
 private:
   bool CheckRange(int entry) const;
 
-  std::array<std::vector<uint64_t>, kMapEntry> mapping;
+  std::array<std::vector<uint32_t>, kMapEntry> mapping;
 };
 
 
