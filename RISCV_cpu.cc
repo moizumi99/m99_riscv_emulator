@@ -117,18 +117,32 @@ uint64_t RiscvCpu::LoadWd(uint64_t physical_address, int width) {
   assert(1 <= width && width <= 8);
   auto &mem = *memory_;
   uint64_t result = 0;
-  for (int offset = 0; offset < width; ++offset) {
-    uint64_t loaded_byte = mem.ReadByte(physical_address + offset);
-    result |= loaded_byte << offset * 8;
+  // Mock the 32bit wide access behavior of HW.
+  if (width == 4 && (physical_address & 0b11) == 0) {
+    result = mem.Read32(physical_address);
+  } else if (width == 8 && (physical_address & 0b111) == 0) {
+    result = mem.Read64(physical_address);
+  } else {
+    for (int offset = 0; offset < width; ++offset) {
+      uint64_t loaded_byte = mem.ReadByte(physical_address + offset);
+      result |= loaded_byte << offset * 8;
+    }
   }
   return result;
 }
 
 void RiscvCpu::StoreWd(uint64_t physical_address, uint64_t data, int width) {
   auto &mem = *memory_;
-  assert(width <= 8);
-  for (int offset = 0; offset < width; ++offset) {
-    mem.WriteByte(physical_address + offset, (data >> offset * 8) & 0xFF);
+  assert(1 <= width && width <= 8);
+  // Mock the 32bit wide access behavior of HW.
+  if (width == 4 && (physical_address & 0b11) == 0) {
+    mem.Write32(physical_address, data);
+  } else if (width == 8 && ((physical_address & 0b111) == 0)) {
+    mem.Write64(physical_address, data);
+  } else {
+    for (int offset = 0; offset < width; ++offset) {
+      mem.WriteByte(physical_address + offset, (data >> offset * 8) & 0xFF);
+    }
   }
 }
 
@@ -158,8 +172,7 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
       cause == STORE_PAGE_FAULT) {
     tval = faulting_address_;
   } else if (cause == ILLEGAL_INSTRUCTION) {
-    tval = memory_->ReadByte(pc_) | (memory_->ReadByte(pc_ + 1) << 8) |
-      (memory_->ReadByte(pc_ + 2) << 16) | (memory_->ReadByte(pc_ + 3) << 24);
+    tval = ir_;
   }
   // TODO: Implement other tval cases.
 
@@ -760,36 +773,34 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   next_pc_ = start_pc;
   do {
     pc_ = next_pc_;
-    uint64_t ir;
-
-    ir = LoadCmd(pc_);
+    ir_ = LoadCmd(pc_);
     if (verbose) {
       char machine_status = privilege_ == PrivilegeMode::USER_MODE ? 'U' :
                             privilege_ == PrivilegeMode::SUPERVISOR_MODE ? 'S'
                                                                          : 'M';
-      printf("%c %016lx (%08lx): ", machine_status, pc_, ir);
-      std::cout << Disassemble(ir, mxl_) << std::endl;
+      printf("%c %016lx (%04x): ", machine_status, pc_, ir_);
+      std::cout << Disassemble(ir_, mxl_) << std::endl;
     }
     if (page_fault_) {
       Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
       continue;
     }
     // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
-    ctype_ = (ir & 0b11) != 0b11;
+    ctype_ = (ir_ & 0b11) != 0b11;
 
     uint32_t instruction, rd, rs1, rs2;
     int32_t imm;
-    int16_t csr = GetCsr(ir);
+    int16_t csr = GetCsr(ir_);
     if (!ctype_) {
       next_pc_ = pc_ + 4;
-      instruction = GetCode32(ir);
-      rd = GetRd(ir);
-      rs1 = GetRs1(ir);
-      rs2 = GetRs2(ir);
-      imm = GetImm(ir);
+      instruction = GetCode32(ir_);
+      rd = GetRd(ir_);
+      rs1 = GetRs1(ir_);
+      rs2 = GetRs2(ir_);
+      imm = GetImm(ir_);
     } else {
       next_pc_ = pc_ + 2;
-      std::tie(instruction, rd, rs1, rs2, imm) = GetCode16(ir, mxl_);
+      std::tie(instruction, rd, rs1, rs2, imm) = GetCode16(ir_, mxl_);
     }
     uint64_t t; // t stores the next pc temporarily.
     switch (instruction) {
@@ -957,8 +968,7 @@ void RiscvCpu::HostEmulation() {
   uint32_t command;
   uint64_t value = 0;
   if ((host_write_ & 0b10) != 0) {
-    payload = memory_->Read64(kToHost1);
-    payload = (mxl_ == 1) ? payload & 0xFFFFFFFF : payload;
+    payload = (mxl_ == 1) ? memory_->Read32(kToHost1) : memory_->Read64(kToHost1);
     value = payload >> 1;
     reg_[A0] = value;
     end_flag_ = true;
@@ -968,7 +978,7 @@ void RiscvCpu::HostEmulation() {
 
   if (mxl_ == 1) {
     // This address should be physical.
-    payload = memory_->Read64(kToHost0) & 0xFFFFFFFF;
+    payload = memory_->Read32(kToHost0);
     device = 0;
     command = 0;
   } else {

@@ -48,6 +48,7 @@ private:
 
   uint64_t reg_[kRegSize];
   uint64_t pc_;
+  uint32_t ir_;
   uint64_t next_pc_;
   uint64_t mstatus_;
   PrivilegeMode privilege_;
