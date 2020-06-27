@@ -163,6 +163,7 @@ uint64_t Mmu::VirtualToPhysical32(uint64_t virtual_address, uint64_t satp,
     faulting_address_ = virtual_address;
     return physical_address;
   }
+  // TODO(moizumi): Is this the right place to check the dirty bit?
   // Access and Dirty bit process;
   pte.SetA(1);
   if (write_access) {

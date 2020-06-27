@@ -43,7 +43,8 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
       }
       break;
     case 0b01000:
-      cmd = "C.LW " + GetRegName(rd) + ", " + std::to_string(imm) + "(" + GetRegName(rs1) + ")";
+      cmd = "C.LW " + GetRegName(rd) + ", " + std::to_string(imm) + "(" +
+            GetRegName(rs1) + ")";
       break;
     case 0b01001:
       cmd = "C.LI " + GetRegName(rd) + ", " + std::to_string(imm);
@@ -53,7 +54,7 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
       break;
     case 0b01100:
       cmd = "C.LD " + GetRegName(rd) + ", " + std::to_string(imm) + "(" +
-        GetRegName(rs1) + ")";
+            GetRegName(rs1) + ")";
       break;
     case 0b01101:
       if (bitcrop(ir, 5, 7) == 0b00010) {
@@ -100,25 +101,30 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
       } else if (bitcrop(ir, 2, 10) == 0b00) {
         cmd = "C.SRLI " + GetRegName(rd) + ", " + std::to_string(imm);
       } else if (bitcrop(ir, 2, 10) == 0b10) {
-        cmd = "C.ANDI " + GetRegName(rd) + ", " + std::to_string(SignExtend(imm, 6));
+        cmd = "C.ANDI " + GetRegName(rd) + ", " +
+              std::to_string(SignExtend(imm, 6));
       }
       break;
     case 0b10101:
       cmd = "C.J " + std::to_string(SignExtend(imm, 12));
       break;
     case 0b11000:
-      cmd = "C.SW " + GetRegName(rs2) + ", " + std::to_string(imm) + "(" + GetRegName(rs1) + ")";
+      cmd = "C.SW " + GetRegName(rs2) + ", " + std::to_string(imm) + "(" +
+            GetRegName(rs1) + ")";
     case 0b11001:
-      cmd = "C.BEQZ " + GetRegName(rs1) + ", " + std::to_string(SignExtend(imm, 9));
+      cmd =
+        "C.BEQZ " + GetRegName(rs1) + ", " + std::to_string(SignExtend(imm, 9));
       break;
     case 0b11010:
       cmd = "C.SWSP " + GetRegName(rs2) + ", " + std::to_string(imm) + "(SP)";
       break;
     case 0b11100:
-      cmd = "C.SD " + GetRegName(rs2) + ", " + std::to_string(imm) + "(" + GetRegName(rs1) + ")";
+      cmd = "C.SD " + GetRegName(rs2) + ", " + std::to_string(imm) + "(" +
+            GetRegName(rs1) + ")";
       break;
     case 0b11101:
-      cmd = "C.BNEZ " + GetRegName(rs1) + ", " + std::to_string(SignExtend(imm, 9));
+      cmd =
+        "C.BNEZ " + GetRegName(rs1) + ", " + std::to_string(SignExtend(imm, 9));
       break;
     case 0b11110:
       cmd = "C.SDSP " + GetRegName(rs2) + ", " + std::to_string(imm) + "(SP)";
@@ -316,9 +322,9 @@ std::string Disassemble(uint32_t ir, int mxl) {
         cmd = "SD";
       }
       cmd += " " +
-        GetRegName(rs2) + ", " + std::to_string(imm12_stype) + "(" +
-        GetRegName(rs1) +
-        ")";
+             GetRegName(rs2) + ", " + std::to_string(imm12_stype) + "(" +
+             GetRegName(rs1) +
+             ")";
       break;
     case OPCODE_LUI: // LUI
       cmd = "LUI";
@@ -367,6 +373,13 @@ std::string Disassemble(uint32_t ir, int mxl) {
       } else if (funct3 == FUNC3_FENCE) {
         cmd = "FENCE";
       }
+      break;
+    case OPCODE_AMO:
+      if (funct3 == FUNC3_AMOD) {
+        cmd = "AMOADD.D";
+      }
+      cmd += " " + GetRegName(rd) + ", " + GetRegName(rs2) + ", (" +
+             GetRegName(rs1) + ")";
       break;
     default:
       cmd = "Undefined instruction";

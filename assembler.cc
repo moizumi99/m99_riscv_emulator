@@ -85,6 +85,85 @@ uint32_t AsmMret() {
   return AsmRType(OPCODE_SYSTEM, FUNC_MRET, FUNC3_SYSTEM, 0, 0, rs2);
 }
 
+// A_TYPE (a variation of R-Type)
+uint32_t
+AsmAType(op_label opcode, op_funct5 funct5, op_funct3 funct3, uint32_t rd,
+         uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  RType cmd;
+  uint32_t funct7 = (funct5 << 2) | ((aq & 0b1) << 1) | (rl & 0b1);
+  cmd.opcode = opcode;
+  cmd.funct7 = funct7;
+  cmd.funct3 = funct3;
+  cmd.rd = rd;
+  cmd.rs1 = rs1;
+  cmd.rs2 = rs2;
+  return cmd.GetValue();
+}
+
+uint32_t AsmAmoAddd(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOADD, FUNC3_AMOD, rd, rs1, rs2, aq, rl);
+}
+
+uint32_t AsmAmoAddw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOADD, FUNC3_AMOW, rd, rs1, rs2, aq, rl);
+}
+
+uint32_t AsmAmoAndd(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOAND, FUNC3_AMOD, rd, rs1, rs2, aq, rl);
+}
+uint32_t AsmAmoAndw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOAND, FUNC3_AMOW, rd, rs1, rs2, aq, rl);
+}
+
+uint32_t AsmAmoMaxd(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOMAX, FUNC3_AMOD, rd, rs1, rs2, aq, rl);
+}
+uint32_t AsmAmoMaxw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOMAX, FUNC3_AMOW, rd, rs1, rs2, aq, rl);
+}
+
+uint32_t AsmAmoMaxud(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOMAXU, FUNC3_AMOD, rd, rs1, rs2, aq, rl);
+}
+uint32_t AsmAmoMaxuw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOMAXU, FUNC3_AMOW, rd, rs1, rs2, aq, rl);
+}
+
+uint32_t AsmAmoMind(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOMIN, FUNC3_AMOD, rd, rs1, rs2, aq, rl);
+}
+uint32_t AsmAmoMinw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOMIN, FUNC3_AMOW, rd, rs1, rs2, aq, rl);
+}
+
+uint32_t AsmAmoMinud(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOMINU, FUNC3_AMOD, rd, rs1, rs2, aq, rl);
+}
+uint32_t AsmAmoMinuw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOMINU, FUNC3_AMOW, rd, rs1, rs2, aq, rl);
+}
+
+uint32_t AsmAmoOrd(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOOR, FUNC3_AMOD, rd, rs1, rs2, aq, rl);
+}
+uint32_t AsmAmoOrw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOOR, FUNC3_AMOW, rd, rs1, rs2, aq, rl);
+}
+
+uint32_t AsmAmoSwapd(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOSWAP, FUNC3_AMOD, rd, rs1, rs2, aq, rl);
+}
+uint32_t AsmAmoSwapw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOSWAP, FUNC3_AMOW, rd, rs1, rs2, aq, rl);
+}
+
+uint32_t AsmAmoXord(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOXOR, FUNC3_AMOD, rd, rs1, rs2, aq, rl);
+}
+uint32_t AsmAmoXorw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl) {
+  return AsmAType(OPCODE_AMO, FUNC5_AMOXOR, FUNC3_AMOW, rd, rs1, rs2, aq, rl);
+}
+
 // I_TYPE
 uint32_t AsmIType(op_label opcode, op_funct3 funct3, uint32_t rd, uint32_t rs1,
                   int32_t imm12) {

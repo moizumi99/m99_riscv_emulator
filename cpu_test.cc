@@ -1770,6 +1770,135 @@ bool TestMultTypeLoop(bool verbose = true) {
 }
 // Multiple test cases end here.
 
+// AMO test cases start here.
+enum AMO_TEST {
+  TEST_AMOADDD,
+};
+
+bool
+TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t offset,
+          int32_t value0, int32_t value1, uint32_t aq, uint32_t rl,
+          bool verbose) {
+  bool is_64_instruction = test_type == TEST_AMOADDD;
+  if (!en_64_bit && is_64_instruction) {
+    return false;
+  }
+  bool error = false;
+  std::string test_case = "";
+  MemoryWrapper &mem = *memory;
+
+  offset = rs1 == 0 ? 0 : offset;
+  if (is_64_instruction) {
+    offset &= 0xFFFFFFF8;
+    mem.Write64(offset, static_cast<uint64_t>(value0));
+  } else {
+    mem.Write32(offset, value0);
+  }
+  if (rs1 == 0) {
+    offset = 0;
+  }
+  if (rs2 == rs1) {
+    value1 = offset;
+  } else if (rs2 == 0) {
+    value1 = 0;
+  }
+
+  // Amo test code
+  constexpr uint64_t kStartPoint = 0x1000;
+  uint64_t pointer = kStartPoint;
+  uint32_t val20, val12;
+  std::tie(val20, val12) = SplitImmediate(value1);
+  pointer = AddCmd(*memory, pointer, AsmLui(rs2, val20));
+  pointer = AddCmd(*memory, pointer, AsmAddi(rs2, rs2, val12));
+  uint32_t offset20, offset12;
+  std::tie(offset20, offset12) = SplitImmediate(offset);
+  pointer = AddCmd(*memory, pointer, AsmLui(rs1, offset20));
+  pointer = AddCmd(*memory, pointer, AsmAddi(rs1, rs1, offset12));
+  // expected0 == M[offset], expected1 == x[rd].
+  int64_t expected0, expected1;
+  switch (test_type) {
+    case TEST_AMOADDD:
+      test_case = "AMOADD.D";
+      pointer = AddCmd(*memory, pointer, AsmAmoAddd(rd, rs1, rs2, aq, rl));
+      expected0 = static_cast<uint64_t>(value0) + static_cast<uint64_t>(value1);
+      expected1 = value0;
+      break;
+    default:
+      if (verbose) {
+        printf("Undefined test case %d\n", test_type);
+      }
+      return true;
+  }
+  pointer = AddCmd(*memory, pointer, AsmAddi(A0, rd, 0));
+  pointer = AddCmd(*memory, pointer, AsmXor(RA, RA, RA));
+  pointer = AddCmd(*memory, pointer, AsmJalr(ZERO, RA, 0));
+  expected1 = rd == ZERO ? 0 : expected1;
+
+  RiscvCpu cpu(en_64_bit);
+  RandomizeRegisters(cpu);
+  cpu.SetMemory(memory);
+  error = cpu.RunCpu(kStartPoint, verbose) != 0;
+  uint64_t result = 0;
+  if (is_64_instruction) {
+    result = mem.Read64(offset);
+  } else {
+    result = mem.Read32(offset);
+  }
+  error |= result != expected0;
+  error |= cpu.ReadRegister(A0) != expected1;
+  if (verbose) {
+    PrintErrorMessage(test_case, error, expected0, result);
+    if (error) {
+      printf("rd: %2d, rs1: %2d, rs2: %2d, offset: %08X, value0: %08X, value1: %08X\n",
+             rd, rs1, rs2, offset, value0, value1);
+    }
+  }
+  return error;
+}
+
+void PrintAmoInstructionMessage(AMO_TEST test_case, bool error,
+                                  bool verbose = true) {
+  if (!verbose) {
+    return;
+  }
+  std::map<AMO_TEST, const std::string> test_name = {{TEST_AMOADDD, "AMOADD.D"},
+  };
+  printf("%s test %s.\n", test_name[test_case].c_str(),
+         error ? "failed" : "passed");
+}
+
+bool TestAmoTypeLoop(bool verbose) {
+  bool error = false;
+  AMO_TEST test_sets[] = {TEST_AMOADDD, };
+  for (auto test_case: test_sets) {
+    for (int i = 0; i < kUnitTestMax && !error; i++) {
+      int32_t rd = rnd() % 32;
+      int32_t rs1 = rnd() % 32;
+      int32_t rs2 = rnd() % 32;
+      uint32_t aq = rnd() & 0b1;
+      uint32_t rl = rnd() & 0b1;
+      constexpr uint32_t kProgramStart = 0x1000;
+      constexpr uint32_t kProgramEnd = 0x1FFF;
+      uint32_t offset;
+      do {
+        offset = rnd() & 0xFFFFFFFC;
+      } while (kProgramStart <= offset && offset < kProgramEnd);
+      int32_t value0 = rnd() & 0xFFFFFFFF;
+      int32_t value1 = rnd() & 0xFFFFFFFF;
+      bool test_error = TestAmoType(test_case, rd, rs1, rs2, offset, value0, value1, aq, rl,
+                                  false);
+      if (test_error && verbose) {
+        test_error = TestAmoType(test_case, rd, rs1, rs2, offset, value0, value1, aq, rl,
+                                    true);
+      }
+      error |= test_error;
+    }
+    PrintAmoInstructionMessage(test_case, error, verbose);
+  }
+  return error;
+}
+// Amo type test cases end here.
+
 // Summation test starts here.
 bool TestSum(bool verbose) {
   uint64_t pointer = 0;
@@ -1891,6 +2020,7 @@ bool RunTest() {
     error |= TestBTypeLoop(verbose);
     error |= TestJalrTypeLoop(verbose);
     error |= TestMultTypeLoop(verbose);
+    error |= TestAmoTypeLoop(verbose);
     error |= TestSumQuiet(verbose);
     error |= TestSortQuiet(verbose);
     // Add test for MRET

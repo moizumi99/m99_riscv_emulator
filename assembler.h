@@ -159,6 +159,8 @@ uint32_t AsmRemw(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
 uint32_t AsmRemuw(uint32_t rd, uint32_t rs1, uint32_t rs2);
 
+// C Instructions.
+
 uint16_t AsmCAdd(uint32_t rd, uint32_t rs2);
 
 uint16_t AsmCEbreak();
@@ -242,6 +244,45 @@ uint16_t AsmCLw(uint32_t rd, uint32_t rs1, uint32_t uimm);
 uint16_t AsmCSd(uint32_t rs1, uint32_t rs2, uint32_t uimm);
 
 uint16_t AsmCsw(uint32_t rs1, uint32_t rs2, uint32_t uimm);
+
+// Atomic instructions.
+
+uint32_t AsmAmoAddd(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoAddw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoAndd(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoAndw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoMaxd(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoMaxw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoMaxud(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoMaxuw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoMind(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoMinw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoMinud(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoMinuw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoOrd(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoOrw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoSwapd(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoSwapw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoXord(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
+uint32_t AsmAmoXorw(uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t aq, uint32_t rl);
+
 
 } // namespace RISCV_EMULATOR
 

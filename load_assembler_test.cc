@@ -253,6 +253,191 @@ void print_error_result(std::string &cmdname, int num_test, bool error,
   }
 }
 
+bool test_amo_type(bool verbose = false) {
+  enum TEST_LIST {
+    TEST_AMOADDD, TEST_AMOADDW, TEST_AMOANDD, TEST_AMOANDW,
+    TEST_AMOMAXD, TEST_AMOMAXW, TEST_AMOMAXUD, TEST_AMOMAXUW,
+    TEST_AMOMIND, TEST_AMOMINW, TEST_AMOMINUD, TEST_AMOMINUW,
+    TEST_AMOORD, TEST_AMOORW, TEST_AMOSWAPW, TEST_AMOSWAPD,
+    TEST_AMOXORD, TEST_AMOXORW,
+  };
+  bool total_error = false;
+
+  TEST_LIST test_set[] = {TEST_AMOADDD, TEST_AMOADDW, TEST_AMOANDD, TEST_AMOANDW,
+                          TEST_AMOMAXD, TEST_AMOMAXW, TEST_AMOMAXUD, TEST_AMOMAXUW,
+                          TEST_AMOMIND, TEST_AMOMINW, TEST_AMOMIND, TEST_AMOMINUW,
+                          TEST_AMOORD, TEST_AMOORW, TEST_AMOSWAPW, TEST_AMOSWAPD,
+                          TEST_AMOXORD, TEST_AMOXORW,
+                          };
+  for (TEST_LIST testcase : test_set) {
+    bool error = false;
+    uint32_t base;
+    std::string cmdname;
+    switch (testcase) {
+      case TEST_AMOADDD:
+        base = 0b00000000000000000011000000101111;
+        cmdname = "AMOADD.D";
+        break;
+      case TEST_AMOADDW:
+        base = 0b00000000000000000010000000101111;
+        cmdname = "AMOADD.W";
+        break;
+      case TEST_AMOANDD:
+        base = 0b01100000000000000011000000101111;
+        cmdname = "AMOAND.D";
+        break;
+      case TEST_AMOANDW:
+        base = 0b01100000000000000010000000101111;
+        cmdname = "AMOAND.W";
+        break;
+      case TEST_AMOMAXD:
+        base = 0b10100000000000000011000000101111;
+        cmdname = "AMOMAX.D";
+        break;
+      case TEST_AMOMAXW:
+        base = 0b10100000000000000010000000101111;
+        cmdname = "AMOMAX.W";
+        break;
+      case TEST_AMOMAXUD:
+        base = 0b11100000000000000011000000101111;
+        cmdname = "AMOMAXU.D";
+        break;
+      case TEST_AMOMAXUW:
+        base = 0b11100000000000000010000000101111;
+        cmdname = "AMOMAXU.W";
+        break;
+      case TEST_AMOMIND:
+        base = 0b10000000000000000011000000101111;
+        cmdname = "AMOMIN.D";
+        break;
+      case TEST_AMOMINW:
+        base = 0b10000000000000000010000000101111;
+        cmdname = "AMOMIN.W";
+        break;
+      case TEST_AMOMINUD:
+        base = 0b11000000000000000011000000101111;
+        cmdname = "AMOMINU.D";
+        break;
+      case TEST_AMOMINUW:
+        base = 0b11000000000000000010000000101111;
+        cmdname = "AMOMINU.W";
+        break;
+      case TEST_AMOORD:
+        base = 0b01000000000000000011000000101111;
+        cmdname = "AMOOR.D";
+        break;
+      case TEST_AMOORW:
+        base = 0b01000000000000000010000000101111;
+        cmdname = "AMOOR.W";
+        break;
+      case TEST_AMOSWAPD:
+        base = 0b00001000000000000011000000101111;
+        cmdname = "AMOSWAP.D";
+        break;
+      case TEST_AMOSWAPW:
+        base = 0b00001000000000000010000000101111;
+        cmdname = "AMOSWAP.W";
+        break;
+      case TEST_AMOXORD:
+        base = 0b00100000000000000011000000101111;
+        cmdname = "AMOXOR.D";
+        break;
+      case TEST_AMOXORW:
+        base = 0b00100000000000000010000000101111;
+        cmdname = "AMOXOR.W";
+        break;
+
+      default:
+        printf("Test case is not defined yet\n");
+        return true;
+        break;
+    }
+
+    for (int i = 0; i < TEST_NUM && !error; i++) {
+      uint32_t cmd;
+      uint32_t rd = rnd() % 32;
+      uint32_t rs1 = rnd() % 32;
+      uint32_t rs2 = rnd() % 32;
+      uint32_t aq = rnd() & 1;
+      uint32_t rl = rnd() & 1;
+      switch (testcase) {
+        case TEST_AMOADDD:
+          cmd = AsmAmoAddd(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOADDW:
+          cmd = AsmAmoAddw(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOANDD:
+          cmd = AsmAmoAndd(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOANDW:
+          cmd = AsmAmoAndw(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOMAXD:
+          cmd = AsmAmoMaxd(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOMAXW:
+          cmd = AsmAmoMaxw(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOMAXUD:
+          cmd = AsmAmoMaxud(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOMAXUW:
+          cmd = AsmAmoMaxuw(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOMIND:
+          cmd = AsmAmoMind(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOMINW:
+          cmd = AsmAmoMinw(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOMINUD:
+          cmd = AsmAmoMinud(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOMINUW:
+          cmd = AsmAmoMinuw(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOORD:
+          cmd = AsmAmoOrd(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOORW:
+          cmd = AsmAmoOrw(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOSWAPD:
+          cmd = AsmAmoSwapd(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOSWAPW:
+          cmd = AsmAmoSwapw(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOXORD:
+          cmd = AsmAmoXord(rd, rs1, rs2, aq, rl);
+          break;
+        case TEST_AMOXORW:
+          cmd = AsmAmoXorw(rd, rs1, rs2, aq, rl);
+          break;
+
+        default:
+          break;
+      }
+      uint32_t base_with_aq_rl = base | ((aq & 0b1) << 26) | ((rl & 0b1) << 25);
+      uint8_t opcode = base_with_aq_rl & 0b01111111;
+      uint8_t funct3 = (base_with_aq_rl >> 12) & 0b111;
+      uint8_t funct7 = (base_with_aq_rl >> 25) & 0b1111111;
+      uint32_t exp = gen_r_type(base_with_aq_rl, rd, rs1, rs2);
+      std::string test_string = cmdname + " " + std::to_string(rd) + ", " +
+                                std::to_string(rs1) + ", " +
+                                std::to_string(rs2) + "(aq = " + std::to_string(aq)
+                                + ", rl = " + std::to_string(rl) + ")";
+      error |= check_equal_quiet(test_string, cmd, exp, verbose);
+      error |= test_r_type_decode_quiet(exp, opcode, funct3, funct7, rd, rs1,
+                                        rs2, verbose);
+    }
+    print_error_result(cmdname, TEST_NUM, error, verbose);
+    total_error |= error;
+  }
+  return total_error;
+}
+
 bool test_r_type(bool verbose = false) {
   enum TEST_LIST {
     TEST_ADD,
@@ -270,7 +455,7 @@ bool test_r_type(bool verbose = false) {
     TEST_SRAW,
     TEST_SRLW,
     TEST_SUBW,
-    TEST_ADDW
+    TEST_ADDW,
   };
   bool total_error = false;
 
@@ -1748,6 +1933,7 @@ bool RunAllTests() {
   error |= test_j_type(verbose);
   error |= test_s_type(verbose);
   error |= test_u_type(verbose);
+  error |= test_amo_type(verbose);
   error |= test_mult(verbose);
   error |= test_compact(verbose);
 

@@ -38,7 +38,8 @@ public:
 
   int RunCpu(uint64_t start_pc, bool verbose = true);
 
-  static std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> GetCode16(uint32_t ir, int mxl);
+  static std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t>
+  GetCode16(uint32_t ir, int mxl);
 
 private:
   uint64_t
@@ -85,7 +86,10 @@ private:
   void SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm);
 
   void MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
-                            uint32_t rs2);
+                       uint32_t rs2);
+
+  void
+  AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t rs2);
 
   void Mret();
 
@@ -96,7 +100,9 @@ private:
   uint32_t GetCode32(uint32_t ir);
 
   int GetLoadWidth(uint32_t instruction);
+
   int GetStoreWidth(uint32_t instruction);
+
   int GetAccessWidth(uint32_t width, uint64_t address);
 
   void CheckHostWrite(uint64_t address);
@@ -278,6 +284,7 @@ enum op_label {
   OPCODE_AUIPC = 0b00010111,
   OPCODE_SYSTEM = 0b01110011,
   OPCODE_FENCE = 0b0001111,
+  OPCODE_AMO = 0b0101111,
 };
 
 enum op_funct {
@@ -327,6 +334,20 @@ enum op_funct3 {
   FUNC3_DIVU = 0b101,
   FUNC3_REM = 0b110,
   FUNC3_REMU = 0b111,
+  FUNC3_AMOW = 0b010,
+  FUNC3_AMOD = 0b011,
+};
+
+enum op_funct5 {
+  FUNC5_AMOADD = 0b00000,
+  FUNC5_AMOAND = 0b01100,
+  FUNC5_AMOMAX = 0b10100,
+  FUNC5_AMOMAXU = 0b11100,
+  FUNC5_AMOMIN = 0b10000,
+  FUNC5_AMOMINU = 0b11000,
+  FUNC5_AMOOR = 0b01000,
+  FUNC5_AMOSWAP = 0b00001,
+  FUNC5_AMOXOR = 0b00100,
 };
 
 enum instruction {
@@ -389,7 +410,7 @@ enum instruction {
   INST_CSRRWI,
   INST_FENCE,
   INST_FENCEI,
-  // RV32M/RV64M instructions
+  // RV32M/RV64M instructions.
   INST_MUL,
   INST_MULH,
   INST_MULHSU,
@@ -403,6 +424,8 @@ enum instruction {
   INST_REMU,
   INST_REMUW,
   INST_REMW,
+  // AMO instructions.
+  INST_AMOADDD,
 };
 
 } // namespace RISCV_EMULATOR

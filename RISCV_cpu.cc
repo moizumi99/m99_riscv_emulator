@@ -83,6 +83,7 @@ uint32_t RiscvCpu::LoadCmd(uint64_t pc) {
     uint32_t cmd_upper = mem.Read32((physical_address_upper >> 2) << 2);
     cmd = (cmd & 0xFFFF) | (cmd_upper & 0xFFFF) << 16;
   }
+  cmd = (cmd & 0b11) == 0b11 ? cmd : cmd & 0xFFFF;
   return cmd;
 }
 
@@ -765,6 +766,23 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   reg_[rd] = temp64;
 }
 
+void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t rs2) {
+  uint64_t virtual_address = reg_[rs1];
+  uint64_t physical_address = VirtualToPhysical(virtual_address);
+  uint64_t new_value;
+  uint32_t word_width = (instruction == INST_AMOADDD) ? 8 : 4;
+  uint64_t t = LoadWd(physical_address, word_width);
+  switch (instruction) {
+    case INST_AMOADDD:
+      new_value = t + reg_[rs2];
+      break;
+  }
+  constexpr bool kWriteAccess = true;
+  physical_address = VirtualToPhysical(virtual_address, kWriteAccess);
+  StoreWd(physical_address, new_value, word_width);
+  reg_[rd] = t;
+}
+
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   error_flag_ = false;
   end_flag_ = false;
@@ -932,6 +950,9 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_REMW:
         // RV32M/RV64M Instructions
         MultInstruction(instruction, rd, rs1, rs2);
+        break;
+      case INST_AMOADDD:
+        AmoInstruction(instruction, rd, rs1, rs2);
         break;
       case INST_ERROR:
       default:
@@ -1352,6 +1373,13 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
         instruction = INST_FENCEI;
       } else if (funct3 == FUNC3_FENCE) {
         instruction = INST_FENCE;
+      }
+      break;
+    case OPCODE_AMO:
+      if ((funct7 >> 2) == FUNC5_AMOADD) {
+        if (funct3 == FUNC3_AMOD) {
+          instruction = INST_AMOADDD;
+        }
       }
       break;
     default:
