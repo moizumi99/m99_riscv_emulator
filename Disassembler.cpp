@@ -384,6 +384,14 @@ std::string Disassemble(uint32_t ir, int mxl) {
         cmd = funct3 == FUNC3_AMOD ? "AMOMAX.D" : "AMOMAX.W";
       } else if (funct5 == FUNC5_AMOMAXU) {
         cmd = funct3 == FUNC3_AMOD ? "AMOMAXU.D" : "AMOMAXU.W";
+      } else if (funct5 == FUNC5_AMOMIN) {
+        cmd = funct3 == FUNC3_AMOD ? "AMOMIN.D" : "AMOMIN.W";
+      } else if (funct5 == FUNC5_AMOMINU) {
+        cmd = funct3 == FUNC3_AMOD ? "AMOMINU.D" : "AMOMAIN.W";
+      } else if (funct5 == FUNC5_AMOOR) {
+        cmd = funct3 == FUNC3_AMOD ? "AMOOR.D" : "AMOOR.W";
+      } else if (funct5 == FUNC5_AMOXOR) {
+        cmd = funct3 == FUNC3_AMOD ? "AMOXOR.D" : "AMOXOR.W";
       }
       cmd += " " + GetRegName(rd) + ", " + GetRegName(rs2) + ", (" +
              GetRegName(rs1) + ")";

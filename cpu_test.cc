@@ -1772,19 +1772,35 @@ bool TestMultTypeLoop(bool verbose = true) {
 
 // AMO test cases start here.
 enum AMO_TEST {
-  TEST_AMOADDD,
-  TEST_AMOADDW,
-  TEST_AMOANDD,
-  TEST_AMOANDW,
-  TEST_AMOMAXD,
-  TEST_AMOMAXW,
-  TEST_AMOMAXUD,
-  TEST_AMOMAXUW,
+  TEST_AMOADDD, TEST_AMOADDW,
+  TEST_AMOANDD, TEST_AMOANDW,
+  TEST_AMOMAXD, TEST_AMOMAXW,
+  TEST_AMOMAXUD, TEST_AMOMAXUW,
+  TEST_AMOMIND, TEST_AMOMINW,
+  TEST_AMOMINUD, TEST_AMOMINUW,
+  TEST_AMOORD, TEST_AMOORW,
+  TEST_AMOXORD, TEST_AMOXORW,
+};
+
+constexpr std::array<AMO_TEST, 16> kAmoTestSet = {
+  TEST_AMOADDD, TEST_AMOADDW,
+  TEST_AMOANDD, TEST_AMOANDW,
+  TEST_AMOMAXD, TEST_AMOMAXW,
+  TEST_AMOMAXUD, TEST_AMOMAXUW,
+  TEST_AMOMIND, TEST_AMOMINW,
+  TEST_AMOMINUD, TEST_AMOMINUW,
+  TEST_AMOORD, TEST_AMOORW,
+  TEST_AMOXORD, TEST_AMOXORW,
 };
 
 template<class T>
 T max(T a, T b) {
   return a > b ? a : b;
+}
+
+template<class T>
+T min(T a, T b) {
+  return a < b ? a : b;
 }
 
 bool
@@ -1794,7 +1810,9 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2,
             bool verbose) {
   bool is_64_instruction =
     test_type == TEST_AMOADDD || test_type == TEST_AMOANDD ||
-    test_type == TEST_AMOMAXD || test_type == TEST_AMOMAXUD;
+    test_type == TEST_AMOMAXD || test_type == TEST_AMOMAXUD ||
+    test_type == TEST_AMOMIND || test_type == TEST_AMOMINUD ||
+    test_type == TEST_AMOORD || test_type == TEST_AMOXORD;
   if (!en_64_bit && is_64_instruction) {
     return false;
   }
@@ -1805,7 +1823,7 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2,
   offset = rs1 == 0 ? 0 : offset;
   if (is_64_instruction) {
     offset &= 0xFFFFFFF8;
-    mem.Write64(offset, static_cast<uint64_t>(value0));
+    mem.Write64(offset, static_cast<int64_t>(value0));
   } else {
     mem.Write32(offset, value0);
   }
@@ -1835,7 +1853,7 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2,
     case TEST_AMOADDD:
       test_case = "AMOADD.D";
       pointer = AddCmd(*memory, pointer, AsmAmoAddd(rd, rs1, rs2, aq, rl));
-      expected0 = static_cast<uint64_t>(value0) + static_cast<uint64_t>(value1);
+      expected0 = static_cast<int64_t>(value0) + static_cast<int64_t>(value1);
       break;
     case TEST_AMOADDW:
       test_case = "AMOADD.W";
@@ -1855,7 +1873,8 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2,
     case TEST_AMOMAXD:
       test_case = "AMOMAX.D";
       pointer = AddCmd(*memory, pointer, AsmAmoMaxd(rd, rs1, rs2, aq, rl));
-      expected0 = max<int64_t>(static_cast<int64_t>(value0), static_cast<int64_t>(value1));
+      expected0 = max<int64_t>(static_cast<int64_t>(value0),
+                               static_cast<int64_t>(value1));
       break;
     case TEST_AMOMAXW:
       test_case = "AMOMAX.W";
@@ -1865,12 +1884,47 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2,
     case TEST_AMOMAXUD:
       test_case = "AMOMAXU.D";
       pointer = AddCmd(*memory, pointer, AsmAmoMaxud(rd, rs1, rs2, aq, rl));
-      expected0 = max<uint64_t>(static_cast<uint64_t>(value0), static_cast<uint64_t>(value1));
+      expected0 = max<uint64_t>(static_cast<uint64_t>(value0),
+                                static_cast<uint64_t>(value1));
       break;
     case TEST_AMOMAXUW:
       test_case = "AMOMAXU.W";
       pointer = AddCmd(*memory, pointer, AsmAmoMaxuw(rd, rs1, rs2, aq, rl));
-      expected0 = max<uint32_t>(static_cast<uint32_t>(value0), static_cast<uint32_t>(value1)) & 0xFFFFFFFF;
+      expected0 = max<uint32_t>(static_cast<uint32_t>(value0),
+                                static_cast<uint32_t>(value1)) & 0xFFFFFFFF;
+      break;
+    case TEST_AMOMIND:
+      test_case = "AMOMIN.D";
+      pointer = AddCmd(*memory, pointer, AsmAmoMind(rd, rs1, rs2, aq, rl));
+      expected0 = min<int64_t>(static_cast<int64_t>(value0),
+                               static_cast<int64_t>(value1));
+      break;
+    case TEST_AMOMINW:
+      test_case = "AMOMIN.W";
+      pointer = AddCmd(*memory, pointer, AsmAmoMinw(rd, rs1, rs2, aq, rl));
+      expected0 = min<int32_t>(value0, value1) & 0xFFFFFFFF;
+      break;
+    case TEST_AMOMINUD:
+      test_case = "AMOMINU.D";
+      pointer = AddCmd(*memory, pointer, AsmAmoMinud(rd, rs1, rs2, aq, rl));
+      expected0 = min<uint64_t>(static_cast<uint64_t>(value0),
+                                static_cast<uint64_t>(value1));
+      break;
+    case TEST_AMOMINUW:
+      test_case = "AMOMINU.W";
+      pointer = AddCmd(*memory, pointer, AsmAmoMinuw(rd, rs1, rs2, aq, rl));
+      expected0 = min<uint32_t>(static_cast<uint32_t>(value0),
+                                static_cast<uint32_t>(value1)) & 0xFFFFFFFF;
+      break;
+    case TEST_AMOORD:
+      test_case = "AMOOR.D";
+      pointer = AddCmd(*memory, pointer, AsmAmoOrd(rd, rs1, rs2, aq, rl));
+      expected0 = static_cast<int64_t>(value0) | static_cast<int64_t>(value1);
+      break;
+    case TEST_AMOORW:
+      test_case = "AMOOR.W";
+      pointer = AddCmd(*memory, pointer, AsmAmoOrw(rd, rs1, rs2, aq, rl));
+      expected0 = (value0 | value1) & 0xFFFFFFFF;
       break;
     default:
       if (verbose) {
@@ -1912,14 +1966,22 @@ void PrintAmoInstructionMessage(AMO_TEST test_case, bool error,
   if (!verbose) {
     return;
   }
-  std::map<AMO_TEST, const std::string> test_name = {{TEST_AMOADDD, "AMOADD.D"},
-                                                     {TEST_AMOADDW, "AMOADD.W"},
-                                                     {TEST_AMOANDD, "AMOAND.D"},
-                                                     {TEST_AMOANDW, "AMOAND.W"},
-                                                     {TEST_AMOMAXD, "AMOMAX.D"},
-                                                     {TEST_AMOMAXW, "AMOMAX.W"},
+  std::map<AMO_TEST, const std::string> test_name = {{TEST_AMOADDD,  "AMOADD.D"},
+                                                     {TEST_AMOADDW,  "AMOADD.W"},
+                                                     {TEST_AMOANDD,  "AMOAND.D"},
+                                                     {TEST_AMOANDW,  "AMOAND.W"},
+                                                     {TEST_AMOMAXD,  "AMOMAX.D"},
+                                                     {TEST_AMOMAXW,  "AMOMAX.W"},
                                                      {TEST_AMOMAXUD, "AMOMAXU.D"},
                                                      {TEST_AMOMAXUW, "AMOMAXU.W"},
+                                                     {TEST_AMOMIND,  "AMOMIN.D"},
+                                                     {TEST_AMOMINW,  "AMOMIN.W"},
+                                                     {TEST_AMOMINUD, "AMOMINU.D"},
+                                                     {TEST_AMOMINUW, "AMOMINU.W"},
+                                                     {TEST_AMOORD,  "AMOOR.D"},
+                                                     {TEST_AMOORW,  "AMOOR.W"},
+                                                     {TEST_AMOXORD, "AMOXOR.D"},
+                                                     {TEST_AMOXORW, "AMOXOR.W"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -1927,11 +1989,7 @@ void PrintAmoInstructionMessage(AMO_TEST test_case, bool error,
 
 bool TestAmoTypeLoop(bool verbose) {
   bool error = false;
-  AMO_TEST test_sets[] = {TEST_AMOADDD, TEST_AMOADDW, TEST_AMOANDD,
-                          TEST_AMOANDW, TEST_AMOMAXD, TEST_AMOMAXW,
-                          TEST_AMOMAXUD, TEST_AMOMAXUW,
-  };
-  for (auto test_case: test_sets) {
+  for (auto test_case : kAmoTestSet) {
     for (int i = 0; i < kUnitTestMax && !error; i++) {
       int32_t rd = rnd() % 32;
       int32_t rs1 = rnd() % 32;
