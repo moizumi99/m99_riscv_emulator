@@ -140,6 +140,7 @@ std::string Disassemble(uint32_t ir, int mxl) {
   }
   uint8_t funct3 = bitcrop(ir, 3, 12);
   uint8_t funct7 = bitcrop(ir, 7, 25);
+  uint8_t funct5 = funct7 >> 2;
   uint32_t rd = GetRd(ir);
   uint32_t rs1 = GetRs1(ir);
   uint32_t rs2 = GetRs2(ir);
@@ -375,10 +376,12 @@ std::string Disassemble(uint32_t ir, int mxl) {
       }
       break;
     case OPCODE_AMO:
-      if ((funct7 >> 2) == FUNC5_AMOADD) {
+      if (funct5 == FUNC5_AMOADD) {
         cmd = funct3 == FUNC3_AMOD ? "AMOADD.D" : "AMOADD.W";
-      } else if ((funct7 >> 2) == FUNC5_AMOAND) {
+      } else if (funct5 == FUNC5_AMOAND) {
         cmd = funct3 == FUNC3_AMOD ? "AMOAND.D" : "AMOAND.W";
+      } else if (funct5 == FUNC5_AMOMAX) {
+        cmd = funct3 == FUNC3_AMOD ? "AMOMAX.D" : "AMOMAX.W";
       }
       cmd += " " + GetRegName(rd) + ", " + GetRegName(rs2) + ", (" +
              GetRegName(rs1) + ")";

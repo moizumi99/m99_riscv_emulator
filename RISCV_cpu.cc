@@ -770,13 +770,18 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   reg_[rd] = temp64;
 }
 
+template<class T>
+T max(T a, T b) {
+  return a > b ? a : b;
+}
+
 void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
                               uint32_t rs2) {
   uint64_t virtual_address = reg_[rs1];
   uint64_t physical_address = VirtualToPhysical(virtual_address);
   uint64_t new_value;
   uint32_t word_width = (instruction == INST_AMOADDD ||
-                         instruction == INST_AMOANDD) ? 8 : 4;
+                         instruction == INST_AMOANDD || instruction == INST_AMOMAXD) ? 8 : 4;
   uint64_t t = LoadWd(physical_address, word_width);
   if (word_width == 4) {
     t = SignExtend(t, 32);
@@ -793,6 +798,13 @@ void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       break;
     case INST_AMOANDW:
       new_value = SignExtend(t & reg_[rs2], 32);
+      break;
+    case INST_AMOMAXD:
+      new_value = max<int64_t>(t, reg_[rs2]);
+      break;
+    case INST_AMOMAXW:
+      new_value = max<int32_t>(SignExtend(t, 32), SignExtend(reg_[rs2], 32));
+      new_value = SignExtend(new_value, 32);
       break;
   }
   constexpr bool kWriteAccess = true;
@@ -973,6 +985,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_AMOADDW:
       case INST_AMOANDD:
       case INST_AMOANDW:
+      case INST_AMOMAXD:
+      case INST_AMOMAXW:
         AmoInstruction(instruction, rd, rs1, rs2);
         break;
       case INST_ERROR:
@@ -1207,6 +1221,7 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
   uint16_t opcode = bitcrop(ir, 7, 0);
   uint8_t funct3 = bitcrop(ir, 3, 12);
   uint8_t funct7 = bitcrop(ir, 7, 25);
+  uint8_t funct5 = funct7 >> 2;
   uint32_t instruction = INST_ERROR;
   switch (opcode) {
     case OPCODE_ARITHLOG: // ADD, SUB
@@ -1398,10 +1413,12 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
       }
       break;
     case OPCODE_AMO:
-      if ((funct7 >> 2) == FUNC5_AMOADD) {
+      if (funct5 == FUNC5_AMOADD) {
         instruction = funct3 == FUNC3_AMOD ? INST_AMOADDD : INST_AMOADDW;
-      } else if ((funct7 >> 2) == FUNC5_AMOAND) {
+      } else if (funct5 == FUNC5_AMOAND) {
         instruction = funct3 == FUNC3_AMOD ? INST_AMOANDD : INST_AMOANDW;
+      } else if (funct5 == FUNC5_AMOMAX) {
+        instruction = funct3 == FUNC3_AMOD ? INST_AMOMAXD : INST_AMOMAXW;
       }
       break;
     default:

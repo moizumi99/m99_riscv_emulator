@@ -1772,14 +1772,27 @@ bool TestMultTypeLoop(bool verbose = true) {
 
 // AMO test cases start here.
 enum AMO_TEST {
-  TEST_AMOADDD, TEST_AMOADDW, TEST_AMOANDD, TEST_AMOANDW,
+  TEST_AMOADDD,
+  TEST_AMOADDW,
+  TEST_AMOANDD,
+  TEST_AMOANDW,
+  TEST_AMOMAXD,
+  TEST_AMOMAXW,
 };
 
+template<class T>
+T max(T a, T b) {
+  return a > b ? a : b;
+}
+
 bool
-TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t offset,
-          int32_t value0, int32_t value1, uint32_t aq, uint32_t rl,
-          bool verbose) {
-  bool is_64_instruction = test_type == TEST_AMOADDD || test_type == TEST_AMOANDD;
+TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2,
+            uint32_t offset,
+            int32_t value0, int32_t value1, uint32_t aq, uint32_t rl,
+            bool verbose) {
+  bool is_64_instruction =
+    test_type == TEST_AMOADDD || test_type == TEST_AMOANDD ||
+    test_type == TEST_AMOMAXD;
   if (!en_64_bit && is_64_instruction) {
     return false;
   }
@@ -1837,6 +1850,16 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_
       pointer = AddCmd(*memory, pointer, AsmAmoAndw(rd, rs1, rs2, aq, rl));
       expected0 = (value0 & value1) & 0xFFFFFFFFLL;
       break;
+    case TEST_AMOMAXD:
+      test_case = "AMOMAX.D";
+      pointer = AddCmd(*memory, pointer, AsmAmoMaxd(rd, rs1, rs2, aq, rl));
+      expected0 = max<int64_t>(static_cast<uint64_t>(value0), static_cast<uint64_t>(value1));
+      break;
+    case TEST_AMOMAXW:
+      test_case = "AMOMAX.W";
+      pointer = AddCmd(*memory, pointer, AsmAmoMaxw(rd, rs1, rs2, aq, rl));
+      expected0 = max<int32_t>(value0, value1) & 0xFFFFFFFF;
+      break;
     default:
       if (verbose) {
         printf("Undefined test case %d\n", test_type);
@@ -1864,15 +1887,16 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_
   if (verbose) {
     PrintErrorMessage(test_case, error, expected0, result);
     if (error) {
-      printf("rd: %2d, rs1: %2d, rs2: %2d, offset: %08X, value0: %08X, value1: %08X\n",
-             rd, rs1, rs2, offset, value0, value1);
+      printf(
+        "rd: %2d, rs1: %2d, rs2: %2d, offset: %08X, value0: %08X, value1: %08X\n",
+        rd, rs1, rs2, offset, value0, value1);
     }
   }
   return error;
 }
 
 void PrintAmoInstructionMessage(AMO_TEST test_case, bool error,
-                                  bool verbose = true) {
+                                bool verbose = true) {
   if (!verbose) {
     return;
   }
@@ -1880,6 +1904,8 @@ void PrintAmoInstructionMessage(AMO_TEST test_case, bool error,
                                                      {TEST_AMOADDW, "AMOADD.W"},
                                                      {TEST_AMOANDD, "AMOAND.D"},
                                                      {TEST_AMOANDW, "AMOAND.W"},
+                                                     {TEST_AMOMAXD, "AMOMAX.D"},
+                                                     {TEST_AMOMAXW, "AMOMAX.W"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -1887,7 +1913,8 @@ void PrintAmoInstructionMessage(AMO_TEST test_case, bool error,
 
 bool TestAmoTypeLoop(bool verbose) {
   bool error = false;
-  AMO_TEST test_sets[] = {TEST_AMOADDD, TEST_AMOADDW, TEST_AMOANDD, TEST_AMOANDW};
+  AMO_TEST test_sets[] = {TEST_AMOADDD, TEST_AMOADDW, TEST_AMOANDD,
+                          TEST_AMOANDW, TEST_AMOMAXD, TEST_AMOMAXW};
   for (auto test_case: test_sets) {
     for (int i = 0; i < kUnitTestMax && !error; i++) {
       int32_t rd = rnd() % 32;
@@ -1903,11 +1930,13 @@ bool TestAmoTypeLoop(bool verbose) {
       } while (kProgramStart <= offset && offset < kProgramEnd);
       int32_t value0 = rnd() & 0xFFFFFFFF;
       int32_t value1 = rnd() & 0xFFFFFFFF;
-      bool test_error = TestAmoType(test_case, rd, rs1, rs2, offset, value0, value1, aq, rl,
-                                  false);
+      bool test_error = TestAmoType(test_case, rd, rs1, rs2, offset, value0,
+                                    value1, aq, rl,
+                                    false);
       if (test_error && verbose) {
-        test_error = TestAmoType(test_case, rd, rs1, rs2, offset, value0, value1, aq, rl,
-                                    true);
+        test_error = TestAmoType(test_case, rd, rs1, rs2, offset, value0,
+                                 value1, aq, rl,
+                                 true);
       }
       error |= test_error;
     }
