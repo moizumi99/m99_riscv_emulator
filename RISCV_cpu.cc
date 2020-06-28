@@ -781,7 +781,8 @@ void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   uint64_t physical_address = VirtualToPhysical(virtual_address);
   uint64_t new_value;
   uint32_t word_width = (instruction == INST_AMOADDD ||
-                         instruction == INST_AMOANDD || instruction == INST_AMOMAXD) ? 8 : 4;
+                         instruction == INST_AMOANDD || instruction == INST_AMOMAXD ||
+                         instruction == INST_AMOMAXUD) ? 8 : 4;
   uint64_t t = LoadWd(physical_address, word_width);
   if (word_width == 4) {
     t = SignExtend(t, 32);
@@ -804,6 +805,13 @@ void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       break;
     case INST_AMOMAXW:
       new_value = max<int32_t>(SignExtend(t, 32), SignExtend(reg_[rs2], 32));
+      new_value = SignExtend(new_value, 32);
+      break;
+    case INST_AMOMAXUD:
+      new_value = max<uint64_t>(t, reg_[rs2]);
+      break;
+    case INST_AMOMAXUW:
+      new_value = max<uint32_t>(static_cast<uint32_t>(t), static_cast<uint32_t>(reg_[rs2]));
       new_value = SignExtend(new_value, 32);
       break;
   }
@@ -987,6 +995,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_AMOANDW:
       case INST_AMOMAXD:
       case INST_AMOMAXW:
+      case INST_AMOMAXUD:
+      case INST_AMOMAXUW:
         AmoInstruction(instruction, rd, rs1, rs2);
         break;
       case INST_ERROR:
@@ -1419,6 +1429,8 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
         instruction = funct3 == FUNC3_AMOD ? INST_AMOANDD : INST_AMOANDW;
       } else if (funct5 == FUNC5_AMOMAX) {
         instruction = funct3 == FUNC3_AMOD ? INST_AMOMAXD : INST_AMOMAXW;
+      } else if (funct5 == FUNC5_AMOMAXU) {
+        instruction = funct3 == FUNC3_AMOD ? INST_AMOMAXUD : INST_AMOMAXUW;
       }
       break;
     default:

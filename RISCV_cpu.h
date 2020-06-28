@@ -431,6 +431,8 @@ enum instruction {
   INST_AMOANDW,
   INST_AMOMAXD,
   INST_AMOMAXW,
+  INST_AMOMAXUD,
+  INST_AMOMAXUW,
 };
 
 } // namespace RISCV_EMULATOR

@@ -382,6 +382,8 @@ std::string Disassemble(uint32_t ir, int mxl) {
         cmd = funct3 == FUNC3_AMOD ? "AMOAND.D" : "AMOAND.W";
       } else if (funct5 == FUNC5_AMOMAX) {
         cmd = funct3 == FUNC3_AMOD ? "AMOMAX.D" : "AMOMAX.W";
+      } else if (funct5 == FUNC5_AMOMAXU) {
+        cmd = funct3 == FUNC3_AMOD ? "AMOMAXU.D" : "AMOMAXU.W";
       }
       cmd += " " + GetRegName(rd) + ", " + GetRegName(rs2) + ", (" +
              GetRegName(rs1) + ")";
