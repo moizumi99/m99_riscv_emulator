@@ -1780,9 +1780,10 @@ enum AMO_TEST {
   TEST_AMOMINUD, TEST_AMOMINUW,
   TEST_AMOORD, TEST_AMOORW,
   TEST_AMOXORD, TEST_AMOXORW,
+  TEST_AMOSWAPD, TEST_AMOSWAPW,
 };
 
-constexpr std::array<AMO_TEST, 16> kAmoTestSet = {
+constexpr std::array<AMO_TEST, 18> kAmoTestSet = {
   TEST_AMOADDD, TEST_AMOADDW,
   TEST_AMOANDD, TEST_AMOANDW,
   TEST_AMOMAXD, TEST_AMOMAXW,
@@ -1791,7 +1792,36 @@ constexpr std::array<AMO_TEST, 16> kAmoTestSet = {
   TEST_AMOMINUD, TEST_AMOMINUW,
   TEST_AMOORD, TEST_AMOORW,
   TEST_AMOXORD, TEST_AMOXORW,
+  TEST_AMOSWAPD, TEST_AMOSWAPW,
 };
+
+void PrintAmoInstructionMessage(AMO_TEST test_case, bool error,
+                                bool verbose = true) {
+  if (!verbose) {
+    return;
+  }
+  std::map<AMO_TEST, const std::string> test_name = {{TEST_AMOADDD,  "AMOADD.D"},
+                                                     {TEST_AMOADDW,  "AMOADD.W"},
+                                                     {TEST_AMOANDD,  "AMOAND.D"},
+                                                     {TEST_AMOANDW,  "AMOAND.W"},
+                                                     {TEST_AMOMAXD,  "AMOMAX.D"},
+                                                     {TEST_AMOMAXW,  "AMOMAX.W"},
+                                                     {TEST_AMOMAXUD, "AMOMAXU.D"},
+                                                     {TEST_AMOMAXUW, "AMOMAXU.W"},
+                                                     {TEST_AMOMIND,  "AMOMIN.D"},
+                                                     {TEST_AMOMINW,  "AMOMIN.W"},
+                                                     {TEST_AMOMINUD, "AMOMINU.D"},
+                                                     {TEST_AMOMINUW, "AMOMINU.W"},
+                                                     {TEST_AMOORD,  "AMOOR.D"},
+                                                     {TEST_AMOORW,  "AMOOR.W"},
+                                                     {TEST_AMOXORD, "AMOXOR.D"},
+                                                     {TEST_AMOXORW, "AMOXOR.W"},
+                                                     {TEST_AMOSWAPD, "AMOSWAP.D"},
+                                                     {TEST_AMOSWAPW, "AMOSWAP.W"},
+  };
+  printf("%s test %s.\n", test_name[test_case].c_str(),
+         error ? "failed" : "passed");
+}
 
 template<class T>
 T max(T a, T b) {
@@ -1812,7 +1842,8 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2,
     test_type == TEST_AMOADDD || test_type == TEST_AMOANDD ||
     test_type == TEST_AMOMAXD || test_type == TEST_AMOMAXUD ||
     test_type == TEST_AMOMIND || test_type == TEST_AMOMINUD ||
-    test_type == TEST_AMOORD || test_type == TEST_AMOXORD;
+    test_type == TEST_AMOORD || test_type == TEST_AMOXORD ||
+    test_type == TEST_AMOSWAPD;
   if (!en_64_bit && is_64_instruction) {
     return false;
   }
@@ -1926,6 +1957,27 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2,
       pointer = AddCmd(*memory, pointer, AsmAmoOrw(rd, rs1, rs2, aq, rl));
       expected0 = (value0 | value1) & 0xFFFFFFFF;
       break;
+    case TEST_AMOXORW:
+      test_case = "AMOXOR.W";
+      pointer = AddCmd(*memory, pointer, AsmAmoXorw(rd, rs1, rs2, aq, rl));
+      expected0 = (value0 ^ value1) & 0xFFFFFFFF;
+      break;
+    case TEST_AMOXORD:
+      test_case = "AMOXOR.D";
+      pointer = AddCmd(*memory, pointer, AsmAmoXord(rd, rs1, rs2, aq, rl));
+      expected0 = static_cast<int64_t>(value0) ^ static_cast<int64_t>(value1);
+      break;
+    case TEST_AMOSWAPD:
+      test_case = "AMOSWAP.D";
+      pointer = AddCmd(*memory, pointer, AsmAmoSwapd(rd, rs1, rs2, aq, rl));
+      expected0 = static_cast<int64_t>(value1);
+      break;
+    case TEST_AMOSWAPW:
+      test_case = "AMOSWAP.W";
+      pointer = AddCmd(*memory, pointer, AsmAmoSwapw(rd, rs1, rs2, aq, rl));
+      expected0 = value1 & 0xFFFFFFFF;
+      break;
+
     default:
       if (verbose) {
         printf("Undefined test case %d\n", test_type);
@@ -1961,31 +2013,6 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2,
   return error;
 }
 
-void PrintAmoInstructionMessage(AMO_TEST test_case, bool error,
-                                bool verbose = true) {
-  if (!verbose) {
-    return;
-  }
-  std::map<AMO_TEST, const std::string> test_name = {{TEST_AMOADDD,  "AMOADD.D"},
-                                                     {TEST_AMOADDW,  "AMOADD.W"},
-                                                     {TEST_AMOANDD,  "AMOAND.D"},
-                                                     {TEST_AMOANDW,  "AMOAND.W"},
-                                                     {TEST_AMOMAXD,  "AMOMAX.D"},
-                                                     {TEST_AMOMAXW,  "AMOMAX.W"},
-                                                     {TEST_AMOMAXUD, "AMOMAXU.D"},
-                                                     {TEST_AMOMAXUW, "AMOMAXU.W"},
-                                                     {TEST_AMOMIND,  "AMOMIN.D"},
-                                                     {TEST_AMOMINW,  "AMOMIN.W"},
-                                                     {TEST_AMOMINUD, "AMOMINU.D"},
-                                                     {TEST_AMOMINUW, "AMOMINU.W"},
-                                                     {TEST_AMOORD,  "AMOOR.D"},
-                                                     {TEST_AMOORW,  "AMOOR.W"},
-                                                     {TEST_AMOXORD, "AMOXOR.D"},
-                                                     {TEST_AMOXORW, "AMOXOR.W"},
-  };
-  printf("%s test %s.\n", test_name[test_case].c_str(),
-         error ? "failed" : "passed");
-}
 
 bool TestAmoTypeLoop(bool verbose) {
   bool error = false;

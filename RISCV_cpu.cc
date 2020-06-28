@@ -786,10 +786,14 @@ void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   uint64_t physical_address = VirtualToPhysical(virtual_address);
   uint64_t new_value;
   uint32_t word_width = (instruction == INST_AMOADDD ||
-                         instruction == INST_AMOANDD || instruction == INST_AMOMAXD ||
-                         instruction == INST_AMOMAXUD || instruction == INST_AMOMIND ||
-                         instruction == INST_AMOMINUD || instruction == INST_AMOORD ||
-                         instruction == INST_AMOXORD) ? 8 : 4;
+                         instruction == INST_AMOANDD ||
+                         instruction == INST_AMOMAXD ||
+                         instruction == INST_AMOMAXUD ||
+                         instruction == INST_AMOMIND ||
+                         instruction == INST_AMOMINUD ||
+                         instruction == INST_AMOORD ||
+                         instruction == INST_AMOXORD ||
+                         instruction == INST_AMOSWAPD) ? 8 : 4;
   uint64_t t = LoadWd(physical_address, word_width);
   if (word_width == 4) {
     t = SignExtend(t, 32);
@@ -818,7 +822,8 @@ void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       new_value = max<uint64_t>(t, reg_[rs2]);
       break;
     case INST_AMOMAXUW:
-      new_value = max<uint32_t>(static_cast<uint32_t>(t), static_cast<uint32_t>(reg_[rs2]));
+      new_value = max<uint32_t>(static_cast<uint32_t>(t),
+                                static_cast<uint32_t>(reg_[rs2]));
       new_value = SignExtend(new_value, 32);
       break;
     case INST_AMOMIND:
@@ -832,7 +837,8 @@ void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       new_value = min<uint64_t>(t, reg_[rs2]);
       break;
     case INST_AMOMINUW:
-      new_value = min<uint32_t>(static_cast<uint32_t>(t), static_cast<uint32_t>(reg_[rs2]));
+      new_value = min<uint32_t>(static_cast<uint32_t>(t),
+                                static_cast<uint32_t>(reg_[rs2]));
       new_value = SignExtend(new_value, 32);
       break;
     case INST_AMOORD:
@@ -846,6 +852,10 @@ void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
       break;
     case INST_AMOXORW:
       new_value = SignExtend(t ^ reg_[rs2], 32);
+      break;
+    case INST_AMOSWAPD:
+    case INST_AMOSWAPW:
+      new_value = reg_[rs2];
       break;
   }
   constexpr bool kWriteAccess = true;
@@ -1038,6 +1048,8 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       case INST_AMOORW:
       case INST_AMOXORD:
       case INST_AMOXORW:
+      case INST_AMOSWAPD:
+      case INST_AMOSWAPW:
         AmoInstruction(instruction, rd, rs1, rs2);
         break;
       case INST_ERROR:
@@ -1480,6 +1492,8 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
         instruction = funct3 == FUNC3_AMOD ? INST_AMOORD : INST_AMOORW;
       } else if (funct5 == FUNC5_AMOXOR) {
         instruction = funct3 == FUNC3_AMOD ? INST_AMOXORD : INST_AMOXORW;
+      } else if (funct5 == FUNC5_AMOSWAP) {
+        instruction = funct3 == FUNC3_AMOD ? INST_AMOSWAPD : INST_AMOSWAPW;
       }
       break;
     default:

@@ -441,6 +441,8 @@ enum instruction {
   INST_AMOORW,
   INST_AMOXORD,
   INST_AMOXORW,
+  INST_AMOSWAPD,
+  INST_AMOSWAPW,
 };
 
 } // namespace RISCV_EMULATOR
