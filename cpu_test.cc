@@ -1772,14 +1772,14 @@ bool TestMultTypeLoop(bool verbose = true) {
 
 // AMO test cases start here.
 enum AMO_TEST {
-  TEST_AMOADDD,
+  TEST_AMOADDD, TEST_AMOADDW, TEST_AMOANDD, TEST_AMOANDW,
 };
 
 bool
 TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_t offset,
           int32_t value0, int32_t value1, uint32_t aq, uint32_t rl,
           bool verbose) {
-  bool is_64_instruction = test_type == TEST_AMOADDD;
+  bool is_64_instruction = test_type == TEST_AMOADDD || test_type == TEST_AMOANDD;
   if (!en_64_bit && is_64_instruction) {
     return false;
   }
@@ -1821,7 +1821,21 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_
       test_case = "AMOADD.D";
       pointer = AddCmd(*memory, pointer, AsmAmoAddd(rd, rs1, rs2, aq, rl));
       expected0 = static_cast<uint64_t>(value0) + static_cast<uint64_t>(value1);
-      expected1 = value0;
+      break;
+    case TEST_AMOADDW:
+      test_case = "AMOADD.W";
+      pointer = AddCmd(*memory, pointer, AsmAmoAddw(rd, rs1, rs2, aq, rl));
+      expected0 = (value0 + value1) & 0xFFFFFFFF;
+      break;
+    case TEST_AMOANDD:
+      test_case = "AMOAND.D";
+      pointer = AddCmd(*memory, pointer, AsmAmoAndd(rd, rs1, rs2, aq, rl));
+      expected0 = static_cast<uint64_t>(value0) & static_cast<uint64_t>(value1);
+      break;
+    case TEST_AMOANDW:
+      test_case = "AMOAND.W";
+      pointer = AddCmd(*memory, pointer, AsmAmoAndw(rd, rs1, rs2, aq, rl));
+      expected0 = (value0 & value1) & 0xFFFFFFFFLL;
       break;
     default:
       if (verbose) {
@@ -1829,6 +1843,7 @@ TestAmoType(AMO_TEST test_type, uint32_t rd, uint32_t rs1, uint32_t rs2, uint32_
       }
       return true;
   }
+  expected1 = value0;
   pointer = AddCmd(*memory, pointer, AsmAddi(A0, rd, 0));
   pointer = AddCmd(*memory, pointer, AsmXor(RA, RA, RA));
   pointer = AddCmd(*memory, pointer, AsmJalr(ZERO, RA, 0));
@@ -1862,6 +1877,9 @@ void PrintAmoInstructionMessage(AMO_TEST test_case, bool error,
     return;
   }
   std::map<AMO_TEST, const std::string> test_name = {{TEST_AMOADDD, "AMOADD.D"},
+                                                     {TEST_AMOADDW, "AMOADD.W"},
+                                                     {TEST_AMOANDD, "AMOAND.D"},
+                                                     {TEST_AMOANDW, "AMOAND.W"},
   };
   printf("%s test %s.\n", test_name[test_case].c_str(),
          error ? "failed" : "passed");
@@ -1869,7 +1887,7 @@ void PrintAmoInstructionMessage(AMO_TEST test_case, bool error,
 
 bool TestAmoTypeLoop(bool verbose) {
   bool error = false;
-  AMO_TEST test_sets[] = {TEST_AMOADDD, };
+  AMO_TEST test_sets[] = {TEST_AMOADDD, TEST_AMOADDW, TEST_AMOANDD, TEST_AMOANDW};
   for (auto test_case: test_sets) {
     for (int i = 0; i < kUnitTestMax && !error; i++) {
       int32_t rd = rnd() % 32;

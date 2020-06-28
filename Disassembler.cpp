@@ -375,8 +375,10 @@ std::string Disassemble(uint32_t ir, int mxl) {
       }
       break;
     case OPCODE_AMO:
-      if (funct3 == FUNC3_AMOD) {
-        cmd = "AMOADD.D";
+      if ((funct7 >> 2) == FUNC5_AMOADD) {
+        cmd = funct3 == FUNC3_AMOD ? "AMOADD.D" : "AMOADD.W";
+      } else if ((funct7 >> 2) == FUNC5_AMOAND) {
+        cmd = funct3 == FUNC3_AMOD ? "AMOAND.D" : "AMOAND.W";
       }
       cmd += " " + GetRegName(rd) + ", " + GetRegName(rs2) + ", (" +
              GetRegName(rs1) + ")";

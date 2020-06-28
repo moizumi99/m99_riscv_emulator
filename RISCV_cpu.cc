@@ -468,6 +468,7 @@ int RiscvCpu::GetLoadWidth(uint32_t instruction) {
                                        {INST_LD,  8}};
   return load_size[instruction];
 }
+
 void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
                                int32_t imm12) {
   uint64_t source_address = reg_[rs1] + imm12;
@@ -480,7 +481,7 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   int access_width = GetAccessWidth(width, address);
   int next_width = width - access_width;
   uint64_t load_data = LoadWd(address, access_width);
- if (next_width > 0) {
+  if (next_width > 0) {
     uint64_t next_address = VirtualToPhysical(address + access_width, false);
     if (page_fault_) {
       Trap(ExceptionCode::LOAD_PAGE_FAULT);
@@ -489,7 +490,8 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     uint64_t load_data_high = LoadWd(next_address, next_width);
     load_data |= (load_data_high << access_width * 8);
   }
-  if (instruction == INST_LB || instruction == INST_LH || instruction == INST_LW) {
+  if (instruction == INST_LB || instruction == INST_LH ||
+      instruction == INST_LW) {
     load_data = SignExtend(load_data, width * 8);
   } else if (instruction == INST_LWU) {
     load_data &= 0xFFFFFFFF;
@@ -510,7 +512,9 @@ int RiscvCpu::GetAccessWidth(uint32_t width, uint64_t address) {
   bool burst_overflow = ((address & 0b111) + width - 1) >> 3;
   int access_width = width;
   if (burst_overflow) {
-    const int mask = width == width == 2 ? 0b1 : (width == 4 ? 0b11 : (width == 8 ? 0b111 : 0));
+    const int mask =
+      width == width == 2 ? 0b1 : (width == 4 ? 0b11 : (width == 8 ? 0b111
+                                                                   : 0));
     access_width = width - (address & mask);
   }
   return access_width;
@@ -766,15 +770,29 @@ RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   reg_[rd] = temp64;
 }
 
-void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t rs2) {
+void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                              uint32_t rs2) {
   uint64_t virtual_address = reg_[rs1];
   uint64_t physical_address = VirtualToPhysical(virtual_address);
   uint64_t new_value;
-  uint32_t word_width = (instruction == INST_AMOADDD) ? 8 : 4;
+  uint32_t word_width = (instruction == INST_AMOADDD ||
+                         instruction == INST_AMOANDD) ? 8 : 4;
   uint64_t t = LoadWd(physical_address, word_width);
+  if (word_width == 4) {
+    t = SignExtend(t, 32);
+  }
   switch (instruction) {
     case INST_AMOADDD:
       new_value = t + reg_[rs2];
+      break;
+    case INST_AMOADDW:
+      new_value = SignExtend(t + reg_[rs2], 32);
+      break;
+    case INST_AMOANDD:
+      new_value = t & reg_[rs2];
+      break;
+    case INST_AMOANDW:
+      new_value = SignExtend(t & reg_[rs2], 32);
       break;
   }
   constexpr bool kWriteAccess = true;
@@ -952,6 +970,9 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
         MultInstruction(instruction, rd, rs1, rs2);
         break;
       case INST_AMOADDD:
+      case INST_AMOADDW:
+      case INST_AMOANDD:
+      case INST_AMOANDW:
         AmoInstruction(instruction, rd, rs1, rs2);
         break;
       case INST_ERROR:
@@ -989,7 +1010,8 @@ void RiscvCpu::HostEmulation() {
   uint32_t command;
   uint64_t value = 0;
   if ((host_write_ & 0b10) != 0) {
-    payload = (mxl_ == 1) ? memory_->Read32(kToHost1) : memory_->Read64(kToHost1);
+    payload = (mxl_ == 1) ? memory_->Read32(kToHost1) : memory_->Read64(
+      kToHost1);
     value = payload >> 1;
     reg_[A0] = value;
     end_flag_ = true;
@@ -1377,9 +1399,9 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
       break;
     case OPCODE_AMO:
       if ((funct7 >> 2) == FUNC5_AMOADD) {
-        if (funct3 == FUNC3_AMOD) {
-          instruction = INST_AMOADDD;
-        }
+        instruction = funct3 == FUNC3_AMOD ? INST_AMOADDD : INST_AMOADDW;
+      } else if ((funct7 >> 2) == FUNC5_AMOAND) {
+        instruction = funct3 == FUNC3_AMOD ? INST_AMOANDD : INST_AMOANDW;
       }
       break;
     default:
