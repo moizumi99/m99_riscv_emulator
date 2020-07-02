@@ -22,7 +22,7 @@ RiscvCpu::RiscvCpu(bool en64bit) {
     reg_[i] = 0;
   }
   InitializeCsrs();
-
+  peripheral = std::make_unique<Peripheral>(mxl_);
 }
 
 RiscvCpu::RiscvCpu() : RiscvCpu(false) {}
@@ -68,6 +68,7 @@ bool RiscvCpu::CheckShiftSign(uint8_t shamt, uint8_t instruction,
 
 void RiscvCpu::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
   this->memory_ = memory;
+  peripheral->SetMemory(memory);
 }
 
 uint32_t RiscvCpu::LoadCmd(uint64_t pc) {
@@ -520,17 +521,6 @@ int RiscvCpu::GetAccessWidth(uint32_t width, uint64_t address) {
   return access_width;
 }
 
-void RiscvCpu::CheckHostWrite(uint64_t address) {
-  // Check if the write is to host communication.
-  if (mxl_ == 1) {
-    host_write_ |= (address & 0xFFFFFFFF) == kToHost0 ? 1 : 0;
-    host_write_ |= (address & 0xFFFFFFFF) == kToHost1 ? 2 : 0;
-  } else {
-    host_write_ |= address == kToHost0 ? 1 : 0;
-    host_write_ |= address == kToHost1 ? 2 : 0;
-  }
-}
-
 void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
                                 uint32_t rs2, int32_t imm12_stype) {
   uint64_t dst_address = reg_[rs1] + imm12_stype;
@@ -554,7 +544,7 @@ void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
     uint64_t next_data = reg_[rs2] >> (access_width * 8);
     StoreWd(next_address, next_data, next_width);
   }
-  CheckHostWrite(address);
+  peripheral->CheckHostWrite(address);
 }
 
 void
@@ -867,7 +857,6 @@ void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
 int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   error_flag_ = false;
   end_flag_ = false;
-  host_write_ = 0;
 
   next_pc_ = start_pc;
   do {
@@ -1068,7 +1057,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       DumpRegisters();
     }
 
-    if (host_emulation_ && host_write_ != 0) {
+    if (host_emulation_ && peripheral->GetHostWrite() != 0) {
       HostEmulation();
     }
 
@@ -1082,62 +1071,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
 
 // reference: https://github.com/riscv/riscv-isa-sim/issues/364
 void RiscvCpu::HostEmulation() {
-  uint64_t payload;
-  uint8_t device;
-  uint32_t command;
-  uint64_t value = 0;
-  if ((host_write_ & 0b10) != 0) {
-    payload = (mxl_ == 1) ? memory_->Read32(kToHost1) : memory_->Read64(
-      kToHost1);
-    value = payload >> 1;
-    reg_[A0] = value;
+  if (peripheral->HostEmulation()) {
+    reg_[A0] = peripheral->GetHostValue();
+    error_flag_ |= peripheral->GetHostErrorFlag();
     end_flag_ = true;
-    host_write_ = 0;
-    return;
   }
-
-  if (mxl_ == 1) {
-    // This address should be physical.
-    payload = memory_->Read32(kToHost0);
-    device = 0;
-    command = 0;
-  } else {
-    // This address should be physical.
-    payload = memory_->Read64(kToHost0);
-    device = (payload >> 56) & 0xFF;
-    command = (payload >> 48) & 0x3FFFF;
-  }
-  if (device == 0) {
-    if (command == 0) {
-      value = payload & 0xFFFFFFFFFFFF;
-      if ((value & 1) == 0) {
-        // Syscall emulation
-        std::cerr << "Syscall Emulation Not Implemented Yet." << std::endl;
-      } else {
-        value = value >> 1;
-        reg_[A0] = value;
-        end_flag_ = true;
-      }
-    } else {
-      std::cerr << "Unsupported Host command " << command << " for Device 0"
-                << std::endl;
-      error_flag_ = true;
-      end_flag_ = true;
-    }
-  } else if (device == 1) {
-    if (command == 1) {
-      char character = value & 0xFF;
-      std::cout << character;
-    } else if (command == 0) {
-      // TODO: Implement Read.
-    } else {
-      std::cerr << "Unsupported host command " << command << " for Device 1"
-                << std::endl;
-    }
-  } else {
-    std::cerr << "Unsupported Host Device " << device << std::endl;
-  }
-  host_write_ = 0;
 }
 
 void RiscvCpu::Ecall() {

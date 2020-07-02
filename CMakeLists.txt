@@ -36,7 +36,7 @@ add_executable(cpu_test
         system_call_emulator.cpp system_call_emulator.h
         pte.cpp pte.h
         Mmu.cpp Mmu.h
-        riscv_cpu_common.h Disassembler.cpp Disassembler.h)
+        riscv_cpu_common.h Disassembler.cpp Disassembler.h Peripheral.cpp Peripheral.h)
 
 add_executable(RISCV_Emulator
         assembler.cc
@@ -57,7 +57,7 @@ add_executable(RISCV_Emulator
         system_call_emulator.h
         pte.cpp pte.h
         Mmu.cpp Mmu.h
-        riscv_cpu_common.h Disassembler.cpp Disassembler.h)
+        riscv_cpu_common.h Disassembler.cpp Disassembler.h Peripheral.cpp Peripheral.h)
 
 add_executable(memory_wrapper_test
         memory_wrapper.cpp
