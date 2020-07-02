@@ -12,20 +12,30 @@ void Peripheral::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
     memory_ = memory;
 }
 
-uint64_t Peripheral::GetHostValue() {
-    return host_value_;
+void Peripheral::SetHostEmulationEnable(bool enable) {
+  host_emulation_ = enable;
 }
 
-int Peripheral::GetHostWrite() {
-  return host_write_;
+uint64_t Peripheral::GetHostValue() {
+    return host_value_;
 }
 
 bool Peripheral::GetHostErrorFlag() {
   return error_flag_;
 }
 
+bool Peripheral::GetHostEndFlag() {
+  return end_flag_;
+}
+
+void Peripheral::UartEmulation() {
+  if (uart_write_) {
+    std::cout << static_cast<char>(uart_write_value_);
+    uart_write_ = false;
+  }
+}
 // reference: https://github.com/riscv/riscv-isa-sim/issues/364
-void Peripheral::CheckHostWrite(uint64_t address) {
+void Peripheral::CheckPeripheralWrite(uint64_t address, int width, uint64_t data) {
   // Check if the write is to host communication.
   if (mxl_ == 1) {
     host_write_ |= (address & 0xFFFFFFFF) == kToHost0 ? 1 : 0;
@@ -34,10 +44,28 @@ void Peripheral::CheckHostWrite(uint64_t address) {
     host_write_ |= address == kToHost0 ? 1 : 0;
     host_write_ |= address == kToHost1 ? 2 : 0;
   }
+  // Check if it writes to UART addresses.
+  if (kUartBase < address + width && address <= kUartBase) {
+    uint64_t offset = kUartBase - address;
+    uart_write_value_ = (data >> (offset * 8)) & 0xFF;
+    uart_write_ = true;
+  }
+}
+
+bool Peripheral::PeripheralEmulation() {
+  if (host_emulation_) {
+    HostEmulation();
+  }
+  if (uart_enable_) {
+    UartEmulation();
+  }
 }
 
 // reference: https://github.com/riscv/riscv-isa-sim/issues/364
-bool Peripheral::HostEmulation() {
+void Peripheral::HostEmulation() {
+  if (host_write_ == 0) {
+    return;
+  }
   uint64_t payload;
   uint8_t device;
   uint32_t command;
@@ -46,10 +74,11 @@ bool Peripheral::HostEmulation() {
     payload = (mxl_ == 1) ? memory_->Read32(kToHost1) : memory_->Read64(kToHost1);
     host_value_ = payload >> 1;
     host_write_ = 0;
-    return true;
+    end_flag_ = true;
+    return;
   }
 
-  bool end_flag = false;
+  end_flag_ = false;
   if (mxl_ == 1) {
     // This address should be physical.
     payload = memory_->Read32(kToHost0);
@@ -70,13 +99,13 @@ bool Peripheral::HostEmulation() {
       } else {
         value = value >> 1;
         host_value_ = value;
-        end_flag = true;
+        end_flag_ = true;
       }
     } else {
       std::cerr << "Unsupported Host command " << command << " for Device 0"
                 << std::endl;
       error_flag_ = true;
-      end_flag = true;
+      end_flag_ = true;
     }
   } else if (device == 1) {
     if (command == 1) {
@@ -92,7 +121,7 @@ bool Peripheral::HostEmulation() {
     std::cerr << "Unsupported Host Device " << device << std::endl;
   }
   host_write_ = 0;
-  return end_flag;
+  return;
 }
 
 } // namespace RISCV_EMULATOR

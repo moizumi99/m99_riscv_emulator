@@ -131,9 +131,12 @@ public:
 
   void SetEcallEmulationEnable(bool ecall_emulation) { ecall_emulation_ = ecall_emulation; };
 
-  void SetHostEmulationEnable(bool host_emulation) { host_emulation_ = host_emulation; };
+  void SetHostEmulationEnable(bool host_emulation) {
+    host_emulation_ = host_emulation;
+    peripheral->SetHostEmulationEnable(host_emulation);
+  };
 private:
-  void HostEmulation();
+  void PeripheralEmulations();
   std::unique_ptr<Peripheral> peripheral;
   bool ecall_emulation_ = false;
   bool host_emulation_ = false;
