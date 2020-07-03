@@ -415,7 +415,7 @@ uint64_t GetEntryPoint(std::vector<uint8_t> &program) {
   }
 }
 
-std::tuple<bool, std::string, bool, bool, bool, bool, bool>
+std::tuple<bool, std::string, bool, bool, bool, bool, bool, bool>
 ParseCmd(int argc, char (***argv)) {
   bool error = false;
   bool verbose = false;
@@ -423,6 +423,7 @@ ParseCmd(int argc, char (***argv)) {
   bool paging = false;
   bool ecall_emulation = false;
   bool host_emulation = false;
+  bool device_enable = false;
   std::string filename = "";
   if (argc < 2) {
     error = true;
@@ -439,6 +440,8 @@ ParseCmd(int argc, char (***argv)) {
           ecall_emulation = true;
         } else if ((*argv)[i][1] == 'h') {
           host_emulation = true;
+        } else if ((*argv)[i][1] == 'd') {
+          device_enable = true;
         }
       } else {
         if (filename == "") {
@@ -450,7 +453,7 @@ ParseCmd(int argc, char (***argv)) {
     }
   }
   return std::make_tuple(error, filename, verbose, address64bit, paging,
-                         ecall_emulation, host_emulation);
+                         ecall_emulation, host_emulation, device_enable);
 }
 
 constexpr int k32BitMmuLevelOneSize = 1024; // 1024 x 4 B = 4 KiB.
@@ -549,8 +552,7 @@ void SetDefaultMmuTable64(std::shared_ptr<MemoryWrapper> memory) {
 }
 
 
-void
-SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory) {
+void SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory) {
   if (address64bit) {
     SetDefaultMmuTable64(memory);
   } else {
@@ -559,7 +561,7 @@ SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory) {
 }
 
 int run(int argc, char *argv[]) {
-  bool cmdline_error, verbose, address64bit, paging, ecall_emulation, host_emulation;
+  bool cmdline_error, verbose, address64bit, paging, ecall_emulation, host_emulation, device_emulation;
   std::string filename;
 
   auto options = ParseCmd(argc, &argv);
@@ -570,7 +572,7 @@ int run(int argc, char *argv[]) {
   paging = std::get<4>(options);
   ecall_emulation = std::get<5>(options);
   host_emulation = std::get<6>(options);
-
+  device_emulation = std::get<7>(options);
 
   if (cmdline_error) {
     std::cerr << "Uasge: " << argv[0] << " elf_file" << "[-v][-64][-p][-e][-h]"
@@ -580,6 +582,7 @@ int run(int argc, char *argv[]) {
     std::cerr << "-p: Paging Enabled from Start" << std::endl;
     std::cerr << "-64: 64 bit (RV64I) (default is 32 bit mode, RV32I)"
               << std::endl;
+    std::cerr << "-d: Device emulation of UART" << std::endl;
     std::cerr << "-h: Use tohost and fromhost function" << std::endl;
     return -1;
   }
@@ -612,6 +615,7 @@ int run(int argc, char *argv[]) {
   RiscvCpu cpu(address64bit);
   cpu.SetEcallEmulationEnable(ecall_emulation);
   cpu.SetHostEmulationEnable(host_emulation);
+  cpu.SetDeviceEmulationEnable(device_emulation);
   cpu.SetRegister(SP, sp_value);
   cpu.SetRegister(GP, global_pointer);
   SetDefaultMmuTable(address64bit, memory);

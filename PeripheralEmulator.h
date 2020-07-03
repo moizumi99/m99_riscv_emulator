@@ -2,8 +2,8 @@
 // Created by moiz on 7/2/20.
 
 //
-#ifndef ASSEMBLER_TEST_PERIPHERAL_H
-#define ASSEMBLER_TEST_PERIPHERAL_H
+#ifndef ASSEMBLER_TEST_PERIPHERALEMULATOR_H
+#define ASSEMBLER_TEST_PERIPHERALEMULATOR_H
 
 #include <cstdint>
 #include <memory>
@@ -21,17 +21,18 @@ constexpr uint64_t kFromHost = 0x80001040;
 constexpr uint64_t kUartBase = 0x10000000;
 constexpr uint64_t kUartSize = 6;
 
-class Peripheral {
+class PeripheralEmulator {
 public:
-  Peripheral(int mxl);
+  PeripheralEmulator(int mxl);
 
   void SetMemory(std::shared_ptr<MemoryWrapper> memory);
+  void Emulation();
 
-  void CheckPeripheralWrite(uint64_t address, int width, uint64_t data);
+  void CheckDeviceWrite(uint64_t address, int width, uint64_t data);
 
+  // Host Emulation.
   void SetHostEmulationEnable(bool enable);
   void HostEmulation();
-  bool PeripheralEmulation();
 
   bool GetHostEndFlag();
 
@@ -39,22 +40,27 @@ public:
 
   bool GetHostErrorFlag();
 
-  void UartEmulation();
+  // Device Emulation.
+  void SetDeviceEmulationEnable(bool enable) {
+    device_emulation_enable = enable;
+  }
+  void DeviceEmulation();
 
 private:
   std::shared_ptr<MemoryWrapper> memory_;
   int mxl_;
-  bool host_emulation_ = false;
+  bool host_emulation_enable_ = false;
   int host_write_ = false;
   uint64_t host_value_ = 0;
   bool end_flag_ = false;
   bool error_flag_ = false;
 
-  bool uart_enable_ = true;
+  // UART emulation enable.
+  bool device_emulation_enable = false;
   bool uart_write_ = false;
   uint8_t uart_write_value_ = 0;
 };
 
 } // namespace RISCV_EMULATOR
 
-#endif //ASSEMBLER_TEST_PERIPHERAL_H
+#endif //ASSEMBLER_TEST_PERIPHERALEMULATOR_H

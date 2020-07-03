@@ -3,39 +3,39 @@
 //
 
 #include <iostream>
-#include "Peripheral.h"
+#include "PeripheralEmulator.h"
 namespace RISCV_EMULATOR {
 
-Peripheral::Peripheral(int mxl) : mxl_(mxl) {}
+PeripheralEmulator::PeripheralEmulator(int mxl) : mxl_(mxl) {}
 
-void Peripheral::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
+void PeripheralEmulator::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
     memory_ = memory;
 }
 
-void Peripheral::SetHostEmulationEnable(bool enable) {
-  host_emulation_ = enable;
+void PeripheralEmulator::SetHostEmulationEnable(bool enable) {
+  host_emulation_enable_ = enable;
 }
 
-uint64_t Peripheral::GetHostValue() {
+uint64_t PeripheralEmulator::GetHostValue() {
     return host_value_;
 }
 
-bool Peripheral::GetHostErrorFlag() {
+bool PeripheralEmulator::GetHostErrorFlag() {
   return error_flag_;
 }
 
-bool Peripheral::GetHostEndFlag() {
+bool PeripheralEmulator::GetHostEndFlag() {
   return end_flag_;
 }
 
-void Peripheral::UartEmulation() {
+void PeripheralEmulator::DeviceEmulation() {
   if (uart_write_) {
     std::cout << static_cast<char>(uart_write_value_);
     uart_write_ = false;
   }
 }
 // reference: https://github.com/riscv/riscv-isa-sim/issues/364
-void Peripheral::CheckPeripheralWrite(uint64_t address, int width, uint64_t data) {
+void PeripheralEmulator::CheckDeviceWrite(uint64_t address, int width, uint64_t data) {
   // Check if the write is to host communication.
   if (mxl_ == 1) {
     host_write_ |= (address & 0xFFFFFFFF) == kToHost0 ? 1 : 0;
@@ -52,17 +52,17 @@ void Peripheral::CheckPeripheralWrite(uint64_t address, int width, uint64_t data
   }
 }
 
-bool Peripheral::PeripheralEmulation() {
-  if (host_emulation_) {
+void PeripheralEmulator::Emulation() {
+  if (host_emulation_enable_) {
     HostEmulation();
   }
-  if (uart_enable_) {
-    UartEmulation();
+  if (device_emulation_enable) {
+    DeviceEmulation();
   }
 }
 
 // reference: https://github.com/riscv/riscv-isa-sim/issues/364
-void Peripheral::HostEmulation() {
+void PeripheralEmulator::HostEmulation() {
   if (host_write_ == 0) {
     return;
   }

@@ -22,7 +22,7 @@ namespace RISCV_EMULATOR {
       reg_[i] = 0;
     }
     InitializeCsrs();
-    peripheral = std::make_unique<Peripheral>(mxl_);
+    peripheral = std::make_unique<PeripheralEmulator>(mxl_);
   }
 
   RiscvCpu::RiscvCpu() : RiscvCpu(false) {}
@@ -544,7 +544,7 @@ namespace RISCV_EMULATOR {
       uint64_t next_data = reg_[rs2] >> (access_width * 8);
       StoreWd(next_address, next_data, next_width);
     }
-    peripheral->CheckPeripheralWrite(address, width, reg_[rs2]);
+    peripheral->CheckDeviceWrite(address, width, reg_[rs2]);
   }
 
   void
@@ -1057,7 +1057,7 @@ namespace RISCV_EMULATOR {
         DumpRegisters();
       }
 
-      if (host_emulation_) {
+      if (host_emulation_ || peripheral_emulation_) {
         PeripheralEmulations();
       }
 
@@ -1071,7 +1071,7 @@ namespace RISCV_EMULATOR {
 
 // reference: https://github.com/riscv/riscv-isa-sim/issues/364
   void RiscvCpu::PeripheralEmulations() {
-    peripheral->PeripheralEmulation();
+    peripheral->Emulation();
     if (peripheral->GetHostEndFlag()) {
       reg_[A0] = peripheral->GetHostValue();
       error_flag_ |= peripheral->GetHostErrorFlag();

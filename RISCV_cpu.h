@@ -8,7 +8,7 @@
 #include "riscv_cpu_common.h"
 #include "bit_tools.h"
 #include "memory_wrapper.h"
-#include "Peripheral.h"
+#include "PeripheralEmulator.h"
 
 namespace RISCV_EMULATOR {
 
@@ -135,11 +135,17 @@ public:
     host_emulation_ = host_emulation;
     peripheral->SetHostEmulationEnable(host_emulation);
   };
+
+  void SetDeviceEmulationEnable(bool enable) {
+    peripheral_emulation_=enable;
+    peripheral->SetDeviceEmulationEnable(enable);
+  }
 private:
   void PeripheralEmulations();
-  std::unique_ptr<Peripheral> peripheral;
+  std::unique_ptr<PeripheralEmulator> peripheral;
   bool ecall_emulation_ = false;
   bool host_emulation_ = false;
+  bool peripheral_emulation_ = false;
   uint64_t top_ = 0x80000000;
   uint64_t bottom_ = 0x40000000;
   uint64_t brk_ = bottom_;
