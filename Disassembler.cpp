@@ -3,22 +3,30 @@
 //
 
 #include "Disassembler.h"
+#include <ios>
+#include <sstream>
 #include "instruction_encdec.h"
 
 namespace RISCV_EMULATOR {
 
 std::string GetRegName(int reg) {
   std::array<std::string, 32> kRegNames = {
-    "ZERO", "RA", "SP", "GP", "TP", "T0", "T1", "T2",
-    "FP", "S1", "A0", "A1", "A2", "A3", "A4", "A5",
-    "A6", "A7", "S2", "S3", "S4", "S5", "S6", "S7",
-    "S8", "S9", "S10", "S11", "T3", "T4", "T5", "T6",
+      "ZERO", "RA", "SP", "GP", "TP",  "T0",  "T1", "T2", "FP", "S1", "A0",
+      "A1",   "A2", "A3", "A4", "A5",  "A6",  "A7", "S2", "S3", "S4", "S5",
+      "S6",   "S7", "S8", "S9", "S10", "S11", "T3", "T4", "T5", "T6",
   };
   return kRegNames[reg];
 }
 
+std::string NumberToHex(uint32_t num, int length = 0) {
+  std::stringstream s;
+  s << "0x" << std::hex << num;
+  return std::string(s.str());
+}
+
 // TODO: Add tests for disassembly;
-// Disassemble16 and GetCode16 have very similar logic. Should be combined in some way.
+// Disassemble16 and GetCode16 have very similar logic. Should be combined in
+// some way.
 std::string Disassemble16(uint32_t ir, int mxl = 1) {
   std::string cmd = "Unsupported C Instruction";
   uint32_t instruction, rd, rs1, rs2;
@@ -27,47 +35,47 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
   uint16_t opcode = (bitcrop(ir, 3, 13) << 2) | bitcrop(ir, 2, 0);
   switch (opcode) {
     case 0b00000:
-      cmd = "C.ADDI4SPN " + GetRegName(rd) + ", SP, " + std::to_string(imm);
+      cmd = "C.ADDI4SPN " + GetRegName(rd) + ", SP, " + NumberToHex(imm);
       break;
     case 0b00001:
-      cmd = "C.ADDI " + GetRegName(rd) + ", " + std::to_string(imm);
+      cmd = "C.ADDI " + GetRegName(rd) + ", " + NumberToHex(imm);
       break;
     case 0b00010:
-      cmd = "C.SLLI " + GetRegName(rd) + ", " + std::to_string(imm);
+      cmd = "C.SLLI " + GetRegName(rd) + ", " + NumberToHex(imm);
       break;
     case 0b00101:
       if (mxl == 1) {
-        cmd = "C.JAL " + std::to_string(SignExtend(imm, 12));
+        cmd = "C.JAL " + NumberToHex(SignExtend(imm, 12));
       } else {
-        cmd = "C.ADDIW " + GetRegName(rd) + ", " + std::to_string(imm);
+        cmd = "C.ADDIW " + GetRegName(rd) + ", " + NumberToHex(imm);
       }
       break;
     case 0b01000:
-      cmd = "C.LW " + GetRegName(rd) + ", " + std::to_string(imm) + "(" +
+      cmd = "C.LW " + GetRegName(rd) + ", " + NumberToHex(imm) + "(" +
             GetRegName(rs1) + ")";
       break;
     case 0b01001:
-      cmd = "C.LI " + GetRegName(rd) + ", " + std::to_string(imm);
+      cmd = "C.LI " + GetRegName(rd) + ", " + NumberToHex(imm);
       break;
     case 0b01010:
-      cmd = "C.LWSP " + GetRegName(rd) + ", " + std::to_string(imm) + "(SP)";
+      cmd = "C.LWSP " + GetRegName(rd) + ", " + NumberToHex(imm) + "(SP)";
       break;
     case 0b01100:
-      cmd = "C.LD " + GetRegName(rd) + ", " + std::to_string(imm) + "(" +
+      cmd = "C.LD " + GetRegName(rd) + ", " + NumberToHex(imm) + "(" +
             GetRegName(rs1) + ")";
       break;
     case 0b01101:
       if (bitcrop(ir, 5, 7) == 0b00010) {
         // c.addi16sp.
-        cmd = "C.ADDI16SP SP, SP, " + std::to_string(imm);
+        cmd = "C.ADDI16SP SP, SP, " + NumberToHex(imm);
       } else {
-        cmd = "C.LUI " + GetRegName(rd) + ", " + std::to_string(imm);
+        cmd = "C.LUI " + GetRegName(rd) + ", " + NumberToHex(imm);
       }
       break;
     case 0b01110:
-      cmd = "C.LDSP " + GetRegName(rd) + ", " + std::to_string(imm) + "(SP)";
+      cmd = "C.LDSP " + GetRegName(rd) + ", " + NumberToHex(imm) + "(SP)";
       break;
-    case 0b10010: // c.add
+    case 0b10010:  // c.add
       if (bitcrop(ir, 1, 12) == 1) {
         if (bitcrop(ir, 5, 2) == 0 && bitcrop(ir, 5, 7) == 0) {
           cmd = "C.EBREAK";
@@ -97,41 +105,40 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
       } else if (bitcrop(ir, 3, 10) == 0b111 && bitcrop(ir, 2, 5) == 0b00) {
         cmd = "C.SUBW " + GetRegName(rd) + ", " + GetRegName(rs2);
       } else if (bitcrop(ir, 2, 10) == 0b01) {
-        cmd = "C.SRAI " + GetRegName(rd) + ", " + std::to_string(imm);
+        cmd = "C.SRAI " + GetRegName(rd) + ", " + NumberToHex(imm);
       } else if (bitcrop(ir, 2, 10) == 0b00) {
-        cmd = "C.SRLI " + GetRegName(rd) + ", " + std::to_string(imm);
+        cmd = "C.SRLI " + GetRegName(rd) + ", " + NumberToHex(imm);
       } else if (bitcrop(ir, 2, 10) == 0b10) {
         cmd = "C.ANDI " + GetRegName(rd) + ", " +
-              std::to_string(SignExtend(imm, 6));
+              NumberToHex(SignExtend(imm, 6));
       }
       break;
     case 0b10101:
-      cmd = "C.J " + std::to_string(SignExtend(imm, 12));
+      cmd = "C.J " + NumberToHex(SignExtend(imm, 12));
       break;
     case 0b11000:
-      cmd = "C.SW " + GetRegName(rs2) + ", " + std::to_string(imm) + "(" +
+      cmd = "C.SW " + GetRegName(rs2) + ", " + NumberToHex(imm) + "(" +
             GetRegName(rs1) + ")";
     case 0b11001:
-      cmd =
-        "C.BEQZ " + GetRegName(rs1) + ", " + std::to_string(SignExtend(imm, 9));
+      cmd = "C.BEQZ " + GetRegName(rs1) + ", " +
+            NumberToHex(SignExtend(imm, 9));
       break;
     case 0b11010:
-      cmd = "C.SWSP " + GetRegName(rs2) + ", " + std::to_string(imm) + "(SP)";
+      cmd = "C.SWSP " + GetRegName(rs2) + ", " + NumberToHex(imm) + "(SP)";
       break;
     case 0b11100:
-      cmd = "C.SD " + GetRegName(rs2) + ", " + std::to_string(imm) + "(" +
+      cmd = "C.SD " + GetRegName(rs2) + ", " + NumberToHex(imm) + "(" +
             GetRegName(rs1) + ")";
       break;
     case 0b11101:
-      cmd =
-        "C.BNEZ " + GetRegName(rs1) + ", " + std::to_string(SignExtend(imm, 9));
+      cmd = "C.BNEZ " + GetRegName(rs1) + ", " +
+            NumberToHex(SignExtend(imm, 9));
       break;
     case 0b11110:
-      cmd = "C.SDSP " + GetRegName(rs2) + ", " + std::to_string(imm) + "(SP)";
+      cmd = "C.SDSP " + GetRegName(rs2) + ", " + NumberToHex(imm) + "(SP)";
   }
   return cmd;
 }
-
 
 std::string Disassemble(uint32_t ir, int mxl) {
   uint16_t opcode = bitcrop(ir, 7, 0);
@@ -152,7 +159,7 @@ std::string Disassemble(uint32_t ir, int mxl) {
   int32_t imm20 = GetImm20(ir);
   std::string cmd = "UNDEF";
   switch (opcode) {
-    case OPCODE_ARITHLOG: // ADD, SUB
+    case OPCODE_ARITHLOG:  // ADD, SUB
       if (funct7 == FUNC_NORM || funct7 == FUNC_ALT) {
         if (funct3 == FUNC3_ADDSUB) {
           cmd = (funct7 == FUNC_NORM) ? "ADD" : "SUB";
@@ -226,7 +233,7 @@ std::string Disassemble(uint32_t ir, int mxl) {
       cmd += " " + GetRegName(rd) + ", " + GetRegName(rs1) + ", " +
              GetRegName(rs2);
       break;
-    case OPCODE_ARITHLOG_I: // ADDI, SUBI
+    case OPCODE_ARITHLOG_I:  // ADDI, SUBI
       if (funct3 == FUNC3_ADDSUB) {
         cmd = "ADDI";
       } else if (funct3 == FUNC3_AND) {
@@ -250,7 +257,7 @@ std::string Disassemble(uint32_t ir, int mxl) {
         cmd = "SLTIU";
       }
       cmd += " " + GetRegName(rd) + ", " + GetRegName(rs1) + ", " +
-             std::to_string(imm12);
+             NumberToHex(imm12);
       break;
     case OPCODE_ARITHLOG_I64:
       if (funct3 == FUNC3_ADDSUB) {
@@ -265,9 +272,9 @@ std::string Disassemble(uint32_t ir, int mxl) {
         }
       }
       cmd += " " + GetRegName(rd) + ", " + GetRegName(rs1) + ", " +
-             std::to_string(imm12);
+             NumberToHex(imm12);
       break;
-    case OPCODE_B: // beq, bltu, bge, bne
+    case OPCODE_B:  // beq, bltu, bge, bne
       if (funct3 == FUNC3_BEQ) {
         cmd = "BEQ";
       } else if (funct3 == FUNC3_BLT) {
@@ -282,18 +289,18 @@ std::string Disassemble(uint32_t ir, int mxl) {
         cmd = "BNE";
       }
       cmd += " " + GetRegName(rs1) + ", " + GetRegName(rs2) + ", " +
-             std::to_string(imm13);
+             NumberToHex(imm13);
       break;
-    case OPCODE_J: // jal
-      cmd = "JAL " + GetRegName(rd) + ", " + std::to_string(imm21);
+    case OPCODE_J:  // jal
+      cmd = "JAL " + GetRegName(rd) + ", " + NumberToHex(imm21);
       break;
-    case OPCODE_JALR: // jalr
+    case OPCODE_JALR:  // jalr
       if (funct3 == FUNC3_JALR) {
-        cmd = "JALR " + GetRegName(rd) + ", " + std::to_string(imm12) + "(" +
+        cmd = "JALR " + GetRegName(rd) + ", " + NumberToHex(imm12) + "(" +
               GetRegName(rs1) + ")";
       }
       break;
-    case OPCODE_LD: // LW
+    case OPCODE_LD:  // LW
       if (funct3 == FUNC3_LSB) {
         cmd = "LB";
       } else if (funct3 == FUNC3_LSBU) {
@@ -309,10 +316,10 @@ std::string Disassemble(uint32_t ir, int mxl) {
       } else if (funct3 == FUNC3_LSD) {
         cmd = "LD";
       }
-      cmd += " " + GetRegName(rd) + ", " + std::to_string(imm12) + "(" +
+      cmd += " " + GetRegName(rd) + ", " + NumberToHex(imm12) + "(" +
              GetRegName(rs1) + ")";
       break;
-    case OPCODE_S: // SW
+    case OPCODE_S:  // SW
       if (funct3 == FUNC3_LSB) {
         cmd = "SB";
       } else if (funct3 == FUNC3_LSH) {
@@ -322,20 +329,18 @@ std::string Disassemble(uint32_t ir, int mxl) {
       } else if (funct3 == FUNC3_LSD) {
         cmd = "SD";
       }
-      cmd += " " +
-             GetRegName(rs2) + ", " + std::to_string(imm12_stype) + "(" +
-             GetRegName(rs1) +
-             ")";
+      cmd += " " + GetRegName(rs2) + ", " + NumberToHex(imm12_stype) + "(" +
+             GetRegName(rs1) + ")";
       break;
-    case OPCODE_LUI: // LUI
+    case OPCODE_LUI:  // LUI
       cmd = "LUI";
-      cmd += " " + GetRegName(rd) + ", " + std::to_string(imm20 << 12);
+      cmd += " " + GetRegName(rd) + ", " + NumberToHex(imm20) + " << 12";
       break;
-    case OPCODE_AUIPC: // AUIPC
+    case OPCODE_AUIPC:  // AUIPC
       cmd = "AUIPC";
-      cmd += " " + GetRegName(rd) + ", " + std::to_string(imm20 << 12);
+      cmd += " " + GetRegName(rd) + ", " + NumberToHex(imm20) + " << 12";
       break;
-    case OPCODE_SYSTEM: // EBREAK
+    case OPCODE_SYSTEM:  // EBREAK
       if (funct3 == FUNC3_SYSTEM) {
         if (imm12 == 0) {
           cmd = "ECALL";
@@ -364,7 +369,7 @@ std::string Disassemble(uint32_t ir, int mxl) {
         } else if (funct3 == FUNC3_CSRRWI) {
           cmd = "CSRRWI";
         }
-        cmd += " " + GetRegName(rd) + ", " + std::to_string(csr) + ", " +
+        cmd += " " + GetRegName(rd) + ", " + NumberToHex(csr) + ", " +
                GetRegName(rs1);
       }
       break;
@@ -404,5 +409,4 @@ std::string Disassemble(uint32_t ir, int mxl) {
   }
   return cmd;
 }
-}
-
+}  // namespace RISCV_EMULATOR

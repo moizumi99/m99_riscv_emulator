@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <queue>
 #include "memory_wrapper.h"
 
 namespace RISCV_EMULATOR {
@@ -21,6 +22,9 @@ constexpr uint64_t kFromHost = 0x80001040;
 constexpr uint64_t kUartBase = 0x10000000;
 constexpr uint64_t kUartSize = 6;
 
+// Timer.
+constexpr uint64_t kTimerBase = 0x2000000;
+
 class PeripheralEmulator {
 public:
   PeripheralEmulator(int mxl);
@@ -28,6 +32,7 @@ public:
   void SetMemory(std::shared_ptr<MemoryWrapper> memory);
   void Emulation();
 
+  void Initialize();
   void CheckDeviceWrite(uint64_t address, int width, uint64_t data);
 
   // Host Emulation.
@@ -40,11 +45,17 @@ public:
 
   bool GetHostErrorFlag();
 
+  // Clock Tick.
+  void TimerTick();
+  uint64_t GetTimerInterrupt();
+  void ClearTimerInterrupt();
+
   // Device Emulation.
   void SetDeviceEmulationEnable(bool enable) {
     device_emulation_enable = enable;
   }
-  void DeviceEmulation();
+  void UartInit();
+  void UartEmulation();
 
 private:
   std::shared_ptr<MemoryWrapper> memory_;
@@ -58,7 +69,13 @@ private:
   // UART emulation enable.
   bool device_emulation_enable = false;
   bool uart_write_ = false;
+  bool uart_read_ = false;
   uint8_t uart_write_value_ = 0;
+  std::queue<uint8_t> uart_queue;
+
+  // Timer.
+  uint64_t elapsed_cycles = 0;
+  bool timer_interrupt_ = false;
 };
 
 } // namespace RISCV_EMULATOR

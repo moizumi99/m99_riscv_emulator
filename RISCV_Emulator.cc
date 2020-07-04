@@ -614,8 +614,6 @@ int run(int argc, char *argv[]) {
 
   RiscvCpu cpu(address64bit);
   cpu.SetEcallEmulationEnable(ecall_emulation);
-  cpu.SetHostEmulationEnable(host_emulation);
-  cpu.SetDeviceEmulationEnable(device_emulation);
   cpu.SetRegister(SP, sp_value);
   cpu.SetRegister(GP, global_pointer);
   SetDefaultMmuTable(address64bit, memory);
@@ -631,7 +629,9 @@ int run(int argc, char *argv[]) {
   cpu.SetCsr(SATP, satp);
   cpu.SetMemory(memory);
   cpu.SetWorkMemory(kTop, kBottom);
-
+  cpu.SetHostEmulationEnable(host_emulation);
+  cpu.SetDeviceEmulationEnable(device_emulation);
+  cpu.DeviceInitialization();
   int error = cpu.RunCpu(entry_point, verbose);
   if (error) {
     printf("CPU execution fail.\n");

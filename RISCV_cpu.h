@@ -2,13 +2,13 @@
 #define RISCV_CPU_H
 
 #include <cstdint>
+#include <memory>
 #include <utility>
 #include <vector>
-#include <memory>
-#include "riscv_cpu_common.h"
+#include "PeripheralEmulator.h"
 #include "bit_tools.h"
 #include "memory_wrapper.h"
-#include "PeripheralEmulator.h"
+#include "riscv_cpu_common.h"
 
 namespace RISCV_EMULATOR {
 
@@ -18,12 +18,13 @@ class RiscvCpu {
   static constexpr int kRegNum = 32;
   int xlen_;
   int mxl_ = 1;
-public:
+
+ public:
   RiscvCpu(bool en64bit);
 
   RiscvCpu();
 
-  ~RiscvCpu() {
+  ~RiscvCpu(){
 
   };
 
@@ -39,17 +40,19 @@ public:
 
   int RunCpu(uint64_t start_pc, bool verbose = true);
 
-  static std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t>
-  GetCode16(uint32_t ir, int mxl);
+  static std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> GetCode16(
+      uint32_t ir, int mxl);
 
-private:
-  uint64_t
-  VirtualToPhysical(uint64_t virtual_address, bool write_access = false);
+ private:
+  uint64_t VirtualToPhysical(uint64_t virtual_address,
+                             bool write_access = false);
 
   uint64_t Sext32bit(uint64_t data32bit);
 
   uint64_t reg_[kRegSize];
   uint64_t pc_;
+  bool timer_interrupt_;
+
   uint32_t ir_;
   uint64_t next_pc_;
   uint64_t mstatus_;
@@ -60,28 +63,38 @@ private:
 
   void InitializeCsrs();
 
+  void ClearInterrupt();
+
   void Ecall();
 
-  void CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd, uint32_t rs1);
+  void CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd,
+                       uint32_t rs1);
 
-  uint64_t BranchInstruction(uint32_t instruction, uint32_t rs1, uint32_t rs2,   int32_t imm13);
+  uint64_t BranchInstruction(uint32_t instruction, uint32_t rs1, uint32_t rs2,
+                             int32_t imm13);
 
-  void OperationInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t rs2);
+  void OperationInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                            uint32_t rs2);
 
-  void ImmediateInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, int32_t imm12);
+  void ImmediateInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                            int32_t imm12);
 
-  void ImmediateShiftInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t shamt);
+  void ImmediateShiftInstruction(uint32_t instruction, uint32_t rd,
+                                 uint32_t rs1, uint32_t shamt);
 
-  void LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, int32_t imm12);
+  void LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                       int32_t imm12);
 
-  void StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t rs2, int32_t imm12_stype);
+  void StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                        uint32_t rs2, int32_t imm12_stype);
 
   void SystemInstruction(uint32_t instruction, uint32_t rd, int32_t imm);
 
-  void MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t rs2);
+  void MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                       uint32_t rs2);
 
-  void
-  AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, uint32_t rs2);
+  void AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
+                      uint32_t rs2);
 
   void Mret();
 
@@ -118,6 +131,8 @@ private:
 
   void DumpPrivilegeStatus();
 
+  void DumpDisassembly(bool verbose);
+
   void DumpCpuStatus();
 
   void DumpRegisters();
@@ -126,23 +141,29 @@ private:
 
   void ApplyMstatusToCsr();
   // Below are for system call and host emulation
-public:
+ public:
   void SetWorkMemory(uint64_t top, uint64_t bottom);
 
-  void SetEcallEmulationEnable(bool ecall_emulation) { ecall_emulation_ = ecall_emulation; };
+  void SetEcallEmulationEnable(bool ecall_emulation) {
+    ecall_emulation_ = ecall_emulation;
+  };
 
   void SetHostEmulationEnable(bool host_emulation) {
     host_emulation_ = host_emulation;
-    peripheral->SetHostEmulationEnable(host_emulation);
+    peripheral_->SetHostEmulationEnable(host_emulation);
   };
 
   void SetDeviceEmulationEnable(bool enable) {
-    peripheral_emulation_=enable;
-    peripheral->SetDeviceEmulationEnable(enable);
+    peripheral_emulation_ = enable;
+    peripheral_->SetDeviceEmulationEnable(enable);
   }
-private:
+
+  void DeviceInitialization();
+
+ private:
+  bool TimerTick();
   void PeripheralEmulations();
-  std::unique_ptr<PeripheralEmulator> peripheral;
+  std::unique_ptr<PeripheralEmulator> peripheral_;
   bool ecall_emulation_ = false;
   bool host_emulation_ = false;
   bool peripheral_emulation_ = false;
@@ -152,6 +173,12 @@ private:
 };
 
 enum ExceptionCode {
+  SUPERVISOR_SOFTWARRE_INTERRUPT = 1,
+  MACHINE_SOFTWARE_INTERRUPT = 3,
+  SUPERVIOR_TIMER_INTERRUPT = 5,
+  MACHINE_TIMER_INTERRUPT = 7,
+  SUPERVISOR_EXTERNAL_INTERRUPT = 9,
+  MACHINE_EXTERNAL_INTERRUPT = 11,
   INSTRUCTION_ADDRESS_MISALIGNED = 0,
   INSTRUCTION_ACCESS_FAULT = 1,
   ILLEGAL_INSTRUCTION = 2,
@@ -170,42 +197,42 @@ enum ExceptionCode {
 
 enum CsrsAddresses {
   // User Trap Handling
-  USTATUS = 0x000, // User status register.
-  UIE = 0x004, // User interrupt-enable register.
-  UTVEC = 0x005, // User trap handler base address.
-  USCRATCH = 0x040, // Scratch register for user trap handlers.
-  UEPC = 0x041, // User exception program counter.
-  UCAUSE = 0x042, // User trap cause.
-  UTVAL = 0x43, // User bad address or instruction.
-  UIP = 0x44, // User interrupt pending.
+  USTATUS = 0x000,   // User status register.
+  UIE = 0x004,       // User interrupt-enable register.
+  UTVEC = 0x005,     // User trap handler base address.
+  USCRATCH = 0x040,  // Scratch register for user trap handlers.
+  UEPC = 0x041,      // User exception program counter.
+  UCAUSE = 0x042,    // User trap cause.
+  UTVAL = 0x43,      // User bad address or instruction.
+  UIP = 0x44,        // User interrupt pending.
   // Supervisor Trap Handling.
-  SSTATUS = 0x100, // Supervisor status register.
-  SEDELEG = 0x102, // Supervisor exception delegation register.
-  SIDELEG = 0X103, // Supervisor interrupt delegation register.
-  SIE = 0x104, // Supervisor interrupt-enable register.
-  STVEC = 0x105, // Supervisor trap handler base address.
-  SCOUNTEREN = 0x106, // Supervisor counter enable.
-  SSCRATCH = 0x140, // Scratch register for supervisor trap handlers.
-  SEPC = 0x141, // Supervisor exception program counter.
-  SCAUSE = 0x142, // Supervisor trap cause,
-  STVAL = 0x143, // Supervisor bad address or instruction.
-  SIP = 0x144, // Supervisor interrupt pending.
+  SSTATUS = 0x100,     // Supervisor status register.
+  SEDELEG = 0x102,     // Supervisor exception delegation register.
+  SIDELEG = 0X103,     // Supervisor interrupt delegation register.
+  SIE = 0x104,         // Supervisor interrupt-enable register.
+  STVEC = 0x105,       // Supervisor trap handler base address.
+  SCOUNTEREN = 0x106,  // Supervisor counter enable.
+  SSCRATCH = 0x140,    // Scratch register for supervisor trap handlers.
+  SEPC = 0x141,        // Supervisor exception program counter.
+  SCAUSE = 0x142,      // Supervisor trap cause,
+  STVAL = 0x143,       // Supervisor bad address or instruction.
+  SIP = 0x144,         // Supervisor interrupt pending.
   // Super visor Protection and Translation.
-  SATP = 0x180, // Page-table base register. Former satp register.
+  SATP = 0x180,  // Page-table base register. Former satp register.
   // Machine Trap Setup
-  MSTATUS = 0x300, // Machine status register.
-  MISA = 0x301, // ISA and extensions.
-  MEDELEG = 0x302, // Machine exception delegation register.
-  MIDELEG = 0x303, // Machine interrupt delegation register.
-  MIE = 0x304, // Machine interrupt-enable register.
-  MTVEC = 0x305, // Machine trap-handler base address.
-  MCOUNTEREN = 0x306, // Machine counter enable.
+  MSTATUS = 0x300,     // Machine status register.
+  MISA = 0x301,        // ISA and extensions.
+  MEDELEG = 0x302,     // Machine exception delegation register.
+  MIDELEG = 0x303,     // Machine interrupt delegation register.
+  MIE = 0x304,         // Machine interrupt-enable register.
+  MTVEC = 0x305,       // Machine trap-handler base address.
+  MCOUNTEREN = 0x306,  // Machine counter enable.
   // Machine Trap Handling.
-  MSCRATCH = 0x340, // Scratch register for machine trap handlers.
-  MEPC = 0x341, // Machine exception program counter.
-  MCAUSE = 0x342, // Machine trap cause.
-  MTVAL = 0x343, // Machine bad address
-  MIP = 0x344, // Machine interrupt pending
+  MSCRATCH = 0x340,  // Scratch register for machine trap handlers.
+  MEPC = 0x341,      // Machine exception program counter.
+  MCAUSE = 0x342,    // Machine trap cause.
+  MTVAL = 0x343,     // Machine bad address
+  MIP = 0x344,       // Machine interrupt pending
   // TDOD: add other CSR addresses.
   // https://riscv.org/specifications/privileged-isa/
 };
@@ -438,6 +465,6 @@ enum instruction {
   INST_AMOSWAPW,
 };
 
-} // namespace RISCV_EMULATOR
+}  // namespace RISCV_EMULATOR
 
-#endif // RISCV_CPU_H
+#endif  // RISCV_CPU_H

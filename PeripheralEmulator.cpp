@@ -28,12 +28,10 @@ bool PeripheralEmulator::GetHostEndFlag() {
   return end_flag_;
 }
 
-void PeripheralEmulator::DeviceEmulation() {
-  if (uart_write_) {
-    std::cout << static_cast<char>(uart_write_value_);
-    uart_write_ = false;
-  }
+void PeripheralEmulator::Initialize() {
+  UartInit();
 }
+
 // reference: https://github.com/riscv/riscv-isa-sim/issues/364
 void PeripheralEmulator::CheckDeviceWrite(uint64_t address, int width, uint64_t data) {
   // Check if the write is to host communication.
@@ -57,7 +55,7 @@ void PeripheralEmulator::Emulation() {
     HostEmulation();
   }
   if (device_emulation_enable) {
-    DeviceEmulation();
+    UartEmulation();
   }
 }
 
@@ -122,6 +120,44 @@ void PeripheralEmulator::HostEmulation() {
   }
   host_write_ = 0;
   return;
+}
+
+void PeripheralEmulator::UartInit() {
+  uint8_t isr = memory_->ReadByte(kUartBase + 5);
+  isr |= (1 << 5);
+  memory_->WriteByte(kUartBase + 5, isr);
+}
+void PeripheralEmulator::UartEmulation() {
+  // UART Rx.
+  if (uart_write_) {
+    std::cout << static_cast<char>(uart_write_value_);
+    uart_write_ = false;
+  }
+  // UART Tx.
+//  std::string input_string;
+//  std::cin >> input_string;
+//  if (!input_string.empty()) {
+//    for (auto s : input_string) {
+//      uart_queue.push(static_cast<uint8_t>(s));
+//    }
+//  }
+
+}
+
+void PeripheralEmulator::TimerTick() {
+  elapsed_cycles++;
+  uint64_t next_cycle = memory_->Read64(kTimerBase);
+  if (elapsed_cycles == next_cycle) {
+    timer_interrupt_ = true;
+  }
+}
+
+uint64_t PeripheralEmulator::GetTimerInterrupt() {
+  return timer_interrupt_;
+}
+
+void PeripheralEmulator::ClearTimerInterrupt() {
+  timer_interrupt_ = false;
 }
 
 } // namespace RISCV_EMULATOR

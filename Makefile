@@ -1,5 +1,5 @@
 CXX	= g++
-CPPFLAGS = -Wall -g
+CPPFLAGS = -Wall -O3
 TARGET = RISCV_Emulator
 CPU_OBJS = RISCV_cpu.o load_assembler.o assembler.o bit_tools.o \
 instruction_encdec.o memory_wrapper.o system_call_emulator.o pte.o Mmu.o \
