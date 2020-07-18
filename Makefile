@@ -1,7 +1,7 @@
 CXX	= g++
 CPPFLAGS = -Wall -O3 -I.
 TARGET = RISCV_Emulator
-CPU_OBJS = RISCV_cpu.o load_assembler.o assembler.o bit_tools.o \
+CPU_OBJS = RISCV_cpu.o bit_tools.o \
 instruction_encdec.o memory_wrapper.o system_call_emulator.o pte.o Mmu.o \
 Disassembler.o PeripheralEmulator.o
 OBJS = RISCV_Emulator.o $(CPU_OBJS)
@@ -15,18 +15,19 @@ WRAPPER_TESTS = $(TEST_DIR)/memory_wrapper_test $(TEST_DIR)/load_assembler_test
 $(TARGET): $(OBJS)
 	$(CXX) -o $(TARGET) $(OBJS)
 
-$(TEST_DIR)/load_assembler_test: load_assembler.o assembler.o $(TEST_DIR)/load_assembler_test.o \
-bit_tools.o instruction_encdec.o memory_wrapper.o
+$(TEST_DIR)/load_assembler_test: $(TEST_DIR)/load_assembler.o $(TEST_DIR)/assembler.o \
+$(TEST_DIR)/load_assembler_test.o bit_tools.o instruction_encdec.o memory_wrapper.o
 	$(CXX) $(CPPFLAG) -o $@ $^
 
-$(TEST_DIR)/cpu_test: $(TEST_DIR)/cpu_test.o $(CPU_OBJS)
-	$(CXX) -o $(TEST_DIR)/cpu_test $(TEST_DIR)/cpu_test.o $(CPU_OBJS)
+$(TEST_DIR)/cpu_test: $(TEST_DIR)/cpu_test.o $(CPU_OBJS) $(TEST_DIR)/load_assembler.o \
+$(TEST_DIR)/assembler.o
+	$(CXX) $(CPPFLAG) -o $@ $^
 
 $(TEST_DIR)/memory_wrapper_test: memory_wrapper.o $(TEST_DIR)/memory_wrapper_test.o
-	$(CXX) $(TEST_DIR)/memory_wrapper_test.o memory_wrapper.o -o $(TEST_DIR)/memory_wrapper_test
+	$(CXX) $(CPPFLAG) -o $@ $^
 
 $(TEST_DIR)/pte_test: pte.o $(TEST_DIR)/pte_test.o bit_tools.o
-	$(CXX) $(TEST_DIR)/pte_test.o pte.o bit_tools.o -o $(TEST_DIR)/pte_test
+	$(CXX) $(CPPFLAG) -o $@ $^
 
 .cpp.o:
 	$(CXX) -c $< -o $@ $(CPPFLAGS)
