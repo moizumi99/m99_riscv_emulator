@@ -164,9 +164,6 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   if (interrupt && (!machine_interrupt_active && !supervisor_interrupt_active)) {
     return;
   }
-  if (machine_interrupt_active) {
-    std::cerr << "Machine interrupt accepted.\n";
-  }
 
   // Page fault specific processing.
   if (!interrupt && (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT)) {
