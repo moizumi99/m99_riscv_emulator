@@ -1,12 +1,13 @@
 CXX	= g++
-CPPFLAGS = -Wall -O3
+CPPFLAGS = -Wall -O3 -I.
 TARGET = RISCV_Emulator
 CPU_OBJS = RISCV_cpu.o load_assembler.o assembler.o bit_tools.o \
 instruction_encdec.o memory_wrapper.o system_call_emulator.o pte.o Mmu.o \
 Disassembler.o PeripheralEmulator.o
 OBJS = RISCV_Emulator.o $(CPU_OBJS)
-TEST_TARGETS = cpu_test pte_test
-WRAPPER_TESTS = memory_wrapper_test load_assembler_test
+TEST_DIR = tests
+TEST_TARGETS = $(TEST_DIR)/cpu_test $(TEST_DIR)/pte_test
+WRAPPER_TESTS = $(TEST_DIR)/memory_wrapper_test $(TEST_DIR)/load_assembler_test
 
 .PHONY: all
 	all: $(TARGET) $(TEST_TARGETS)
@@ -14,43 +15,44 @@ WRAPPER_TESTS = memory_wrapper_test load_assembler_test
 $(TARGET): $(OBJS)
 	$(CXX) -o $(TARGET) $(OBJS)
 
-load_assembler_test: load_assembler.o assembler.o load_assembler_test.o bit_tools.o instruction_encdec.o memory_wrapper.o
+$(TEST_DIR)/load_assembler_test: load_assembler.o assembler.o $(TEST_DIR)/load_assembler_test.o \
+bit_tools.o instruction_encdec.o memory_wrapper.o
 	$(CXX) $(CPPFLAG) -o $@ $^
 
-cpu_test: cpu_test.o $(CPU_OBJS)
-	$(CXX) -o cpu_test cpu_test.o $(CPU_OBJS)
+$(TEST_DIR)/cpu_test: $(TEST_DIR)/cpu_test.o $(CPU_OBJS)
+	$(CXX) -o $(TEST_DIR)/cpu_test $(TEST_DIR)/cpu_test.o $(CPU_OBJS)
 
-memory_wrapper_test: memory_wrapper.o memory_wrapper_test.o
-	$(CXX) memory_wrapper_test.o memory_wrapper.o -o memory_wrapper_test
+$(TEST_DIR)/memory_wrapper_test: memory_wrapper.o $(TEST_DIR)/memory_wrapper_test.o
+	$(CXX) $(TEST_DIR)/memory_wrapper_test.o memory_wrapper.o -o $(TEST_DIR)/memory_wrapper_test
 
-pte_test: pte.o pte_test.o bit_tools.o
-	$(CXX) pte_test.o pte.o bit_tools.o -o pte_test
+$(TEST_DIR)/pte_test: pte.o $(TEST_DIR)/pte_test.o bit_tools.o
+	$(CXX) $(TEST_DIR)/pte_test.o pte.o bit_tools.o -o $(TEST_DIR)/pte_test
 
 .cpp.o:
 	$(CXX) -c $< -o $@ $(CPPFLAGS)
 
 .PHONY: core_test
 core_test:  $(TEST_TARGETS) $(TARGET)
-	./cpu_test
-	./pte_test
-	./rv32ui-p-tests.sh
-	./rv32ui-v-tests.sh
-	./rv64ui-p-tests.sh
-	./rv64ui-v-tests.sh
-	./rv32um-p-tests.sh
-	./rv32um-v-tests.sh
-	./rv64um-p-tests.sh
-	./rv64um-v-tests.sh
-	./rv32ua-p-tests.sh
-	./rv32ua-v-tests.sh
-	./rv64ua-p-tests.sh
-	./rv64ua-v-tests.sh
-	./rvuc-tests.sh
+	$(TEST_DIR)/cpu_test
+	$(TEST_DIR)/pte_test
+	$(TEST_DIR)/rv32ui-p-tests.sh
+	$(TEST_DIR)/rv32ui-v-tests.sh
+	$(TEST_DIR)/rv64ui-p-tests.sh
+	$(TEST_DIR)/rv64ui-v-tests.sh
+	$(TEST_DIR)/rv32um-p-tests.sh
+	$(TEST_DIR)/rv32um-v-tests.sh
+	$(TEST_DIR)/rv64um-p-tests.sh
+	$(TEST_DIR)/rv64um-v-tests.sh
+	$(TEST_DIR)/rv32ua-p-tests.sh
+	$(TEST_DIR)/rv32ua-v-tests.sh
+	$(TEST_DIR)/rv64ua-p-tests.sh
+	$(TEST_DIR)/rv64ua-v-tests.sh
+	$(TEST_DIR)/rvuc-tests.sh
 
 .PHONY: wrapper_test
 wrapper_test: $(WRAPPER_TESTS)
-	./load_assembler_test
-	./memory_wrapper_test
+	$(TEST_DIR)/load_assembler_test
+	$(TEST_DIR)/memory_wrapper_test
 
 .PHONY: test
 test: wrapper_test core_test

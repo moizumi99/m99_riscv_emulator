@@ -2,8 +2,9 @@
 // Created by moiz on 7/2/20.
 //
 
-#include <iostream>
 #include "PeripheralEmulator.h"
+#include <cassert>
+#include <iostream>
 namespace RISCV_EMULATOR {
 
 PeripheralEmulator::PeripheralEmulator(int mxl) : mxl_(mxl) {}
@@ -56,6 +57,7 @@ void PeripheralEmulator::Emulation() {
   }
   if (device_emulation_enable) {
     UartEmulation();
+    VirtioInit();
   }
 }
 
@@ -146,7 +148,8 @@ void PeripheralEmulator::UartEmulation() {
 
 void PeripheralEmulator::TimerTick() {
   elapsed_cycles++;
-  uint64_t next_cycle = memory_->Read64(kTimerBase);
+  uint64_t next_cycle = memory_->Read64(kTimerCmp);
+  memory_->Write64(kTimerMtime, elapsed_cycles);
   if (elapsed_cycles == next_cycle) {
     timer_interrupt_ = true;
   }
@@ -158,6 +161,21 @@ uint64_t PeripheralEmulator::GetTimerInterrupt() {
 
 void PeripheralEmulator::ClearTimerInterrupt() {
   timer_interrupt_ = false;
+}
+
+void PeripheralEmulator::VirtioInit() {
+//   if(*R(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 ||
+//      *R(VIRTIO_MMIO_VERSION) != 1 ||
+//      *R(VIRTIO_MMIO_DEVICE_ID) != 2 ||
+//      *R(VIRTIO_MMIO_VENDOR_ID) != 0x554d4551){
+//     panic("could not find virtio disk");
+//   }
+  assert(memory_);
+  memory_->Write32(kVirtioBase + 0x00, 0x74726976);
+  memory_->Write32(kVirtioBase + 0x4, 1);
+  memory_->Write32(kVirtioBase + 0x8, 2);
+  memory_->Write32(kVirtioBase + 0xc, 0x554d4551);
+  memory_->Write32(kVirtioBase + 0x34, 8);
 }
 
 } // namespace RISCV_EMULATOR

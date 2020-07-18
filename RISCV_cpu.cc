@@ -151,6 +151,23 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   assert((interrupt && cause == MACHINE_TIMER_INTERRUPT) ||
          (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT ||
           cause == ECALL_UMODE || cause == ECALL_SMODE || cause == ECALL_MMODE));
+
+  // Interrupt Mask.
+  const uint64_t mie = bitcrop(mstatus_, 1, 3);
+  const uint64_t sie = bitcrop(mstatus_, 1, 1);
+  bool machine_interrupt_active =
+      (mie == 1) && (cause == MACHINE_TIMER_INTERRUPT || cause == MACHINE_SOFTWARE_INTERRUPT ||
+                     cause == MACHINE_EXTERNAL_INTERRUPT) && interrupt;
+  bool supervisor_interrupt_active =
+      (sie == 1) && (cause == SUPERVIOR_TIMER_INTERRUPT || cause == SUPERVISOR_SOFTWARRE_INTERRUPT ||
+                     cause == SUPERVISOR_EXTERNAL_INTERRUPT) && interrupt;
+  if (interrupt && (!machine_interrupt_active && !supervisor_interrupt_active)) {
+    return;
+  }
+  if (machine_interrupt_active) {
+    std::cerr << "Machine interrupt accepted.\n";
+  }
+
   // Page fault specific processing.
   if (!interrupt && (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT)) {
     if (prev_page_fault_ && prev_faulting_address_ == faulting_address_) {
@@ -174,22 +191,21 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
       tval = ir_;
     }
   }
-  // TODO: Implement other tval cases.
 
   // Check delegation status.
-  bool machine_exception_delegation = ((csrs_[MEDELEG] >> cause) & 1) == 1;
-  bool machine_interrupt_delegation = ((csrs_[MIDELEG] >> cause) & 1) == 1;
-  bool sv_exception_delegation = ((csrs_[SEDELEG] >> cause) & 1) == 1;
-  bool sv_interrupt_delegation = ((csrs_[SIDELEG] >> cause) & 1) == 1;
+  bool machine_exception_delegation = ((csrs_[MEDELEG] >> cause) & 1) && !interrupt;
+  bool machine_interrupt_delegation = ((csrs_[MIDELEG] >> cause) & 1) && machine_interrupt_active;
+  bool sv_exception_delegation = ((csrs_[SEDELEG] >> cause) & 1) && !interrupt;
+  bool sv_interrupt_delegation = ((csrs_[SIDELEG] >> cause) & 1) && supervisor_interrupt_active;
 
-  bool sv_delegation = (interrupt && machine_interrupt_delegation) || (!interrupt && machine_exception_delegation);
-  bool user_delegation = (interrupt && sv_interrupt_delegation) || (!interrupt && sv_exception_delegation);
+  bool sv_delegation = machine_interrupt_delegation || machine_exception_delegation;
+  bool user_delegation = sv_interrupt_delegation || sv_exception_delegation;
 
   sv_delegation =
       sv_delegation && (privilege_ == PrivilegeMode::SUPERVISOR_MODE || privilege_ == PrivilegeMode::USER_MODE);
   user_delegation = user_delegation && (privilege_ == PrivilegeMode::USER_MODE) && sv_delegation;
 
-  uint64_t interrupt_cause_mask = interrupt ? (1 << xlen_ - 1) : 0;
+  uint64_t interrupt_cause_mask = interrupt ? 1 << (xlen_ - 1) : 0;
   if (user_delegation) {
     // Delegate to U-Mode.
     csrs_[UCAUSE] = cause | interrupt_cause_mask;
@@ -222,7 +238,6 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     csrs_[STVAL] = tval;
 
     // Copy old SIE (#1) to SPIE (#5). Then, disable SIE (#1).
-    const uint64_t sie = bitcrop(mstatus_, 1, 1);
     mstatus_ = bitset(mstatus_, 1, 5, sie);
     uint64_t new_sie = 0;
     mstatus_ = bitset(csrs_[SSTATUS], 1, 1, new_sie);
@@ -246,7 +261,6 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     csrs_[MTVAL] = tval;
 
     // Copy old MIE (#3) to MPIE (#7). Then, disable MIE.
-    const uint64_t mie = bitcrop(mstatus_, 1, 3);
     mstatus_ = bitset(mstatus_, 1, 7, mie);
     uint64_t new_mie = 0;
     mstatus_ = bitset(mstatus_, 1, 3, new_mie);
@@ -257,6 +271,7 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     mstatus_ = bitset(mstatus_, 2, 11, new_mpp);
     privilege_ = PrivilegeMode::MACHINE_MODE;
   }
+  // TODO: Toggle MIP and SIP bits.
   ApplyMstatusToCsr();
 }
 
@@ -364,6 +379,10 @@ void RiscvCpu::OperationInstruction(uint32_t instruction, uint32_t rd, uint32_t 
     case INST_SRAW:
       temp64 = Sext32bit(reg_[rs1]) >> (reg_[rs2] & shift_mask);
       break;
+    default:
+      temp64 = 0;
+      std::cerr << "Undefined Arithmetic or Logical instruction detected." << std::endl;
+      assert(false);
   }
   if (xlen_ == 32 || w_instruction) {
     temp64 = Sext32bit(temp64);
@@ -387,6 +406,10 @@ void RiscvCpu::ImmediateInstruction(uint32_t instruction, uint32_t rd, uint32_t 
     case INST_XORI:
       temp64 = reg_[rs1] ^ imm12;
       break;
+    default:
+      temp64 = 0;
+      std::cerr << "Unsupported Immediate instruction detected." << std::endl;
+      assert(false);
   }
   if (xlen_ == 32 || instruction == INST_ADDIW) {
     temp64 = Sext32bit(temp64);
@@ -484,7 +507,7 @@ int RiscvCpu::GetAccessWidth(uint32_t width, uint64_t address) {
   bool burst_overflow = ((address & 0b111) + width - 1) >> 3;
   int access_width = width;
   if (burst_overflow) {
-    const int mask = width == width == 2 ? 0b1 : (width == 4 ? 0b11 : (width == 8 ? 0b111 : 0));
+    const int mask = width == 2 ? 0b1 : (width == 4 ? 0b11 : (width == 8 ? 0b111 : 0));
     access_width = width - (address & mask);
   }
   return access_width;
@@ -701,6 +724,10 @@ void RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, 
       }
       sign_extend_en = true;
       break;
+    default:
+      temp64 = 0;
+      std::cerr << "Undefined Mul instruction detected." << std::endl;
+      assert(false);
   }
   if (sign_extend_en) {
     temp64 = Sext32bit(temp64);
@@ -788,6 +815,10 @@ void RiscvCpu::AmoInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, u
     case INST_AMOSWAPW:
       new_value = reg_[rs2];
       break;
+    default:
+      new_value = 0;
+      std::cerr << "Undefined AMOxxx instruction." << std::endl;
+      assert(false);
   }
   constexpr bool kWriteAccess = true;
   physical_address = VirtualToPhysical(virtual_address, kWriteAccess);
@@ -823,6 +854,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   next_pc_ = start_pc;
   do {
     pc_ = next_pc_;
+    // TODO: Check SIP and MIP and issue SW interrupt if necessary.
     if (TimerTick()) {
       continue;
     }

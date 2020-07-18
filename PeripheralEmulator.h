@@ -24,6 +24,11 @@ constexpr uint64_t kUartSize = 6;
 
 // Timer.
 constexpr uint64_t kTimerBase = 0x2000000;
+constexpr uint64_t kTimerCmp = kTimerBase + 0x4000;
+constexpr uint64_t kTimerMtime = kTimerBase + 0xbff8;
+
+// Virtio Disk.
+constexpr uint64_t kVirtioBase = 0x10001000;
 
 class PeripheralEmulator {
 public:
@@ -56,6 +61,9 @@ public:
   }
   void UartInit();
   void UartEmulation();
+
+  // Virtio Disk Emulation.
+  void VirtioInit();
 
 private:
   std::shared_ptr<MemoryWrapper> memory_;
