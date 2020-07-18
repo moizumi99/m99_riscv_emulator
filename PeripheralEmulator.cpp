@@ -164,12 +164,6 @@ void PeripheralEmulator::ClearTimerInterrupt() {
 }
 
 void PeripheralEmulator::VirtioInit() {
-//   if(*R(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 ||
-//      *R(VIRTIO_MMIO_VERSION) != 1 ||
-//      *R(VIRTIO_MMIO_DEVICE_ID) != 2 ||
-//      *R(VIRTIO_MMIO_VENDOR_ID) != 0x554d4551){
-//     panic("could not find virtio disk");
-//   }
   assert(memory_);
   memory_->Write32(kVirtioBase + 0x00, 0x74726976);
   memory_->Write32(kVirtioBase + 0x4, 1);
