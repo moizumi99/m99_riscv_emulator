@@ -1,5 +1,6 @@
 #include "RISCV_cpu.h"
 #include <stdint.h>
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <map>
@@ -147,20 +148,22 @@ void RiscvCpu::StoreWd(uint64_t physical_address, uint64_t data, int width) {
 
 void RiscvCpu::Trap(int cause, bool interrupt) {
   // Currently supported exceptions: page fault (12, 13, 15) and ecall (8, 9, 11).
-  // Currently supported interrupts: Machine Timer Intetrupt (7).
-  assert((interrupt && cause == MACHINE_TIMER_INTERRUPT) ||
+  // Currently supported interrupts: Supervisor Software Interrupt (1), Machine Timer Intetrupt (7)
+  assert((interrupt && (cause == MACHINE_TIMER_INTERRUPT || cause == SUPERVISOR_SOFTWARRE_INTERRUPT)) ||
          (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT ||
           cause == ECALL_UMODE || cause == ECALL_SMODE || cause == ECALL_MMODE));
 
   // Interrupt Mask.
   const uint64_t mie = bitcrop(mstatus_, 1, 3);
   const uint64_t sie = bitcrop(mstatus_, 1, 1);
-  bool machine_interrupt_active =
-      (mie == 1) && (cause == MACHINE_TIMER_INTERRUPT || cause == MACHINE_SOFTWARE_INTERRUPT ||
-                     cause == MACHINE_EXTERNAL_INTERRUPT) && interrupt;
-  bool supervisor_interrupt_active =
-      (sie == 1) && (cause == SUPERVIOR_TIMER_INTERRUPT || cause == SUPERVISOR_SOFTWARRE_INTERRUPT ||
-                     cause == SUPERVISOR_EXTERNAL_INTERRUPT) && interrupt;
+  bool machine_interrupt_active = (mie == 1) &&
+                                  (cause == MACHINE_TIMER_INTERRUPT || cause == MACHINE_SOFTWARE_INTERRUPT ||
+                                   cause == MACHINE_EXTERNAL_INTERRUPT) &&
+                                  interrupt;
+  bool supervisor_interrupt_active = (sie == 1) &&
+                                     (cause == SUPERVIOR_TIMER_INTERRUPT || cause == SUPERVISOR_SOFTWARRE_INTERRUPT ||
+                                      cause == SUPERVISOR_EXTERNAL_INTERRUPT) &&
+                                     interrupt;
   if (interrupt && (!machine_interrupt_active && !supervisor_interrupt_active)) {
     return;
   }
@@ -268,7 +271,6 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     mstatus_ = bitset(mstatus_, 2, 11, new_mpp);
     privilege_ = PrivilegeMode::MACHINE_MODE;
   }
-  // TODO: Toggle MIP and SIP bits.
   ApplyMstatusToCsr();
 }
 
@@ -284,29 +286,32 @@ uint64_t RiscvCpu::Sext32bit(uint64_t data32bit) {
 
 void RiscvCpu::CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd, uint32_t rs1) {
   uint64_t t = csrs_[csr];
+  uint64_t new_t = t;
   switch (instruction) {
     case INST_CSRRC:
-      csrs_[csr] &= ~reg_[rs1];
+      new_t &= ~reg_[rs1];
       break;
     case INST_CSRRCI:
-      csrs_[csr] &= ~rs1;
+      new_t &= ~rs1;
       break;
     case INST_CSRRS:
-      csrs_[csr] |= reg_[rs1];
+      new_t |= reg_[rs1];
       break;
     case INST_CSRRSI:
-      csrs_[csr] |= rs1;
+      new_t |= rs1;
       break;
     case INST_CSRRW:
-      csrs_[csr] = reg_[rs1];
+      new_t = reg_[rs1];
       break;
     case INST_CSRRWI:
-      csrs_[csr] = rs1;
+      new_t = rs1;
       break;
     default:;
   }
+  // TODO: Check for privilege before writing back to CSR.
+  csrs_[csr] = new_t;
   reg_[rd] = t;
-  UpdateMstatus(csr);
+  UpdateStatus(csr);
 }
 
 uint64_t RiscvCpu::BranchInstruction(uint32_t instruction, uint32_t rs1, uint32_t rs2, int32_t imm13) {
@@ -851,10 +856,10 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   next_pc_ = start_pc;
   do {
     pc_ = next_pc_;
-    // TODO: Check SIP and MIP and issue SW interrupt if necessary.
     if (TimerTick()) {
       continue;
     }
+    CheckSoftwareInterrupt();
     ir_ = LoadCmd(pc_);
     DumpDisassembly(verbose);
     if (page_fault_) {
@@ -1043,7 +1048,6 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     if (verbose) {
       DumpRegisters();
     }
-
     if (host_emulation_ || peripheral_emulation_) {
       PeripheralEmulations();
     }
@@ -1056,6 +1060,24 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   return error_flag_;
 }
 
+void RiscvCpu::CheckSoftwareInterrupt() {
+  constexpr bool kInterrupt = true;
+  uint64_t interrupt_status = csrs_[CsrsAddresses::MIP];
+  uint64_t interrupt_enable = csrs_[CsrsAddresses::MIE];
+  if (privilege_ == PrivilegeMode::USER_MODE && bitcrop(interrupt_status, 1, 0) == 1 &&
+      bitcrop(interrupt_enable, 1, 0) == 1) {
+    Trap(ExceptionCode::USER_SOFTWARE_INTERRUPT, kInterrupt);
+  }
+  if ((privilege_ == PrivilegeMode::SUPERVISOR_MODE || privilege_ == PrivilegeMode::USER_MODE) &&
+      bitcrop(interrupt_status, 1, 1) == 1 && bitcrop(interrupt_enable, 1, 1) == 1) {
+    Trap(ExceptionCode::SUPERVISOR_SOFTWARRE_INTERRUPT, kInterrupt);
+  }
+  if (bitcrop(interrupt_status, 1, 3) == 1 && bitcrop(interrupt_enable, 1, 3) == 1) {
+    Trap(ExceptionCode::MACHINE_SOFTWARE_INTERRUPT, kInterrupt);
+  }
+}
+
+// Peripheral emulation needed for XV6 and RISCV-TEST.
 // reference: https://github.com/riscv/riscv-isa-sim/issues/364
 void RiscvCpu::PeripheralEmulations() {
   peripheral_->Emulation();
@@ -1097,10 +1119,22 @@ void RiscvCpu::ApplyMstatusToCsr() {
   csrs_[MSTATUS] = mstatus_;
 }
 
-void RiscvCpu::UpdateMstatus(int16_t csr) {
-  if (csr != USTATUS && csr != SSTATUS && csr != MSTATUS) {
-    return;
+template <class T, int N>
+bool in(T obj, std::array<T, N> target) {
+  return (std::end(target) != std::find(std::begin(target), std::end(target), obj));
+}
+
+void RiscvCpu::UpdateStatus(int16_t csr) {
+  if (in<int16_t, 3>(csr, {USTATUS, SSTATUS, MSTATUS})) {
+    UpdateMstatus(csr);
+  } else if (in<int16_t, 3>(csr, {UIP, SIP, MIP})) {
+    UpdateInterruptPending(csr);
+  } else if (in<int16_t, 3>(csr, {UIE, SIE, MIE})) {
+    UpdateInterruptEnable(csr);
   }
+}
+
+void RiscvCpu::UpdateMstatus(int16_t csr) {
   const uint64_t ustatus_mask = mxl_ == 1 ? kUstatusMask_32 : kUstatusMask_64;
   const uint64_t sstatus_mask = mxl_ == 1 ? kSstatusMask_32 : kSstatusMask_64;
   if (csr == USTATUS) {
@@ -1109,8 +1143,7 @@ void RiscvCpu::UpdateMstatus(int16_t csr) {
   } else if (csr == SSTATUS) {
     const uint64_t sstatus = (csrs_[SSTATUS] & sstatus_mask);
     mstatus_ = (mstatus_ & ~sstatus_mask) | sstatus;
-  } else {
-    // if (csr == MSTATUS)
+  } else if (csr == MSTATUS) {
     mstatus_ = csrs_[MSTATUS];
   }
   // SD, FS, and XS are hardwired to zeros.
@@ -1121,6 +1154,38 @@ void RiscvCpu::UpdateMstatus(int16_t csr) {
     mstatus_ = (mstatus_ & ~(0b1111ull << 32)) | (0b1010ull << 32);
   }
   ApplyMstatusToCsr();
+}
+
+void RiscvCpu::UpdateInterruptPending(int16_t csr) {
+  constexpr uint64_t kUipMask = 0b0000100010001;
+  constexpr uint64_t kSipMask = 0b0001100110011;
+  uint64_t mip = csrs_[CsrsAddresses::MIP];
+  if (csr == CsrsAddresses::UIP) {
+    uint64_t uip = csrs_[CsrsAddresses::UIP] & kUipMask;
+    mip = (mip & ~kUipMask) | uip;
+  } else if (csr == CsrsAddresses::SIP) {
+    uint64_t sip = csrs_[CsrsAddresses::SIP] & kSipMask;
+    mip = (mip & ~kSipMask) | sip;
+  }
+  csrs_[CsrsAddresses::UIP] = mip & kUipMask;
+  csrs_[CsrsAddresses::SIP] = mip & kSipMask;
+  csrs_[CsrsAddresses::MIP] = mip;
+}
+
+void RiscvCpu::UpdateInterruptEnable(int16_t csr) {
+  constexpr uint64_t kUieMask = 0b0000100010001;
+  constexpr uint64_t kSieMask = 0b0001100110011;
+  uint64_t mie = csrs_[CsrsAddresses::MIE];
+  if (csr == CsrsAddresses::UIE) {
+    uint64_t uie = csrs_[CsrsAddresses::UIE] & kUieMask;
+    mie = (mie & ~kUieMask) | uie;
+  } else if (csr == CsrsAddresses::SIE) {
+    uint64_t sie = csrs_[CsrsAddresses::SIE] & kSieMask;
+    mie = (mie & ~kSieMask) | sie;
+  }
+  csrs_[CsrsAddresses::UIE] = mie & kUieMask;
+  csrs_[CsrsAddresses::SIE] = mie & kSieMask;
+  csrs_[CsrsAddresses::MIE] = mie;
 }
 
 void RiscvCpu::DumpCpuStatus() {

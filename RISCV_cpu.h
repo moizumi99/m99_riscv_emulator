@@ -70,6 +70,8 @@ class RiscvCpu {
   void CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd,
                        uint32_t rs1);
 
+  void CheckSoftwareInterrupt();
+
   uint64_t BranchInstruction(uint32_t instruction, uint32_t rs1, uint32_t rs2,
                              int32_t imm13);
 
@@ -137,7 +139,13 @@ class RiscvCpu {
 
   void DumpRegisters();
 
+  void UpdateStatus(int16_t csr);
+
   void UpdateMstatus(int16_t csr);
+
+  void UpdateInterruptPending(int16_t csr);
+
+  void UpdateInterruptEnable(int16_t csr);
 
   void ApplyMstatusToCsr();
   // Below are for system call and host emulation
@@ -173,6 +181,7 @@ class RiscvCpu {
 };
 
 enum ExceptionCode {
+  USER_SOFTWARE_INTERRUPT = 0,
   SUPERVISOR_SOFTWARRE_INTERRUPT = 1,
   MACHINE_SOFTWARE_INTERRUPT = 3,
   SUPERVIOR_TIMER_INTERRUPT = 5,
