@@ -50,6 +50,10 @@ void RiscvCpu::DeviceInitialization() {
   peripheral_->Initialize();
 }
 
+void RiscvCpu::SetDiskImage(std::shared_ptr<std::vector<uint8_t> > disk_iamge) {
+  disk_image_ = disk_iamge;
+}
+
 uint64_t RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
   Mmu mmu(memory_, mxl_);
   mmu.SetPrivilege(privilege_);

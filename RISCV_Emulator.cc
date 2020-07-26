@@ -429,7 +429,7 @@ ParseCmd(int argc, char (***argv)) {
   if (argc < 2) {
     error = true;
   } else {
-    for (int i = 1; i < argc && !error; i++) {
+    for (int i = 1; i < argc && !error; ++i) {
       if ((*argv)[i][0] == '-') {
         if ((*argv)[i][1] == 'v') {
           verbose = true;
@@ -443,10 +443,9 @@ ParseCmd(int argc, char (***argv)) {
           host_emulation = true;
         } else if ((*argv)[i][1] == 'd') {
           device_enable = true;
-        } else if ((*argv[i][1] == 's')) {
+        } else if ((*argv)[i][1] == 's') {
           if (i < argc - 1) {
-            diskimage_file = std::string((*argv)[i]);
-            ++i;
+            diskimage_file = std::string((*argv)[++i]);
           } else {
             error = true;
           }
@@ -587,7 +586,7 @@ int run(int argc, char *argv[]) {
   disk_image_file = std::get<8>(options);
 
   if (cmdline_error) {
-    std::cerr << "Uasge: " << argv[0] << " elf_file" << "[-v][-64][-p][-e][-h][-s <disk.img>"
+    std::cerr << "Uasge: " << argv[0] << " elf_file " << "[-v][-64][-p][-e][-h][-s disk.img]"
               << std::endl;
     std::cerr << "-v: Verbose" << std::endl;
     std::cerr << "-e: System Call Emulation" << std::endl;
@@ -596,7 +595,7 @@ int run(int argc, char *argv[]) {
               << std::endl;
     std::cerr << "-d: Device emulation of UART" << std::endl;
     std::cerr << "-h: Use tohost and fromhost function" << std::endl;
-    std::cerr << "-s <disk.img>: specify disk image" << std::endl;
+    std::cerr << "-s disk.img: specify disk image" << std::endl;
     return -1;
   }
 
@@ -622,6 +621,12 @@ int run(int argc, char *argv[]) {
 
   uint32_t sp_value = kTop;
 
+  // Read DiskImage.
+  std::shared_ptr<std::vector<uint8_t>> disk_image;
+  if (disk_image_file != "") {
+    disk_image = std::make_shared<std::vector<uint8_t >>(ReadFile(disk_image_file));
+  }
+
   // Run CPU emulator
   std::cerr << "Execution start" << std::endl;
 
@@ -644,6 +649,7 @@ int run(int argc, char *argv[]) {
   cpu.SetWorkMemory(kTop, kBottom);
   cpu.SetHostEmulationEnable(host_emulation);
   cpu.SetDeviceEmulationEnable(device_emulation);
+  cpu.SetDiskImage(disk_image);
   cpu.DeviceInitialization();
   int error = cpu.RunCpu(entry_point, verbose);
   if (error) {

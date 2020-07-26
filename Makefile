@@ -60,4 +60,4 @@ test: wrapper_test core_test
 
 .PHONY: clean
 clean:
-	rm -rf *.o $(TARGET) $(TEST_TARGETS) $(WRAPPER_TESTS)
+	rm -rf *.o $(TARGET) $(TEST_TARGETS) $(WRAPPER_TESTS) tests/*.o
