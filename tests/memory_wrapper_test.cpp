@@ -33,6 +33,10 @@ int GetHash8(uint32_t val) {
   return GetHash32(val) & 0xFF;
 }
 
+int GetHash16(uint32_t val) {
+  return GetHash32(val) & 0xFFFF;
+}
+
 bool MemoryWrapperTest(size_t start, size_t end, int val) {
   bool result = true;
   MemoryWrapper mw;
@@ -175,6 +179,47 @@ bool Run64bitTest(int test_cycle, size_t test_size, bool verbose = false) {
   return result;
 }
 
+bool Run16bitTest(const size_t start, const size_t end, const size_t val,
+                  const bool verbose) {
+  if (verbose) {
+    std::cout << "Start: " << start << ", end: " << end << std::endl;
+  }
+  int result = true;
+  MemoryWrapper mw;
+  for (size_t i = start; i < end; i += 4) {
+    mw.Write16(i, GetHash16(i + val));
+  }
+  for (size_t i = start; i < end && result; i += 4) {
+    uint16_t expectation = GetHash16(i + val);
+    uint16_t read_value = mw.Read16(i);
+    result &= read_value == expectation;
+    if (!result) {
+      std::cout << "At i = " << i << ", expectation = " << std::hex
+                << expectation << ", actual = " << read_value << std::endl;
+    }
+  }
+  return result;
+}
+
+bool Run16bitTest(int test_cycle, size_t test_size, bool verbose = false) {
+  bool result = true;
+  for (int i = 0; i < test_cycle && result; i++) {
+    InitRandom();
+    size_t start = 0, end = 0;
+    int val = 0;
+    while (end <= start || (end - start) > test_size) {
+      start = (rand() >> 2) << 2;
+      end = rand();
+      val = rand();
+    }
+    result = result && Run16bitTest(start, end, val, verbose);
+    if (i % 10 == 0 && i > 0) {
+      std::cout << i << " tests finished." << std::endl;
+    }
+  }
+  return result;
+}
+
 } // namespace anonymous
 
 int main() {
@@ -192,15 +237,21 @@ int main() {
   }
   result = result && Run32bitTest(kSmallTestCycle, kSmallTestSize, false);
   if (result) {
-    std::cout << "32bit read/write test pass." << std::endl;
+    std::cout << "32 bit read/write test pass." << std::endl;
   } else {
-    std::cout << "32bit read/write test fail." << std::endl;
+    std::cout << "32 bit read/write test fail." << std::endl;
   }
   result = result && Run64bitTest(kSmallTestCycle, kSmallTestSize, false);
   if (result) {
-    std::cout << "64bit read/write test pass." << std::endl;
+    std::cout << "64 bit read/write test pass." << std::endl;
   } else {
-    std::cout << "64bit read/write test fail." << std::endl;
+    std::cout << "64 bit read/write test fail." << std::endl;
+  }
+  result = result && Run16bitTest(kSmallTestCycle, kSmallTestSize, false);
+  if (result) {
+    std::cout << "16 bit read/write test pass." << std::endl;
+  } else {
+    std::cout << "16 bit read/write test fail." << std::endl;
   }
   return result ? 0 : 1;
 }

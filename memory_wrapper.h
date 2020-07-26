@@ -35,11 +35,15 @@ class MemoryWrapper {
 public:
   const uint8_t ReadByte(size_t i) const;
 
-  void WriteByte(size_t i, uint8_t data);
+  const uint16_t Read16(size_t i) const;
 
   const uint32_t Read32(size_t i) const;
 
   const uint64_t Read64(size_t i) const;
+
+  void WriteByte(size_t i, uint8_t data);
+
+  void Write16(size_t i, uint16_t value);
 
   void Write32(size_t i, uint32_t value);
 
