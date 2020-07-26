@@ -415,7 +415,7 @@ uint64_t GetEntryPoint(std::vector<uint8_t> &program) {
   }
 }
 
-std::tuple<bool, std::string, bool, bool, bool, bool, bool, bool>
+std::tuple<bool, std::string, bool, bool, bool, bool, bool, bool, std::string>
 ParseCmd(int argc, char (***argv)) {
   bool error = false;
   bool verbose = false;
@@ -424,11 +424,12 @@ ParseCmd(int argc, char (***argv)) {
   bool ecall_emulation = false;
   bool host_emulation = false;
   bool device_enable = false;
+  std::string diskimage_file = "";
   std::string filename = "";
   if (argc < 2) {
     error = true;
   } else {
-    for (int i = 1; i < argc; i++) {
+    for (int i = 1; i < argc && !error; i++) {
       if ((*argv)[i][0] == '-') {
         if ((*argv)[i][1] == 'v') {
           verbose = true;
@@ -442,6 +443,15 @@ ParseCmd(int argc, char (***argv)) {
           host_emulation = true;
         } else if ((*argv)[i][1] == 'd') {
           device_enable = true;
+        } else if ((*argv[i][1] == 's')) {
+          if (i < argc - 1) {
+            diskimage_file = std::string((*argv)[i]);
+            ++i;
+          } else {
+            error = true;
+          }
+        } else {
+          error = true;
         }
       } else {
         if (filename == "") {
@@ -453,7 +463,7 @@ ParseCmd(int argc, char (***argv)) {
     }
   }
   return std::make_tuple(error, filename, verbose, address64bit, paging,
-                         ecall_emulation, host_emulation, device_enable);
+                         ecall_emulation, host_emulation, device_enable, diskimage_file);
 }
 
 constexpr int k32BitMmuLevelOneSize = 1024; // 1024 x 4 B = 4 KiB.
@@ -562,6 +572,7 @@ void SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory
 
 int run(int argc, char *argv[]) {
   bool cmdline_error, verbose, address64bit, paging, ecall_emulation, host_emulation, device_emulation;
+  std::string disk_image_file;
   std::string filename;
 
   auto options = ParseCmd(argc, &argv);
@@ -573,9 +584,10 @@ int run(int argc, char *argv[]) {
   ecall_emulation = std::get<5>(options);
   host_emulation = std::get<6>(options);
   device_emulation = std::get<7>(options);
+  disk_image_file = std::get<8>(options);
 
   if (cmdline_error) {
-    std::cerr << "Uasge: " << argv[0] << " elf_file" << "[-v][-64][-p][-e][-h]"
+    std::cerr << "Uasge: " << argv[0] << " elf_file" << "[-v][-64][-p][-e][-h][-s <disk.img>"
               << std::endl;
     std::cerr << "-v: Verbose" << std::endl;
     std::cerr << "-e: System Call Emulation" << std::endl;
@@ -584,6 +596,7 @@ int run(int argc, char *argv[]) {
               << std::endl;
     std::cerr << "-d: Device emulation of UART" << std::endl;
     std::cerr << "-h: Use tohost and fromhost function" << std::endl;
+    std::cerr << "-s <disk.img>: specify disk image" << std::endl;
     return -1;
   }
 
