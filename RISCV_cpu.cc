@@ -49,8 +49,9 @@ void RiscvCpu::DeviceInitialization() {
   peripheral_->Initialize();
 }
 
-void RiscvCpu::SetDiskImage(std::shared_ptr<std::vector<uint8_t> > disk_iamge) {
-  disk_image_ = disk_iamge;
+void RiscvCpu::SetDiskImage(std::shared_ptr<std::vector<uint8_t> > disk_image) {
+  assert(peripheral_ != nullptr);
+  peripheral_->SetDiskImage(disk_image);
 }
 
 uint64_t RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
@@ -152,9 +153,11 @@ void RiscvCpu::StoreWd(uint64_t physical_address, uint64_t data, int width) {
 void RiscvCpu::Trap(int cause, bool interrupt) {
   // Currently supported exceptions: page fault (12, 13, 15) and ecall (8, 9, 11).
   // Currently supported interrupts: Supervisor Software Interrupt (1), Machine Timer Intetrupt (7)
-  assert((interrupt && (cause == MACHINE_TIMER_INTERRUPT || cause == SUPERVISOR_SOFTWARRE_INTERRUPT)) ||
+  assert((interrupt && (cause == MACHINE_TIMER_INTERRUPT || cause == SUPERVISOR_SOFTWARRE_INTERRUPT ||
+                        cause == MACHINE_EXTERNAL_INTERRUPT)) ||
+             (!interrupt &
          (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT ||
-          cause == ECALL_UMODE || cause == ECALL_SMODE || cause == ECALL_MMODE));
+          cause == ECALL_UMODE || cause == ECALL_SMODE || cause == ECALL_MMODE)));
 
   // Interrupt Mask.
   const uint64_t mie = bitcrop(mstatus_, 1, 3);
@@ -903,6 +906,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
       continue;
     }
+    if (virtio_interrupt_) {
+      Trap(ExceptionCode::MACHINE_EXTERNAL_INTERRUPT);
+      virtio_interrupt_ = false;
+      continue;
+    }
     // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
     ctype_ = (ir_ & 0b11) != 0b11;
 
@@ -1122,6 +1130,10 @@ void RiscvCpu::PeripheralEmulations() {
     reg_[A0] = peripheral_->GetHostValue();
     error_flag_ |= peripheral_->GetHostErrorFlag();
     end_flag_ = true;
+  }
+  if (peripheral_->GetInterruptStatus()) {
+    peripheral_->ClearInterruptStatus();
+    virtio_interrupt_ = true;
   }
 }
 

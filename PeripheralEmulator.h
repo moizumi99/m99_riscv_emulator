@@ -12,26 +12,47 @@
 
 namespace RISCV_EMULATOR {
 
-// Memory Mapped Register Addresses.
-// Host Interface.
-constexpr uint64_t kToHost0 = 0x80001000;
-constexpr uint64_t kToHost1 = 0x80003000;
-constexpr uint64_t kFromHost = 0x80001040;
+struct VRingDesc {
+  uint64_t addr;
+  uint32_t len;
+  uint16_t flags;
+  uint16_t next;
+};
 
-// UART.
-constexpr uint64_t kUartBase = 0x10000000;
-constexpr uint64_t kUartSize = 6;
-
-// Timer.
-constexpr uint64_t kTimerBase = 0x2000000;
-constexpr uint64_t kTimerCmp = kTimerBase + 0x4000;
-constexpr uint64_t kTimerMtime = kTimerBase + 0xbff8;
-
-// Virtio Disk.
-constexpr uint64_t kVirtioBase = 0x10001000;
+struct virtio_blk_outhdr {
+  uint32_t type;
+  uint32_t reserved;
+  uint64_t sector;
+};
 
 class PeripheralEmulator {
-public:
+ public:
+  // Memory Mapped Register Addresses.
+  // Host Interface.
+  static constexpr uint64_t kToHost0 = 0x80001000;
+  static constexpr uint64_t kToHost1 = 0x80003000;
+  static constexpr uint64_t kFromHost = 0x80001040;
+
+  // UART.
+  static constexpr uint64_t kUartBase = 0x10000000;
+  static constexpr uint64_t kUartSize = 6;
+
+  // Timer.
+  static constexpr uint64_t kTimerBase = 0x2000000;
+  static constexpr uint64_t kTimerCmp = kTimerBase + 0x4000;
+  static constexpr uint64_t kTimerMtime = kTimerBase + 0xbff8;
+
+  // Virtio Disk.
+  static constexpr int kQueueNumMax = 8;
+  static constexpr uint64_t kVirtioBase = 0x10001000;
+  static constexpr uint64_t kVirtioEnd = kVirtioBase + 0x100 - 1;
+  static constexpr uint64_t kVirtioMmioPageSize = kVirtioBase + 0x28;
+  static constexpr uint64_t kVirtioMmioQueueSel = kVirtioBase + 0x30;
+  static constexpr uint64_t kVirtioMmioQueueMax = kVirtioBase + 0x34;
+  static constexpr uint64_t kVirtioMmioQueueNum = kVirtioBase + 0x38;
+  static constexpr uint64_t kVirtioMmioQueuePfn = kVirtioBase + 0x40;
+  static constexpr uint64_t kVirtioMmioQueueNotify = kVirtioBase + 0x50;
+
   PeripheralEmulator(int mxl);
 
   void SetMemory(std::shared_ptr<MemoryWrapper> memory);
@@ -56,16 +77,18 @@ public:
   void ClearTimerInterrupt();
 
   // Device Emulation.
-  void SetDeviceEmulationEnable(bool enable) {
-    device_emulation_enable = enable;
-  }
+  void SetDeviceEmulationEnable(bool enable) { device_emulation_enable = enable; }
   void UartInit();
   void UartEmulation();
 
   // Virtio Disk Emulation.
   void VirtioInit();
+  void VirtioEmulation();
+  void SetDiskImage(std::shared_ptr<std::vector<uint8_t>> disk_image);
+  bool GetInterruptStatus() {return virtio_interrupt; }
+  void ClearInterruptStatus() {virtio_interrupt = false;}
 
-private:
+ private:
   std::shared_ptr<MemoryWrapper> memory_;
   int mxl_;
   bool host_emulation_enable_ = false;
@@ -84,8 +107,24 @@ private:
   // Timer.
   uint64_t elapsed_cycles = 0;
   bool timer_interrupt_ = false;
+
+  // Virtio
+  static constexpr int kSectorSize = 512; // 1 sector = 512 bytes.
+  std::shared_ptr<std::vector<uint8_t>> disk_image_;
+  bool virtio_write_ = false;
+  uint64_t virtio_address_ = 0;
+  uint64_t virtio_width_ = 0;
+  uint64_t virtio_data_ = 0;
+  int queue_num_ = 8;
+  bool virtio_interrupt = false;
+  void VirtioDiskAccess(uint64_t queue_address);
+  uint16_t get_desc_index(uint64_t avail_address) const;
+  void read_desc(VRingDesc *desc, uint64_t desc_address, uint16_t desc_index) const;
+  void read_outhdr(virtio_blk_outhdr *outhdr, uint64_t outhdr_address) const;
+  void process_disc_access(uint64_t desc, int desc_index);
+  void disc_access(uint64_t sector, uint64_t buffer_address, uint32_t len, bool write);
+  void process_used_buffer(uint64_t used_buffer_address, uint16_t index);
 };
+}  // namespace RISCV_EMULATOR
 
-} // namespace RISCV_EMULATOR
-
-#endif //ASSEMBLER_TEST_PERIPHERALEMULATOR_H
+#endif  // ASSEMBLER_TEST_PERIPHERALEMULATOR_H

@@ -166,7 +166,7 @@ class RiscvCpu {
     peripheral_->SetDeviceEmulationEnable(enable);
   }
 
-  void SetDiskImage(std::shared_ptr<std::vector<uint8_t>> disk_iamge);
+  void SetDiskImage(std::shared_ptr<std::vector<uint8_t>> disk_image);
 
   void DeviceInitialization();
 
@@ -177,10 +177,10 @@ class RiscvCpu {
   bool ecall_emulation_ = false;
   bool host_emulation_ = false;
   bool peripheral_emulation_ = false;
+  bool virtio_interrupt_ = false;
   uint64_t top_ = 0x80000000;
   uint64_t bottom_ = 0x40000000;
   uint64_t brk_ = bottom_;
-  std::shared_ptr<std::vector<uint8_t>> disk_image_;
 };
 
 enum ExceptionCode {

@@ -649,8 +649,8 @@ int run(int argc, char *argv[]) {
   cpu.SetWorkMemory(kTop, kBottom);
   cpu.SetHostEmulationEnable(host_emulation);
   cpu.SetDeviceEmulationEnable(device_emulation);
-  cpu.SetDiskImage(disk_image);
   cpu.DeviceInitialization();
+  cpu.SetDiskImage(disk_image);
   int error = cpu.RunCpu(entry_point, verbose);
   if (error) {
     printf("CPU execution fail.\n");

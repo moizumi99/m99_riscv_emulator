@@ -9,28 +9,21 @@ namespace RISCV_EMULATOR {
 
 PeripheralEmulator::PeripheralEmulator(int mxl) : mxl_(mxl) {}
 
-void PeripheralEmulator::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
-    memory_ = memory;
-}
+void PeripheralEmulator::SetMemory(std::shared_ptr<MemoryWrapper> memory) { memory_ = memory; }
 
-void PeripheralEmulator::SetHostEmulationEnable(bool enable) {
-  host_emulation_enable_ = enable;
-}
+void PeripheralEmulator::SetDiskImage(std::shared_ptr<std::vector<uint8_t>> disk_image) {disk_image_ = disk_image; };
 
-uint64_t PeripheralEmulator::GetHostValue() {
-    return host_value_;
-}
+void PeripheralEmulator::SetHostEmulationEnable(bool enable) { host_emulation_enable_ = enable; }
 
-bool PeripheralEmulator::GetHostErrorFlag() {
-  return error_flag_;
-}
+uint64_t PeripheralEmulator::GetHostValue() { return host_value_; }
 
-bool PeripheralEmulator::GetHostEndFlag() {
-  return end_flag_;
-}
+bool PeripheralEmulator::GetHostErrorFlag() { return error_flag_; }
+
+bool PeripheralEmulator::GetHostEndFlag() { return end_flag_; }
 
 void PeripheralEmulator::Initialize() {
   UartInit();
+  VirtioInit();
 }
 
 // reference: https://github.com/riscv/riscv-isa-sim/issues/364
@@ -49,6 +42,12 @@ void PeripheralEmulator::CheckDeviceWrite(uint64_t address, int width, uint64_t 
     uart_write_value_ = (data >> (offset * 8)) & 0xFF;
     uart_write_ = true;
   }
+  if (kVirtioBase < address + width && address <= kVirtioEnd) {
+    virtio_address_ = address;
+    virtio_data_ = data;
+    virtio_width_ = width;
+    virtio_write_ = true;
+  }
 }
 
 void PeripheralEmulator::Emulation() {
@@ -57,7 +56,7 @@ void PeripheralEmulator::Emulation() {
   }
   if (device_emulation_enable) {
     UartEmulation();
-    VirtioInit();
+    VirtioEmulation();
   }
 }
 
@@ -102,8 +101,7 @@ void PeripheralEmulator::HostEmulation() {
         end_flag_ = true;
       }
     } else {
-      std::cerr << "Unsupported Host command " << command << " for Device 0"
-                << std::endl;
+      std::cerr << "Unsupported Host command " << command << " for Device 0" << std::endl;
       error_flag_ = true;
       end_flag_ = true;
     }
@@ -114,8 +112,7 @@ void PeripheralEmulator::HostEmulation() {
     } else if (command == 0) {
       // TODO: Implement Read.
     } else {
-      std::cerr << "Unsupported host command " << command << " for Device 1"
-                << std::endl;
+      std::cerr << "Unsupported host command " << command << " for Device 1" << std::endl;
     }
   } else {
     std::cerr << "Unsupported Host Device " << device << std::endl;
@@ -136,14 +133,13 @@ void PeripheralEmulator::UartEmulation() {
     uart_write_ = false;
   }
   // UART Tx.
-//  std::string input_string;
-//  std::cin >> input_string;
-//  if (!input_string.empty()) {
-//    for (auto s : input_string) {
-//      uart_queue.push(static_cast<uint8_t>(s));
-//    }
-//  }
-
+  //  std::string input_string;
+  //  std::cin >> input_string;
+  //  if (!input_string.empty()) {
+  //    for (auto s : input_string) {
+  //      uart_queue.push(static_cast<uint8_t>(s));
+  //    }
+  //  }
 }
 
 void PeripheralEmulator::TimerTick() {
@@ -155,13 +151,9 @@ void PeripheralEmulator::TimerTick() {
   }
 }
 
-uint64_t PeripheralEmulator::GetTimerInterrupt() {
-  return timer_interrupt_;
-}
+uint64_t PeripheralEmulator::GetTimerInterrupt() { return timer_interrupt_; }
 
-void PeripheralEmulator::ClearTimerInterrupt() {
-  timer_interrupt_ = false;
-}
+void PeripheralEmulator::ClearTimerInterrupt() { timer_interrupt_ = false; }
 
 void PeripheralEmulator::VirtioInit() {
   assert(memory_);
@@ -172,4 +164,131 @@ void PeripheralEmulator::VirtioInit() {
   memory_->Write32(kVirtioBase + 0x34, 8);
 }
 
-} // namespace RISCV_EMULATOR
+void PeripheralEmulator::VirtioEmulation() {
+  if (!virtio_write_) {
+    return;
+  }
+  constexpr int kWordWidth = 4;
+  if (kVirtioMmioQueueSel < virtio_address_ + virtio_width_ && virtio_address_ < kVirtioMmioQueueSel + kWordWidth) {
+    const uint32_t queue_sel = memory_->Read32(kVirtioMmioQueueSel);
+    const uint32_t queue_num_max = (queue_sel == 0) ? kQueueNumMax : 0;
+    memory_->Write32(kVirtioMmioQueueMax, queue_num_max);
+  }
+  if (virtio_address_ + virtio_width_ <= kVirtioMmioQueueNotify ||
+      kVirtioMmioQueueNotify + kWordWidth <= virtio_address_) {
+    // If QUEUE_NOTIFY is not touched. End of the process.
+    return;
+  }
+  // The rest processes the read/write request.
+  uint32_t queue_number = memory_->Read32(kVirtioMmioQueueNotify);
+  // For now, only 0th queue is available.
+  assert(queue_number == 0);
+  queue_num_ = memory_->Read32(kVirtioMmioQueueNum);
+  assert(queue_num_ <= kQueueNumMax);
+  const int kPageSize = memory_->Read32(kVirtioMmioPageSize);
+  assert(kPageSize == 4096);
+  const uint64_t kQueueAddress = memory_->Read32(kVirtioMmioQueuePfn) * kPageSize;
+  VirtioDiskAccess(kQueueAddress);
+  // Fire an interrupt.
+  // New standard has a way to suspend interrupt until index reaches a certain value, but not supported in xv6.
+
+}
+
+void PeripheralEmulator::read_desc(VRingDesc *desc, uint64_t desc_address, uint16_t desc_index) const {
+  constexpr int kVRingSize = 16;
+  uint64_t address = desc_address + desc_index * kVRingSize;
+  desc->addr = memory_->Read64(address);
+  desc->len = memory_->Read32(address + 8);
+  desc->flags = memory_->Read16(address + 12);
+  desc->next = memory_->Read16(address + 14);
+}
+
+void PeripheralEmulator::VirtioDiskAccess(uint64_t queue_address) {
+  uint64_t desc_address = queue_address;
+  constexpr uint32_t kDescSizeBytes = 16;
+  uint64_t avail_address = queue_address + queue_num_ * kDescSizeBytes;
+  constexpr int kPageSize = 4096;
+  // used_address is at the page boundary.
+  uint64_t used_address = (avail_address + 2 * (2 + queue_num_) + kPageSize - 1) / kPageSize;
+  uint16_t desc_index = get_desc_index(avail_address);
+  process_disc_access(desc_address, desc_index);
+  process_used_buffer(used_address, desc_index);
+}
+
+uint16_t PeripheralEmulator::get_desc_index(
+    uint64_t avail_address) const {  // Second word (16 bit) in Available Ring shows the next index.
+  uint16_t index = memory_->Read16(avail_address + 2);
+  assert(index < queue_num_);
+  uint16_t desc_index = memory_->Read16(avail_address + 4 + index * 2);
+  return desc_index;
+}
+
+void PeripheralEmulator::process_disc_access(uint64_t desc_address, int desc_index) {
+  constexpr uint8_t kOk = 0;
+
+  VRingDesc desc;
+  virtio_blk_outhdr outhdr;
+  uint64_t buffer_address;
+  uint32_t len;
+  read_desc(&desc, desc_address, desc_index);
+  read_outhdr(&outhdr, desc.addr);
+  bool write_access = outhdr.type == 1;
+  uint64_t sector = outhdr.sector;
+  if ((desc.flags & 0b01) != 1) {
+    // The first desc always need the next desc.
+    goto ERROR;
+  }
+  desc_index = desc.next;
+  read_desc(&desc, desc_address, desc_index);
+  buffer_address = desc.addr;
+  if ((desc.flags & 0b10 == 1) != write_access) {
+    // The read/write descriptions in outhdr and descriptor should match.
+    goto ERROR;
+  }
+  len = desc.len;
+  disc_access(sector, buffer_address, len, write_access);
+  // Write to status. OK = 0.
+  desc_index = desc.next;
+  read_desc(&desc, desc_address, desc_index);
+  if (desc.len != 1 || desc.flags & 0b11 != 0b10) {
+    // write access, and there's no next descriptor.
+    goto ERROR;
+  }
+  buffer_address = desc.addr;
+  memory_->WriteByte(buffer_address, kOk);
+  return;
+ERROR:
+  // TODO: Add error handling.
+  assert(true);
+  return;
+}
+
+void PeripheralEmulator::read_outhdr(virtio_blk_outhdr *outhdr, uint64_t outhdr_address) const {
+  outhdr->type = memory_->Read64(outhdr_address);
+  outhdr->reserved = memory_->Read32(outhdr_address + 8);
+  outhdr->sector = memory_->Read64(outhdr_address + 12);
+}
+
+void PeripheralEmulator::disc_access(uint64_t sector, uint64_t buffer_address, uint32_t len, bool write) {
+  uint64_t kSectorAddress = sector * kSectorSize;
+  if (write) {
+    for (uint64_t offset = 0; offset < len; ++offset) {
+      (*disk_image_)[kSectorAddress + offset] = memory_->ReadByte(buffer_address + offset);
+    }
+  } else {
+    for (uint64_t offset = 0; offset < len; ++offset) {
+      memory_->WriteByte(buffer_address + offset, (*disk_image_)[kSectorAddress + offset]);
+    }
+  }
+}
+
+void PeripheralEmulator::process_used_buffer(uint64_t used_buffer_address, uint16_t index) {
+  uint16_t flag = memory_->Read16(used_buffer_address);
+  uint16_t current_used_index = memory_->Read16(used_buffer_address + 2);
+  memory_->Write32(used_buffer_address + 4 + current_used_index * 8, index);
+  memory_->Write32(used_buffer_address + 4 + current_used_index * 8 + 4, 3);
+  current_used_index = (current_used_index + 1) / queue_num_;
+  memory_->Write32(used_buffer_address + 2, current_used_index);
+}
+
+}  // namespace RISCV_EMULATOR
