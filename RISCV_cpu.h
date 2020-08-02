@@ -40,8 +40,8 @@ class RiscvCpu {
 
   int RunCpu(uint64_t start_pc, bool verbose = true);
 
-  static std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> GetCode16(
-      uint32_t ir, int mxl);
+  static void GetCode16(uint32_t ir, int mxl, uint32_t *instruction_out,
+                   uint32_t *rd_out, uint32_t *rs1_out, uint32_t *rs2_out, int32_t *imm_out);
 
  private:
   uint64_t VirtualToPhysical(uint64_t virtual_address,

@@ -31,7 +31,7 @@ std::string Disassemble16(uint32_t ir, int mxl = 1) {
   std::string cmd = "Unsupported C Instruction";
   uint32_t instruction, rd, rs1, rs2;
   int32_t imm;
-  std::tie(instruction, rd, rs1, rs2, imm) = RiscvCpu::GetCode16(ir, mxl);
+  RiscvCpu::GetCode16(ir, mxl, &instruction, &rd, &rs1, &rs2, &imm);
   uint16_t opcode = (bitcrop(ir, 3, 13) << 2) | bitcrop(ir, 2, 0);
   switch (opcode) {
     case 0b00000:

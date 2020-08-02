@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
-#include <tuple>
 #include "Disassembler.h"
 #include "Mmu.h"
 #include "bit_tools.h"
@@ -928,7 +927,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       imm = GetImm(ir_);
     } else {
       next_pc_ = pc_ + 2;
-      std::tie(instruction, rd, rs1, rs2, imm) = GetCode16(ir_, mxl_);
+      GetCode16(ir_, mxl_, &instruction, &rd, &rs1, &rs2, &imm);
     }
     uint64_t t;  // 't' is used in RISCV Reader to show a temporary address.
     switch (instruction) {
@@ -1543,7 +1542,8 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
   return instruction;
 }
 
-std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(uint32_t ir, int mxl) {
+void RiscvCpu::GetCode16(uint32_t ir, int mxl, uint32_t *instruction_out,
+                         uint32_t *rd_out, uint32_t *rs1_out, uint32_t *rs2_out, int32_t *imm_out) {
   uint32_t opcode = (((ir >> 13) & 0b111) << 2) | (ir & 0b11);
   uint32_t instruction = INST_ERROR;
   uint32_t rd = 0, rs1 = 0, rs2 = 0;
@@ -1787,7 +1787,11 @@ std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, int32_t> RiscvCpu::GetCode16(
       std::cerr << "Unsupported C Instruction." << std::endl;
       break;
   }
-  return std::make_tuple(instruction, rd, rs1, rs2, imm);
+  *instruction_out = instruction;
+  *rd_out = rd;
+  *rs1_out = rs1;
+  *rs2_out = rs2;
+  *imm_out = imm;
 }
 
 }  // namespace RISCV_EMULATOR
