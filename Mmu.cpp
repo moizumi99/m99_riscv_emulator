@@ -21,8 +21,8 @@ uint64_t Mmu::VirtualToPhysical(uint64_t virtual_address, uint64_t satp,
                                 bool write_access) {
   page_fault_ = false;
   faulting_address_ = 0;
-  if (privilege_ != PrivilegeMode::USER_MODE &&
-      privilege_ != PrivilegeMode::SUPERVISOR_MODE) {
+  // privilege_ here must take MPRV into account.
+  if (privilege_ == PrivilegeMode::MACHINE_MODE) {
     return virtual_address;
   }
   if (mxl_ == 1) {

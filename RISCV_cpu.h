@@ -57,6 +57,7 @@ class RiscvCpu {
   uint32_t ir_;
   uint64_t next_pc_;
   uint64_t mstatus_;
+  uint64_t mie_;
   PrivilegeMode privilege_;
   std::shared_ptr<MemoryWrapper> memory_;
   std::vector<uint64_t> csrs_;
@@ -119,7 +120,9 @@ class RiscvCpu {
 
   void StoreWd(uint64_t physical_address, uint64_t data, int width = 4);
 
-  void Trap(int cause = 0, bool interrupt = false);
+  void Trap(int cause, bool interrupt);
+  static constexpr bool kInterrupt = true;
+  static constexpr bool kException = false;
 
   bool page_fault_ = false;
   bool prev_page_fault_ = false;
@@ -132,6 +135,7 @@ class RiscvCpu {
                              const std::string &message_str);
 
   PrivilegeMode IntToPrivilegeMode(int value);
+  int PriviledgeToInt(PrivilegeMode priv);
 
   void DumpPrivilegeStatus();
 

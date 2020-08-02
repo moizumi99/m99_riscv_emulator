@@ -55,7 +55,15 @@ void RiscvCpu::SetDiskImage(std::shared_ptr<std::vector<uint8_t> > disk_image) {
 
 uint64_t RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
   mmu_.SetMxl(mxl_);
-  mmu_.SetPrivilege(privilege_);
+  PrivilegeMode privilege = privilege_;
+  if (privilege == PrivilegeMode::MACHINE_MODE) {
+    uint32_t mprv = bitcrop(csrs_[MSTATUS], 1, 17);
+    if (mprv == 1) {
+      uint32_t mpp = bitcrop(csrs_[MSTATUS], 2, 11);
+      privilege = IntToPrivilegeMode(mpp);
+    }
+  }
+  mmu_.SetPrivilege(privilege);
   uint64_t physical_address = mmu_.VirtualToPhysical(virtual_address, csrs_[SATP], write_access);
   if (mmu_.GetPageFault()) {
     page_fault_ = true;
@@ -502,7 +510,7 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, 
   uint64_t source_address = reg_[rs1] + imm12;
   uint64_t address = VirtualToPhysical(source_address);
   if (page_fault_) {
-    Trap(ExceptionCode::LOAD_PAGE_FAULT);
+    Trap(ExceptionCode::LOAD_PAGE_FAULT, kException);
     return;
   }
   int width = GetLoadWidth(instruction);
@@ -512,7 +520,7 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, 
   if (next_width > 0) {
     uint64_t next_address = VirtualToPhysical(address + access_width, false);
     if (page_fault_) {
-      Trap(ExceptionCode::LOAD_PAGE_FAULT);
+      Trap(ExceptionCode::LOAD_PAGE_FAULT, kException);
       return;
     }
     uint64_t load_data_high = LoadWd(next_address, next_width);
@@ -563,7 +571,7 @@ void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   // Check if the access crosses memory access unit (64 bit).
   uint64_t address = VirtualToPhysical(dst_address, true);
   if (page_fault_) {
-    Trap(ExceptionCode::STORE_PAGE_FAULT);
+    Trap(ExceptionCode::STORE_PAGE_FAULT, kException);
     return;
   }
   int width = GetStoreWidth(instruction);
@@ -574,7 +582,7 @@ void RiscvCpu::StoreInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1,
   if (next_width > 0) {
     uint64_t next_address = VirtualToPhysical(dst_address + access_width, true);
     if (page_fault_) {
-      Trap(ExceptionCode::STORE_PAGE_FAULT);
+      Trap(ExceptionCode::STORE_PAGE_FAULT, kException);
       return;
     }
     uint64_t next_data = reg_[rs2] >> (access_width * 8);
@@ -877,7 +885,6 @@ bool RiscvCpu::TimerTick() {
     return false;
   }
   peripheral_->ClearTimerInterrupt();
-  constexpr bool kInterrupt = true;
   Trap(ExceptionCode::MACHINE_TIMER_INTERRUPT, kInterrupt);
   return true;
 }
@@ -906,11 +913,11 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
     ir_ = LoadCmd(pc_);
     DumpDisassembly(verbose);
     if (page_fault_) {
-      Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT);
+      Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT, kException);
       continue;
     }
     if (virtio_interrupt_) {
-      Trap(ExceptionCode::MACHINE_EXTERNAL_INTERRUPT);
+      Trap(ExceptionCode::MACHINE_EXTERNAL_INTERRUPT, kInterrupt);
       virtio_interrupt_ = false;
       continue;
     }
@@ -1109,7 +1116,6 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
 }
 
 void RiscvCpu::CheckSoftwareInterrupt() {
-  constexpr bool kInterrupt = true;
   uint64_t interrupt_status = csrs_[CsrsAddresses::MIP];
   uint64_t interrupt_enable = csrs_[CsrsAddresses::MIE];
   if (privilege_ == PrivilegeMode::USER_MODE && bitcrop(interrupt_status, 1, 0) == 1 &&
@@ -1154,7 +1160,7 @@ void RiscvCpu::Ecall() {
       cause = ECALL_UMODE;
       break;
   }
-  Trap(cause);
+  Trap(cause, kException);
 }
 
 constexpr uint64_t kSstatusMask_32 = 0b1101'1110'0001'0011'0011;
