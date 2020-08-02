@@ -33,6 +33,8 @@ class MemoryWrapper {
   static constexpr int kMapEntry = 1 << kEntryBits;
   static constexpr size_t kMaxAddress = ((1ull << kTotalBits) - 1);
 public:
+  MemoryWrapper();
+
   const uint8_t ReadByte(size_t i) const;
 
   const uint16_t Read16(size_t i) const;
@@ -58,9 +60,15 @@ public:
   bool operator!=(MemoryWrapper &r);
 
 private:
-  bool CheckRange(int entry) const;
+  inline bool CheckRange(int entry) const {
+    if (entry < 0 || entry >= kMapEntry) {
+      throw std::out_of_range("Memory wrapper size out of range.");
+    }
+    return assigned_[entry];
+  }
 
-  std::array<std::vector<uint32_t>, kMapEntry> mapping;
+  std::array<std::vector<uint32_t>, kMapEntry> mapping_;
+  std::array<bool, kMapEntry> assigned_;
 };
 
 

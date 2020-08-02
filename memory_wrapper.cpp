@@ -7,11 +7,10 @@
 
 namespace RISCV_EMULATOR {
 
-bool MemoryWrapper::CheckRange(int entry) const {
-  if (entry < 0 || entry >= kMapEntry) {
-    throw std::out_of_range("Memory wrapper size out of range.");
+MemoryWrapper::MemoryWrapper() {
+  for (auto &a: assigned_) {
+    a = false;
   }
-  return !mapping[entry].empty();
 }
 
 const uint8_t MemoryWrapper::ReadByte(size_t i) const {
@@ -64,7 +63,7 @@ const uint32_t MemoryWrapper::Read32(size_t i) const {
   if (CheckRange(entry)) {
     int offset = i & kOffsetMask;
     int word_offset = offset >> kWordBits;
-    read_data = mapping[entry][word_offset];
+    read_data = mapping_[entry][word_offset];
   }
   return read_data;
 }
@@ -73,11 +72,12 @@ void MemoryWrapper::Write32(size_t i, uint32_t value) {
   assert((i & 0b11) == 0);
   int entry = (i >> kOffsetBits) & kEntryMask;
   if (!CheckRange(entry)) {
-    mapping[entry].resize(1 << (kOffsetBits - kWordBits));
+    assigned_[entry] = true;
+    mapping_[entry].resize(1 << (kOffsetBits - kWordBits));
   }
   int offset = i & kOffsetMask;
   int word_offset = offset >> kWordBits;
-  mapping[entry][word_offset] = value;
+  mapping_[entry][word_offset] = value;
 }
 
 const uint64_t MemoryWrapper::Read64(size_t i) const {
@@ -97,11 +97,11 @@ void MemoryWrapper::Write64(size_t i, uint64_t value) {
 }
 
 bool MemoryWrapper::operator==(MemoryWrapper &r) {
-  return mapping == r.mapping;
+  return (mapping_ == r.mapping_ && assigned_ == r.assigned_);
 }
 
 bool MemoryWrapper::operator!=(MemoryWrapper &r) {
-  return mapping != r.mapping;
+  return (mapping_ != r.mapping_ || assigned_ != r.assigned_);
 }
 
 } // namespace RISCV_EMULATOR
