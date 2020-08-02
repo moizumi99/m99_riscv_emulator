@@ -354,7 +354,7 @@ bool test_amo_type(bool verbose = false) {
     }
 
     for (int i = 0; i < TEST_NUM && !error; i++) {
-      uint32_t cmd;
+      uint32_t cmd = 0;
       uint32_t rd = rnd() % 32;
       uint32_t rs1 = rnd() % 32;
       uint32_t rs2 = rnd() % 32;
@@ -542,7 +542,7 @@ bool test_r_type(bool verbose = false) {
     uint8_t funct7 = (base >> 25) & 0b1111111;
 
     for (int i = 0; i < TEST_NUM && !error; i++) {
-      uint32_t cmd;
+      uint32_t cmd = 0;
       uint8_t rd = rnd() % 32;
       uint8_t rs1 = rnd() % 32;
       uint8_t rs2 = rnd() % 32;
@@ -798,7 +798,7 @@ bool test_i_type(bool verbose = false) {
     uint8_t funct3 = (base >> 12) & 0b111;
 
     for (int i = 0; i < TEST_NUM && !error; i++) {
-      uint32_t cmd;
+      uint32_t cmd = 0;
       uint8_t rd = rnd() % 32;
       uint8_t rs1 = rnd() % 32;
       int16_t imm12 = (rnd() % (1 << 12)) - (1 << 11);
@@ -983,7 +983,7 @@ bool test_b_type(bool verbose = false) {
     uint8_t funct3 = (base >> 12) & 0b111;
 
     for (int i = 0; i < TEST_NUM && !error; i++) {
-      uint32_t cmd;
+      uint32_t cmd = 0;
       uint8_t rs1 = rnd() % 32;
       uint8_t rs2 = rnd() % 32;
       int16_t imm13 = (rnd() % (1 << 13)) - (1 << 12);
@@ -1046,7 +1046,7 @@ bool test_j_type(bool verbose = false) {
     uint8_t opcode = base & 0b01111111;
 
     for (int i = 0; i < TEST_NUM && !error; i++) {
-      uint32_t cmd;
+      uint32_t cmd = 0;
       uint8_t rd = rnd() % 32;
       int32_t imm21 = (rnd() % (1 << 21)) - (1 << 20);
       switch (testcase) {
@@ -1105,7 +1105,7 @@ bool test_s_type(bool verbose = false) {
     uint8_t funct3 = (base >> 12) & 0b111;
 
     for (int i = 0; i < TEST_NUM && !error; i++) {
-      uint32_t cmd;
+      uint32_t cmd = 0;
       uint8_t rs1 = rnd() % 32;
       uint8_t rs2 = rnd() % 32;
       int32_t imm12 = (rnd() % (1 << 12)) - (1 << 11);
@@ -1200,7 +1200,7 @@ bool test_u_type(bool verbose = false) {
     uint8_t opcode = base & 0b01111111;
 
     for (int i = 0; i < TEST_NUM && !error; i++) {
-      uint32_t cmd;
+      uint32_t cmd = 0;
       uint8_t rd = rnd() % 32;
       int32_t imm20 = (rnd() % (1 << 20)) - (1 << 19);
       switch (testcase) {
@@ -1315,7 +1315,7 @@ bool test_mult(bool verbose = false) {
     uint8_t funct7 = (base >> 25) & 0b1111111;
 
     for (int i = 0; i < TEST_NUM && !error; i++) {
-      uint32_t cmd;
+      uint32_t cmd = 0;
       uint8_t rd = rnd() % 32;
       uint8_t rs1 = rnd() % 32;
       uint8_t rs2 = rnd() % 32;

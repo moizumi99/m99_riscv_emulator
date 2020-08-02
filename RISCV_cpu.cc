@@ -158,7 +158,9 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
              (!interrupt &
          (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT ||
           cause == ECALL_UMODE || cause == ECALL_SMODE || cause == ECALL_MMODE)));
-
+  if (interrupt && cause == MACHINE_EXTERNAL_INTERRUPT) {
+    std::cerr << "Machine External Interrupt" << std::endl;
+  }
   // Interrupt Mask.
   const uint64_t mie = bitcrop(mstatus_, 1, 3);
   const uint64_t sie = bitcrop(mstatus_, 1, 1);

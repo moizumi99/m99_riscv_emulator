@@ -196,11 +196,18 @@ void PeripheralEmulator::VirtioEmulation() {
 
 void PeripheralEmulator::read_desc(VRingDesc *desc, uint64_t desc_address, uint16_t desc_index) const {
   constexpr int kVRingSize = 16;
+  std::cerr << "desc base address = " << std::hex << desc_address << std::endl;
+  std::cerr << "desc index = " << std::dec << desc_index << std::endl;
   uint64_t address = desc_address + desc_index * kVRingSize;
+  std::cerr << "desc address = " << std::hex << address << std::endl;
   desc->addr = memory_->Read64(address);
   desc->len = memory_->Read32(address + 8);
   desc->flags = memory_->Read16(address + 12);
   desc->next = memory_->Read16(address + 14);
+  std::cerr << "desc->addr = " << std::hex << desc->addr << std::endl;
+  std::cerr << "desc->len = " << std::dec << desc->len << std::endl;
+  std::cerr << "desc->flags = " << desc->flags << std::endl;
+  std::cerr << "desc->next = " << desc->next << std::endl;
 }
 
 void PeripheralEmulator::VirtioDiskAccess(uint64_t queue_address) {
@@ -236,13 +243,17 @@ void PeripheralEmulator::process_disc_access(uint64_t desc_address, int desc_ind
   uint64_t sector = outhdr.sector;
   if ((desc.flags & 0b01) != 1) {
     // The first desc always need the next desc.
+    std::cerr << "No next desc in the first entry" << std::endl;
     goto ERROR;
   }
   desc_index = desc.next;
   read_desc(&desc, desc_address, desc_index);
   buffer_address = desc.addr;
-  if ((desc.flags & 0b10 == 1) != write_access) {
+  if (((desc.flags & 0b10) == 0) != write_access) {
     // The read/write descriptions in outhdr and descriptor should match.
+    // Note that "device write" is "disk read."
+    std::cerr << "desc.flags = " << desc.flags << std::endl;
+    std::cerr << "write_access = " << write_access << std::endl;
     goto ERROR;
   }
   len = desc.len;
@@ -250,8 +261,10 @@ void PeripheralEmulator::process_disc_access(uint64_t desc_address, int desc_ind
   // Write to status. OK = 0.
   desc_index = desc.next;
   read_desc(&desc, desc_address, desc_index);
-  if (desc.len != 1 || desc.flags & 0b11 != 0b10) {
+  if (desc.len != 1 || (desc.flags & 0b11) != 0b10) {
     // write access, and there's no next descriptor.
+    std::cerr << "desc.len = " << desc.len << std::endl;
+    std::cerr << "desc.flags = " << desc.flags << std::endl;
     goto ERROR;
   }
   buffer_address = desc.addr;
@@ -259,18 +272,23 @@ void PeripheralEmulator::process_disc_access(uint64_t desc_address, int desc_ind
   return;
 ERROR:
   // TODO: Add error handling.
-  assert(true);
+  assert(false);
   return;
 }
 
 void PeripheralEmulator::read_outhdr(virtio_blk_outhdr *outhdr, uint64_t outhdr_address) const {
-  outhdr->type = memory_->Read64(outhdr_address);
-  outhdr->reserved = memory_->Read32(outhdr_address + 8);
-  outhdr->sector = memory_->Read64(outhdr_address + 12);
+  std::cerr << "virtio_blk_outhdr address = " << std::hex << outhdr_address << std::endl;
+  outhdr->type = memory_->Read32(outhdr_address);
+  outhdr->reserved = memory_->Read32(outhdr_address + 4);
+  outhdr->sector = memory_->Read64(outhdr_address + 8);
+  std::cerr << "virtio_blk_outhdr.type = " << outhdr->type << std::endl;
+  std::cerr << "virtio_blk_outhdr.sector = " << outhdr->sector << std::endl;
 }
 
 void PeripheralEmulator::disc_access(uint64_t sector, uint64_t buffer_address, uint32_t len, bool write) {
   uint64_t kSectorAddress = sector * kSectorSize;
+  std::cerr << (write ? "Disk Write: " : "Disk Read: ");
+  std::cerr << "sector = " << std::hex << sector << ", size = " << std::dec << len << std::endl;
   if (write) {
     for (uint64_t offset = 0; offset < len; ++offset) {
       (*disk_image_)[kSectorAddress + offset] = memory_->ReadByte(buffer_address + offset);
@@ -283,12 +301,13 @@ void PeripheralEmulator::disc_access(uint64_t sector, uint64_t buffer_address, u
 }
 
 void PeripheralEmulator::process_used_buffer(uint64_t used_buffer_address, uint16_t index) {
-  uint16_t flag = memory_->Read16(used_buffer_address);
+//  uint16_t flag = memory_->Read16(used_buffer_address);
+  // TODO: Add check of flag.
   uint16_t current_used_index = memory_->Read16(used_buffer_address + 2);
   memory_->Write32(used_buffer_address + 4 + current_used_index * 8, index);
   memory_->Write32(used_buffer_address + 4 + current_used_index * 8 + 4, 3);
   current_used_index = (current_used_index + 1) / queue_num_;
-  memory_->Write32(used_buffer_address + 2, current_used_index);
+  memory_->Write32(used_buffer_address + 4, current_used_index);
 }
 
 }  // namespace RISCV_EMULATOR
