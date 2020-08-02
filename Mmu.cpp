@@ -9,10 +9,8 @@
 
 namespace RISCV_EMULATOR {
 
-Mmu::Mmu(std::shared_ptr<MemoryWrapper> memory, const int mxl) : memory_(
-  memory), mxl_(mxl) {
-  page_fault_ = false;
-  faulting_address_ = 0;
+void Mmu::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
+  memory_ = memory;
 }
 
 void Mmu::SetPrivilege(const PrivilegeMode privilege) {
@@ -21,6 +19,8 @@ void Mmu::SetPrivilege(const PrivilegeMode privilege) {
 
 uint64_t Mmu::VirtualToPhysical(uint64_t virtual_address, uint64_t satp,
                                 bool write_access) {
+  page_fault_ = false;
+  faulting_address_ = 0;
   if (privilege_ != PrivilegeMode::USER_MODE &&
       privilege_ != PrivilegeMode::SUPERVISOR_MODE) {
     return virtual_address;

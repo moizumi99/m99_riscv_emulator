@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include "Mmu.h"
 #include "PeripheralEmulator.h"
 #include "bit_tools.h"
 #include "memory_wrapper.h"
@@ -125,6 +126,7 @@ class RiscvCpu {
   uint64_t prev_faulting_address_ = 0;
   bool error_flag_, end_flag_;
   uint64_t faulting_address_;
+  Mmu mmu_;
 
   inline bool CheckShiftSign(uint8_t shamt, uint8_t instruction,
                              const std::string &message_str);

@@ -54,12 +54,12 @@ void RiscvCpu::SetDiskImage(std::shared_ptr<std::vector<uint8_t> > disk_image) {
 }
 
 uint64_t RiscvCpu::VirtualToPhysical(uint64_t virtual_address, bool write_access) {
-  Mmu mmu(memory_, mxl_);
-  mmu.SetPrivilege(privilege_);
-  uint64_t physical_address = mmu.VirtualToPhysical(virtual_address, csrs_[SATP], write_access);
-  if (mmu.GetPageFault()) {
+  mmu_.SetMxl(mxl_);
+  mmu_.SetPrivilege(privilege_);
+  uint64_t physical_address = mmu_.VirtualToPhysical(virtual_address, csrs_[SATP], write_access);
+  if (mmu_.GetPageFault()) {
     page_fault_ = true;
-    faulting_address_ = mmu.GetFaultingAddress();
+    faulting_address_ = mmu_.GetFaultingAddress();
   }
   return physical_address;
 }
@@ -78,6 +78,7 @@ bool RiscvCpu::CheckShiftSign(uint8_t shamt, uint8_t instruction, const std::str
 void RiscvCpu::SetMemory(std::shared_ptr<MemoryWrapper> memory) {
   this->memory_ = memory;
   peripheral_->SetMemory(memory);
+  mmu_.SetMemory(memory);
 }
 
 uint32_t RiscvCpu::LoadCmd(uint64_t pc) {
