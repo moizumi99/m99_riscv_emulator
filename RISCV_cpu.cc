@@ -498,6 +498,7 @@ int RiscvCpu::GetLoadWidth(uint32_t instruction) {
 }
 
 void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, int32_t imm12) {
+  peripheral_->MemoryMappedValueUpdate();
   uint64_t source_address = reg_[rs1] + imm12;
   uint64_t address = VirtualToPhysical(source_address);
   if (page_fault_) {

@@ -48,6 +48,13 @@ void PeripheralEmulator::CheckDeviceWrite(uint64_t address, int width, uint64_t 
     virtio_width_ = width;
     virtio_write_ = true;
   }
+  if (kTimerCmp < address + width && address < kTimerCmp + 8) {
+    timercmp_update_ = true;
+  }
+}
+
+void PeripheralEmulator::MemoryMappedValueUpdate() {
+  memory_->Write64(kTimerMtime, elapsed_cycles_);
 }
 
 void PeripheralEmulator::Emulation() {
@@ -143,10 +150,12 @@ void PeripheralEmulator::UartEmulation() {
 }
 
 void PeripheralEmulator::TimerTick() {
-  elapsed_cycles++;
-  uint64_t next_cycle = memory_->Read64(kTimerCmp);
-  memory_->Write64(kTimerMtime, elapsed_cycles);
-  if (elapsed_cycles == next_cycle) {
+  ++elapsed_cycles_;
+  if (timercmp_update_) {
+    next_cycle_ = memory_->Read64(kTimerCmp);
+    timercmp_update_ = false;
+  }
+  if (elapsed_cycles_ == next_cycle_) {
     timer_interrupt_ = true;
   }
 }

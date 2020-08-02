@@ -60,6 +60,7 @@ class PeripheralEmulator {
 
   void Initialize();
   void CheckDeviceWrite(uint64_t address, int width, uint64_t data);
+  void MemoryMappedValueUpdate();
 
   // Host Emulation.
   void SetHostEmulationEnable(bool enable);
@@ -105,7 +106,9 @@ class PeripheralEmulator {
   std::queue<uint8_t> uart_queue;
 
   // Timer.
-  uint64_t elapsed_cycles = 0;
+  uint64_t elapsed_cycles_ = 0;
+  uint64_t next_cycle_ = 0;
+  bool timercmp_update_ = true;
   bool timer_interrupt_ = false;
 
   // Virtio
