@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
-#include <map>
 #include <tuple>
 #include "Disassembler.h"
 #include "Mmu.h"
@@ -470,9 +469,27 @@ void RiscvCpu::ImmediateShiftInstruction(uint32_t instruction, uint32_t rd, uint
 }
 
 int RiscvCpu::GetLoadWidth(uint32_t instruction) {
-  std::map<uint32_t, int> load_size = {{INST_LB, 1}, {INST_LBU, 1}, {INST_LH, 2}, {INST_LHU, 2},
-                                       {INST_LW, 4}, {INST_LWU, 4}, {INST_LD, 8}};
-  return load_size[instruction];
+  int width = 8;
+  switch(instruction) {
+    case INST_LB:
+    case INST_LBU:
+      width = 1;
+      break;
+    case INST_LH:
+    case INST_LHU:
+      width = 2;
+      break;
+    case INST_LW:
+    case INST_LWU:
+      width = 4;
+      break;
+    case INST_LD:
+      width = 8;
+      break;
+    default:
+      assert(false);
+  }
+  return width;
 }
 
 void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, int32_t imm12) {
@@ -505,8 +522,24 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, 
 }
 
 int RiscvCpu::GetStoreWidth(uint32_t instruction) {
-  std::map<uint32_t, int> store_words = {{INST_SB, 1}, {INST_SH, 2}, {INST_SW, 4}, {INST_SD, 8}};
-  return store_words[instruction];
+  int width = 8;
+  switch(instruction) {
+    case INST_SB:
+      width = 1;
+      break;
+    case INST_SH:
+      width = 2;
+      break;
+    case INST_SW:
+      width = 4;
+      break;
+    case INST_SD:
+      width = 8;
+      break;
+    default:
+      assert(false);
+  }
+  return width;
 }
 
 int RiscvCpu::GetAccessWidth(uint32_t width, uint64_t address) {
