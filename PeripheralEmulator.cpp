@@ -205,18 +205,18 @@ void PeripheralEmulator::VirtioEmulation() {
 
 void PeripheralEmulator::read_desc(VRingDesc *desc, uint64_t desc_address, uint16_t desc_index) const {
   constexpr int kVRingSize = 16;
-  std::cerr << "desc base address = " << std::hex << desc_address << std::endl;
-  std::cerr << "desc index = " << std::dec << desc_index << std::endl;
+  // std::cerr << "desc base address = " << std::hex << desc_address << std::endl;
+  // std::cerr << "desc index = " << std::dec << desc_index << std::endl;
   uint64_t address = desc_address + desc_index * kVRingSize;
-  std::cerr << "desc address = " << std::hex << address << std::endl;
+  // std::cerr << "desc address = " << std::hex << address << std::endl;
   desc->addr = memory_->Read64(address);
   desc->len = memory_->Read32(address + 8);
   desc->flags = memory_->Read16(address + 12);
   desc->next = memory_->Read16(address + 14);
-  std::cerr << "desc->addr = " << std::hex << desc->addr << std::endl;
-  std::cerr << "desc->len = " << std::dec << desc->len << std::endl;
-  std::cerr << "desc->flags = " << desc->flags << std::endl;
-  std::cerr << "desc->next = " << desc->next << std::endl;
+  // std::cerr << "desc->addr = " << std::hex << desc->addr << std::endl;
+  // std::cerr << "desc->len = " << std::dec << desc->len << std::endl;
+  // std::cerr << "desc->flags = " << desc->flags << std::endl;
+  // std::cerr << "desc->next = " << desc->next << std::endl;
 }
 
 void PeripheralEmulator::VirtioDiskAccess(uint64_t queue_address) {
@@ -286,18 +286,18 @@ ERROR:
 }
 
 void PeripheralEmulator::read_outhdr(virtio_blk_outhdr *outhdr, uint64_t outhdr_address) const {
-  std::cerr << "virtio_blk_outhdr address = " << std::hex << outhdr_address << std::endl;
+  // std::cerr << "virtio_blk_outhdr address = " << std::hex << outhdr_address << std::endl;
   outhdr->type = memory_->Read32(outhdr_address);
   outhdr->reserved = memory_->Read32(outhdr_address + 4);
   outhdr->sector = memory_->Read64(outhdr_address + 8);
-  std::cerr << "virtio_blk_outhdr.type = " << outhdr->type << std::endl;
-  std::cerr << "virtio_blk_outhdr.sector = " << outhdr->sector << std::endl;
+  // std::cerr << "virtio_blk_outhdr.type = " << outhdr->type << std::endl;
+  // std::cerr << "virtio_blk_outhdr.sector = " << outhdr->sector << std::endl;
 }
 
 void PeripheralEmulator::disc_access(uint64_t sector, uint64_t buffer_address, uint32_t len, bool write) {
   uint64_t kSectorAddress = sector * kSectorSize;
-  std::cerr << (write ? "Disk Write: " : "Disk Read: ");
-  std::cerr << "sector = " << std::hex << sector << ", size = " << std::dec << len << std::endl;
+  // std::cerr << (write ? "Disk Write: " : "Disk Read: ");
+  // std::cerr << "sector = " << std::hex << sector << ", size = " << std::dec << len << std::endl;
   if (write) {
     for (uint64_t offset = 0; offset < len; ++offset) {
       (*disk_image_)[kSectorAddress + offset] = memory_->ReadByte(buffer_address + offset);

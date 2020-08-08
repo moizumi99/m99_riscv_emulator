@@ -22,7 +22,7 @@ const uint8_t MemoryWrapper::ReadByte(size_t i) const {
 }
 
 void MemoryWrapper::WriteByte(size_t i, uint8_t data) {
-  std::array<uint64_t, 4> mask = {
+  constexpr std::array<uint64_t, 4> mask = {
       0xFFFFFF00,
       0xFFFF00FF,
       0xFF00FFFF,
@@ -37,22 +37,24 @@ void MemoryWrapper::WriteByte(size_t i, uint8_t data) {
 }
 
 const uint16_t MemoryWrapper::Read16(size_t i) const {
+  assert((i & 1) == 0);
   uint64_t dram_address = (i >> kWordBits) << kWordBits;
   uint64_t read_data = Read32(dram_address);
-  int short_word_offset = i & 0b1;
-  read_data = read_data >> short_word_offset * 16;
+  int short_word_offset = i & 0b11;
+  read_data = read_data >> short_word_offset * 8;
   return static_cast<uint16_t>(read_data & 0xFFFF);
 }
 
 void MemoryWrapper::Write16(size_t i, uint16_t data) {
-  std::array<uint64_t, 2> mask = {
+  assert((i & 1) == 0);
+  constexpr std::array<uint64_t, 2> mask = {
     0xFFFF0000,
     0x0000FFFF,
   };
   uint64_t dram_address = (i >> kWordBits) << kWordBits;
   uint32_t original_data = Read32(dram_address);
-  int short_word_offset = i & 0b1;
-  uint32_t write_data = (original_data & mask[short_word_offset]) | (data << short_word_offset * 16);
+  int short_word_offset = i & 0b11;
+  uint32_t write_data = (original_data & mask[short_word_offset]) | (data << short_word_offset * 8);
   Write32(dram_address, write_data);
 }
 
