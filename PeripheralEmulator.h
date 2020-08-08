@@ -86,8 +86,8 @@ class PeripheralEmulator {
   void VirtioInit();
   void VirtioEmulation();
   void SetDiskImage(std::shared_ptr<std::vector<uint8_t>> disk_image);
-  bool GetInterruptStatus() {return virtio_interrupt; }
-  void ClearInterruptStatus() {virtio_interrupt = false;}
+  bool GetInterruptStatus() {return virtio_interrupt_; }
+  void ClearInterruptStatus() { virtio_interrupt_ = false;}
 
  private:
   std::shared_ptr<MemoryWrapper> memory_;
@@ -119,7 +119,7 @@ class PeripheralEmulator {
   uint64_t virtio_width_ = 0;
   uint64_t virtio_data_ = 0;
   int queue_num_ = 8;
-  bool virtio_interrupt = false;
+  bool virtio_interrupt_ = false;
   void VirtioDiskAccess(uint64_t queue_address);
   uint16_t get_desc_index(uint64_t avail_address) const;
   void read_desc(VRingDesc *desc, uint64_t desc_address, uint16_t desc_index) const;

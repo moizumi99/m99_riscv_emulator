@@ -200,7 +200,7 @@ void PeripheralEmulator::VirtioEmulation() {
   VirtioDiskAccess(kQueueAddress);
   // Fire an interrupt.
   // New standard has a way to suspend interrupt until index reaches a certain value, but not supported in xv6.
-
+  virtio_interrupt_ = true;
 }
 
 void PeripheralEmulator::read_desc(VRingDesc *desc, uint64_t desc_address, uint16_t desc_index) const {
@@ -316,7 +316,7 @@ void PeripheralEmulator::process_used_buffer(uint64_t used_buffer_address, uint1
   memory_->Write32(used_buffer_address + 4 + current_used_index * 8, index);
   memory_->Write32(used_buffer_address + 4 + current_used_index * 8 + 4, 3);
   current_used_index = (current_used_index + 1) / queue_num_;
-  memory_->Write32(used_buffer_address + 4, current_used_index);
+  memory_->Write16(used_buffer_address + 2, current_used_index);
 }
 
 }  // namespace RISCV_EMULATOR

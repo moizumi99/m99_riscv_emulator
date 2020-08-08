@@ -37,7 +37,8 @@ void RiscvCpu::InitializeCsrs() {
   csrs_[MISA] = (mxl_ << (xlen_ - 2)) | extensions;
   if (mxl_ == 2) {
     // For 64 bit mode, sxl and uxl are the same as mxl.
-    csrs_[MSTATUS] = (static_cast<uint64_t>(mxl_) << 34) | (static_cast<uint64_t>(mxl_) << 32);
+    mstatus_ = (static_cast<uint64_t>(mxl_) << 34) | (static_cast<uint64_t>(mxl_) << 32);
+    ApplyMstatusToCsr();
   }
 }
 
@@ -162,13 +163,13 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   // Currently supported exceptions: page fault (12, 13, 15) and ecall (8, 9, 11).
   // Currently supported interrupts: Supervisor Software Interrupt (1), Machine Timer Intetrupt (7)
   assert((interrupt && (cause == MACHINE_TIMER_INTERRUPT || cause == SUPERVISOR_SOFTWARRE_INTERRUPT ||
-                        cause == MACHINE_EXTERNAL_INTERRUPT)) ||
+                        cause == SUPERVISOR_EXTERNAL_INTERRUPT)) ||
              (!interrupt &
          (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT ||
           cause == ECALL_UMODE || cause == ECALL_SMODE || cause == ECALL_MMODE)));
-  if (interrupt && cause == MACHINE_EXTERNAL_INTERRUPT) {
-    std::cerr << "Machine External Interrupt" << std::endl;
-  }
+//  if (interrupt && cause == MACHINE_EXTERNAL_INTERRUPT) {
+//    std::cerr << "Machine External Interrupt" << std::endl;
+//  }
   // Check the Machine Level Enable.
   const uint64_t global_mie = bitcrop(mstatus_, 1, 3);
   const uint64_t mie = csrs_[MIE];
@@ -238,12 +239,13 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     // Copy old SIE (#1) to SPIE (#5). Then, disable SIE (#1).
     mstatus_ = bitset(mstatus_, 1, 5, global_sie);
     constexpr uint64_t kNewSie = 0;
-    mstatus_ = bitset(csrs_[SSTATUS], 1, 1, kNewSie);
+    mstatus_ = bitset(mstatus_, 1, 1, kNewSie);
 
     // Save the current privilege mode to SPP (#12-11), and set the privilege to
     // Supervisor.
-    const uint64_t new_spp = static_cast<int>(privilege_) & 1;
-    mstatus_ = bitset(mstatus_, 1, 8, new_spp);
+    const uint64_t new_mpp = PriviledgeToInt(privilege_);
+    mstatus_ = bitset(mstatus_, 1, 8, new_mpp);
+    ApplyMstatusToCsr();
     privilege_ = PrivilegeMode::SUPERVISOR_MODE;
   } else {
     csrs_[MCAUSE] = cause | interrupt_cause_mask;
@@ -265,8 +267,9 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
 
     // Save the current privilege mode to MPP (#12-11), and set the privilege to
     // Machine.
-    const uint64_t new_mpp = static_cast<int>(privilege_);
+    const uint64_t new_mpp = PriviledgeToInt(privilege_);
     mstatus_ = bitset(mstatus_, 2, 11, new_mpp);
+    ApplyMstatusToCsr();
     // Clear interrupt pending bit.
     privilege_ = PrivilegeMode::MACHINE_MODE;
   }
@@ -908,15 +911,16 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
       continue;
     }
     CheckSoftwareInterrupt();
+    if (virtio_interrupt_) {
+      Trap(ExceptionCode::SUPERVISOR_EXTERNAL_INTERRUPT, kInterrupt);
+      virtio_interrupt_ = false;
+      continue;
+    }
+
     ir_ = LoadCmd(pc_);
     DumpDisassembly(verbose);
     if (page_fault_) {
       Trap(ExceptionCode::INSTRUCTION_PAGE_FAULT, kException);
-      continue;
-    }
-    if (virtio_interrupt_) {
-      Trap(ExceptionCode::MACHINE_EXTERNAL_INTERRUPT, kInterrupt);
-      virtio_interrupt_ = false;
       continue;
     }
     // Decode. Mimick the HW behavior. (In HW, decode is in parallel.)
@@ -1172,6 +1176,7 @@ void RiscvCpu::ApplyMstatusToCsr() {
   csrs_[USTATUS] = mstatus_ & ustatus_mask;
   csrs_[SSTATUS] = mstatus_ & sstatus_mask;
   csrs_[MSTATUS] = mstatus_;
+//  std::cerr << "pc_ = " << std::hex << pc_ << ", mstatus_ = " << mstatus_ << std::endl;
 }
 
 template <class T, int N>
@@ -1286,39 +1291,51 @@ PrivilegeMode RiscvCpu::IntToPrivilegeMode(int value) {
   }
 }
 
+int RiscvCpu::PriviledgeToInt(PrivilegeMode priv) {
+  switch (priv) {
+    case PrivilegeMode::USER_MODE:
+      return 0;
+    case PrivilegeMode::SUPERVISOR_MODE:
+      return 1;
+    case PrivilegeMode::MACHINE_MODE:
+      return 3;
+    default:
+      throw std::out_of_range(std::to_string(static_cast<int>(priv)) + " is not appropriate privilege level");
+  }
+}
+
 void RiscvCpu::Mret() {
-  uint64_t mstatus = csrs_[MSTATUS];
   // Set privilege mode to MPP.
-  uint64_t mpp = bitcrop(mstatus, 2, 11);
+  uint64_t mpp = bitcrop(mstatus_, 2, 11);
   privilege_ = IntToPrivilegeMode(mpp);
   // Set MIE to MPIE.
-  uint64_t mpie = bitcrop(mstatus, 1, 7);
-  mstatus = bitset(mstatus, 1, 3, mpie);
+  uint64_t mpie = bitcrop(mstatus_, 1, 7);
+  mstatus_ = bitset(mstatus_, 1, 3, mpie);
   // Set MPIE to 1.
-  uint64_t new_mpie = 1;
-  mstatus = bitset(mstatus, 1, 7, new_mpie);
+  constexpr uint64_t kNewMpie = 1;
+  mstatus_ = bitset(mstatus_, 1, 7, kNewMpie);
   // Set MPP to 0 as user mode is supported.
-  uint64_t new_mpp = 0;
-  mstatus = bitset(mstatus, 2, 11, new_mpp);
-  csrs_[MSTATUS] = mstatus;
+  constexpr uint64_t kNewMpp = 0;
+  mstatus_ = bitset(mstatus_, 2, 11, kNewMpp);
+  ApplyMstatusToCsr();
   next_pc_ = csrs_[MEPC];
 }
 
 void RiscvCpu::Sret() {
-  uint64_t mstatus = csrs_[MSTATUS];
   // Set privilege mode to SPP.
-  uint64_t spp = bitcrop(mstatus, 1, 8);
+  uint64_t spp = bitcrop(mstatus_, 1, 8);
   privilege_ = IntToPrivilegeMode(spp);
   // Set SIE to SPIE.
-  uint64_t spie = bitcrop(mstatus, 1, 5);
-  mstatus = bitset(mstatus, 1, 1, spie);
+  uint64_t spie = bitcrop(mstatus_, 1, 5);
+  mstatus_ = bitset(mstatus_, 1, 1, spie);
   // Set SPIE to 1.
-  uint64_t new_spie = 1;
-  mstatus = bitset(mstatus, 1, 5, new_spie);
+  constexpr uint64_t kNewSpie = 1;
+  mstatus_ = bitset(mstatus_, 1, 5, kNewSpie);
   // Set SPP to 0
-  uint64_t new_spp = 0;
-  mstatus = bitset(mstatus, 2, 8, new_spp);
-  csrs_[MSTATUS] = mstatus;
+  constexpr uint64_t kNewSpp = 0;
+  mstatus_ = bitset(mstatus_, 2, 8, kNewSpp);
+  csrs_[MSTATUS] = mstatus_;
+  ApplyMstatusToCsr();
   next_pc_ = csrs_[SEPC];
 }
 
