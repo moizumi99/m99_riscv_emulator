@@ -53,8 +53,8 @@ void MemoryWrapper::Write16(size_t i, uint16_t data) {
   };
   uint64_t dram_address = (i >> kWordBits) << kWordBits;
   uint32_t original_data = Read32(dram_address);
-  int short_word_offset = i & 0b11;
-  uint32_t write_data = (original_data & mask[short_word_offset]) | (data << short_word_offset * 8);
+  int short_word_offset = (i >> 1) & 1;
+  uint32_t write_data = (original_data & mask[short_word_offset]) | (data << short_word_offset * 16);
   Write32(dram_address, write_data);
 }
 

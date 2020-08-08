@@ -186,10 +186,11 @@ bool Run16bitTest(const size_t start, const size_t end, const size_t val,
   }
   int result = true;
   MemoryWrapper mw;
-  for (size_t i = start; i < end; i += 4) {
-    mw.Write16(i, GetHash16(i + val));
+  for (size_t i = start; i < end; i += 2) {
+    uint16_t hash_value = GetHash16(i + val);
+    mw.Write16(i, hash_value);
   }
-  for (size_t i = start; i < end && result; i += 4) {
+  for (size_t i = start; i < end && result; i += 2) {
     uint16_t expectation = GetHash16(i + val);
     uint16_t read_value = mw.Read16(i);
     result &= read_value == expectation;
