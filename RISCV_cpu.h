@@ -65,7 +65,7 @@ class RiscvCpu {
 
   void InitializeCsrs();
 
-  void ClearInterrupt();
+  void ClearTimerInterruptFlag();
 
   void Ecall();
 
@@ -121,6 +121,7 @@ class RiscvCpu {
   void StoreWd(uint64_t physical_address, uint64_t data, int width = 4);
 
   void Trap(int cause, bool interrupt);
+  void ClearInterruptPending(int cause);
   static constexpr bool kInterrupt = true;
   static constexpr bool kException = false;
 

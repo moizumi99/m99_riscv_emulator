@@ -21,13 +21,13 @@ RiscvCpu::RiscvCpu(bool en64bit) {
     reg_[i] = 0;
   }
   InitializeCsrs();
-  ClearInterrupt();
+  ClearTimerInterruptFlag();
   peripheral_ = std::make_unique<PeripheralEmulator>(mxl_);
 }
 
 RiscvCpu::RiscvCpu() : RiscvCpu(false) {}
 
-void RiscvCpu::ClearInterrupt() { timer_interrupt_ = false; }
+void RiscvCpu::ClearTimerInterruptFlag() { timer_interrupt_ = false; }
 
 void RiscvCpu::InitializeCsrs() {
   csrs_.resize(kCsrSize, 0);
@@ -169,18 +169,11 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   if (interrupt && cause == MACHINE_EXTERNAL_INTERRUPT) {
     std::cerr << "Machine External Interrupt" << std::endl;
   }
-  // Interrupt Mask.
-  const uint64_t mie = bitcrop(mstatus_, 1, 3);
-  const uint64_t sie = bitcrop(mstatus_, 1, 1);
-  bool machine_interrupt_active = (mie == 1) &&
-                                  (cause == MACHINE_TIMER_INTERRUPT || cause == MACHINE_SOFTWARE_INTERRUPT ||
-                                   cause == MACHINE_EXTERNAL_INTERRUPT) &&
-                                  interrupt;
-  bool supervisor_interrupt_active = (sie == 1) &&
-                                     (cause == SUPERVIOR_TIMER_INTERRUPT || cause == SUPERVISOR_SOFTWARRE_INTERRUPT ||
-                                      cause == SUPERVISOR_EXTERNAL_INTERRUPT) &&
-                                     interrupt;
-  if (interrupt && (!machine_interrupt_active && !supervisor_interrupt_active)) {
+  // Check the Machine Level Enable.
+  const uint64_t global_mie = bitcrop(mstatus_, 1, 3);
+  const uint64_t mie = csrs_[MIE];
+  if (interrupt && (global_mie == 0 || bitcrop(mie, 1, cause) == 0)) {
+    // Interrupt is not enabled. Don't do anything.
     return;
   }
 
@@ -197,55 +190,44 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     page_fault_ = false;
   }
 
-  // MTVAL, STVAL, and UTVAL.
-  uint64_t tval = 0;
+
+  // Check supervisor mode delegation status.
+  // The original machine privilege mode must be user or supervisor mode.
+  bool sv_delegation = privilege_ == PrivilegeMode::USER_MODE || privilege_ == PrivilegeMode::SUPERVISOR_MODE;
+
+  // Check for supervisor delegation bit.
   if (interrupt) {
+    const uint64_t mideleg = csrs_[MIDELEG];
+    sv_delegation &= bitcrop(mideleg, 1, cause) == 1;
   } else {
+    const uint64_t medeleg = csrs_[MEDELEG];
+    sv_delegation &= bitcrop(medeleg, 1, cause) == 1;
+  }
+
+  // Common process for machine mode and supervisor mode.
+  // MTVAL, and STVAL.
+  uint64_t tval = 0;
+  if (!interrupt) {
     if (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT) {
       tval = faulting_address_;
     } else if (cause == ILLEGAL_INSTRUCTION) {
       tval = ir_;
     }
   }
+  const uint64_t interrupt_cause_mask = interrupt ? 1 << (xlen_ - 1) : 0;
 
-  // Check delegation status.
-  bool machine_exception_delegation = ((csrs_[MEDELEG] >> cause) & 1) && !interrupt;
-  bool machine_interrupt_delegation = ((csrs_[MIDELEG] >> cause) & 1) && machine_interrupt_active;
-  bool sv_exception_delegation = ((csrs_[SEDELEG] >> cause) & 1) && !interrupt;
-  bool sv_interrupt_delegation = ((csrs_[SIDELEG] >> cause) & 1) && supervisor_interrupt_active;
-
-  bool sv_delegation = machine_interrupt_delegation || machine_exception_delegation;
-  bool user_delegation = sv_interrupt_delegation || sv_exception_delegation;
-
-  sv_delegation =
-      sv_delegation && (privilege_ == PrivilegeMode::SUPERVISOR_MODE || privilege_ == PrivilegeMode::USER_MODE);
-  user_delegation = user_delegation && (privilege_ == PrivilegeMode::USER_MODE) && sv_delegation;
-
-  uint64_t interrupt_cause_mask = interrupt ? 1 << (xlen_ - 1) : 0;
-  if (user_delegation) {
-    // Delegate to U-Mode.
-    csrs_[UCAUSE] = cause | interrupt_cause_mask;
-    csrs_[UEPC] = pc_;
-    uint64_t tvec = csrs_[UTVAL];
-    uint8_t mode = tvec & 0b11;
-    if (mode == 0 || interrupt) {
-      next_pc_ = tvec & ~0b11;
-    } else {
-      next_pc_ = (tvec & ~0b11) + 4 * (csrs_[UCAUSE] & GenMask<uint64_t>(xlen_ - 1, 0));
+  // Processing.
+  // TODO: Add user delegation.
+  if (sv_delegation) {
+    // Check Supervisor Interrupt Enable.
+    const uint64_t global_sie = bitcrop(mstatus_, 1, 1);
+    if (interrupt && (global_sie == 0 || bitcrop(csrs_[SIE], 1, cause) == 0)) {
+      return;
     }
-    csrs_[UTVAL] = tval;
-    // Copy old UIE (#0) to UPIE ($4). Then, disable UIE (#0)
-    const uint64_t uie = bitcrop(mstatus_, 1, 0);
-    mstatus_ = bitset(mstatus_, 1, 4, uie);
-    uint64_t new_uie = 0;
-    mstatus_ = bitset(mstatus_, 1, 0, new_uie);
-    privilege_ = PrivilegeMode::USER_MODE;
-  } else if (sv_delegation) {
-    // Delegated to S-Mode.
     csrs_[SCAUSE] = cause | interrupt_cause_mask;
     csrs_[SEPC] = pc_;
-    uint64_t tvec = csrs_[STVEC];
-    uint8_t mode = tvec & 0b11;
+    const uint64_t tvec = csrs_[STVEC];
+    const uint8_t mode = tvec & 0b11;
     if (mode == 0 || interrupt) {
       next_pc_ = tvec & ~0b11;
     } else {
@@ -254,20 +236,20 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     csrs_[STVAL] = tval;
 
     // Copy old SIE (#1) to SPIE (#5). Then, disable SIE (#1).
-    mstatus_ = bitset(mstatus_, 1, 5, sie);
-    uint64_t new_sie = 0;
-    mstatus_ = bitset(csrs_[SSTATUS], 1, 1, new_sie);
+    mstatus_ = bitset(mstatus_, 1, 5, global_sie);
+    constexpr uint64_t kNewSie = 0;
+    mstatus_ = bitset(csrs_[SSTATUS], 1, 1, kNewSie);
 
     // Save the current privilege mode to SPP (#12-11), and set the privilege to
     // Supervisor.
-    uint64_t new_spp = static_cast<int>(privilege_) & 1;
+    const uint64_t new_spp = static_cast<int>(privilege_) & 1;
     mstatus_ = bitset(mstatus_, 1, 8, new_spp);
     privilege_ = PrivilegeMode::SUPERVISOR_MODE;
   } else {
     csrs_[MCAUSE] = cause | interrupt_cause_mask;
     csrs_[MEPC] = pc_;
-    uint64_t tvec = csrs_[MTVEC];
-    uint8_t mode = tvec & 0b11;
+    const uint64_t tvec = csrs_[MTVEC];
+    const uint8_t mode = tvec & 0b11;
     if (mode == 0 || interrupt) {
       next_pc_ = tvec & ~0b11;
     } else {
@@ -277,17 +259,33 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     csrs_[MTVAL] = tval;
 
     // Copy old MIE (#3) to MPIE (#7). Then, disable MIE.
-    mstatus_ = bitset(mstatus_, 1, 7, mie);
-    uint64_t new_mie = 0;
-    mstatus_ = bitset(mstatus_, 1, 3, new_mie);
+    mstatus_ = bitset(mstatus_, 1, 7, global_mie);
+    constexpr uint64_t kNewMie = 0;
+    mstatus_ = bitset(mstatus_, 1, 3, kNewMie);
 
     // Save the current privilege mode to MPP (#12-11), and set the privilege to
     // Machine.
-    uint64_t new_mpp = static_cast<int>(privilege_);
+    const uint64_t new_mpp = static_cast<int>(privilege_);
     mstatus_ = bitset(mstatus_, 2, 11, new_mpp);
+    // Clear interrupt pending bit.
     privilege_ = PrivilegeMode::MACHINE_MODE;
   }
+  // Clear interrupt pending bit.
+  if (interrupt) {
+    ClearInterruptPending(cause);
+  }
   ApplyMstatusToCsr();
+}
+
+void RiscvCpu::ClearInterruptPending(int cause) {
+  constexpr uint64_t sip_mask = 0b001100110011;
+  constexpr uint64_t uip_mask = 0b000100010001;
+  uint64_t mip = csrs_[MIP];
+  bitset(mip, 1, cause, static_cast<uint64_t>(0));
+  csrs_[MIP] = mip;
+  csrs_[SIP] = (csrs_[SIP] & ~sip_mask) | (mip & sip_mask);
+  csrs_[UIP] = (csrs_[UIP] & ~uip_mask) | (mip & uip_mask);
+  return;
 }
 
 uint64_t kUpper32bitMask = 0xFFFFFFFF00000000;
@@ -1116,18 +1114,17 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
 }
 
 void RiscvCpu::CheckSoftwareInterrupt() {
-  uint64_t interrupt_status = csrs_[CsrsAddresses::MIP];
-  uint64_t interrupt_enable = csrs_[CsrsAddresses::MIE];
-  if (privilege_ == PrivilegeMode::USER_MODE && bitcrop(interrupt_status, 1, 0) == 1 &&
-      bitcrop(interrupt_enable, 1, 0) == 1) {
-    Trap(ExceptionCode::USER_SOFTWARE_INTERRUPT, kInterrupt);
+  uint64_t interrupt_status = csrs_[CsrsAddresses::MIP] & csrs_[CsrsAddresses::MIE];
+  bool interrupt_enable = bitcrop(mstatus_, 1, 3) == 1;
+  if (!interrupt_enable || interrupt_status == 0) {
+    return;
   }
-  if ((privilege_ == PrivilegeMode::SUPERVISOR_MODE || privilege_ == PrivilegeMode::USER_MODE) &&
-      bitcrop(interrupt_status, 1, 1) == 1 && bitcrop(interrupt_enable, 1, 1) == 1) {
-    Trap(ExceptionCode::SUPERVISOR_SOFTWARRE_INTERRUPT, kInterrupt);
-  }
-  if (bitcrop(interrupt_status, 1, 3) == 1 && bitcrop(interrupt_enable, 1, 3) == 1) {
+  if (bitcrop(interrupt_status, 1, 3) == 1) {
     Trap(ExceptionCode::MACHINE_SOFTWARE_INTERRUPT, kInterrupt);
+  } else if ( bitcrop(interrupt_status, 1, 1) == 1) {
+    Trap(ExceptionCode::SUPERVISOR_SOFTWARRE_INTERRUPT, kInterrupt);
+  } else if (bitcrop(interrupt_status, 1, 0) == 1) {
+    Trap(ExceptionCode::USER_SOFTWARE_INTERRUPT, kInterrupt);
   }
 }
 
