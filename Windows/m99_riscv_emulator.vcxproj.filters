@@ -18,9 +18,6 @@
     <ClCompile Include="..\RISCV_Emulator.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\assembler.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\bit_tools.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -28,9 +25,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\instruction_encdec.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\load_assembler.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\memory_wrapper.cpp">
