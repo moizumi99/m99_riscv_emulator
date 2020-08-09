@@ -212,7 +212,7 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
       tval = ir_;
     }
   }
-  const uint64_t interrupt_cause_mask = interrupt ? 1 << (xlen_ - 1) : 0;
+  const uint64_t interrupt_cause_mask = interrupt ? static_cast<uint64_t>(1) << (xlen_ - 1) : 0;
 
   // Processing.
   // TODO: Add user delegation.
@@ -269,7 +269,7 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     privilege_ = PrivilegeMode::MACHINE_MODE;
   }
   // Clear interrupt pending bit.
-  if (interrupt) {
+  if (interrupt && cause != SUPERVISOR_SOFTWARRE_INTERRUPT && cause != MACHINE_SOFTWARE_INTERRUPT) {
     ClearInterruptPending(cause);
   }
   ApplyMstatusToCsr();

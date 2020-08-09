@@ -19,6 +19,11 @@ struct VRingDesc {
   uint16_t next;
 };
 
+
+// Interrupt Controller Addresses.
+constexpr uint64_t kPlicAddress = 0x0c000000L;
+constexpr uint64_t kPlicClaimAddress = (kPlicAddress + 0x201004);
+
 struct virtio_blk_outhdr {
   uint32_t type;
   uint32_t reserved;

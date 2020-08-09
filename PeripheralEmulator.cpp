@@ -201,6 +201,8 @@ void PeripheralEmulator::VirtioEmulation() {
   VirtioDiskAccess(kQueueAddress);
   // Fire an interrupt.
   // New standard has a way to suspend interrupt until index reaches a certain value, but not supported in xv6.
+  constexpr int kVirtioIrq = 1;
+  memory_->Write32(kPlicClaimAddress, kVirtioIrq);
   virtio_interrupt_ = true;
 }
 
@@ -226,7 +228,10 @@ void PeripheralEmulator::VirtioDiskAccess(uint64_t queue_address) {
   uint64_t avail_address = queue_address + queue_num_ * kDescSizeBytes;
   constexpr int kPageSize = 4096;
   // used_address is at the page boundary.
-  uint64_t used_address = (avail_address + 2 * (2 + queue_num_) + kPageSize - 1) / kPageSize;
+  uint64_t used_address = ((avail_address + 2 * (2 + queue_num_) + kPageSize - 1) / kPageSize) * kPageSize;
+  // std::cerr << "queue_address = " << std::hex << queue_address << std::endl;
+  // std::cerr << "avail_address = " << std::hex << avail_address << std::endl;
+  // std::cerr << "used_address = " << std::hex << used_address << std::endl;
   uint16_t desc_index = get_desc_index(avail_address);
   process_disc_access(desc_address, desc_index);
   process_used_buffer(used_address, desc_index);
@@ -234,7 +239,8 @@ void PeripheralEmulator::VirtioDiskAccess(uint64_t queue_address) {
 
 uint16_t PeripheralEmulator::get_desc_index(
     uint64_t avail_address) const {  // Second word (16 bit) in Available Ring shows the next index.
-  uint16_t index = memory_->Read16(avail_address + 2);
+  uint16_t index = memory_->Read16(avail_address + 2) % queue_num_;
+  // std::cerr << "avail_index = " << index << std::endl;
   assert(index < queue_num_);
   uint16_t desc_index = memory_->Read16(avail_address + 4 + index * 2);
   return desc_index;
@@ -297,8 +303,8 @@ void PeripheralEmulator::read_outhdr(virtio_blk_outhdr *outhdr, uint64_t outhdr_
 
 void PeripheralEmulator::disc_access(uint64_t sector, uint64_t buffer_address, uint32_t len, bool write) {
   uint64_t kSectorAddress = sector * kSectorSize;
-  // std::cerr << (write ? "Disk Write: " : "Disk Read: ");
-  // std::cerr << "sector = " << std::hex << sector << ", size = " << std::dec << len << std::endl;
+  std::cerr << (write ? "Disk Write: " : "Disk Read: ");
+  std::cerr << "sector = " << std::hex << sector << ", size = " << std::dec << len << std::endl;
   if (write) {
     for (uint64_t offset = 0; offset < len; ++offset) {
       (*disk_image_)[kSectorAddress + offset] = memory_->ReadByte(buffer_address + offset);
@@ -316,7 +322,7 @@ void PeripheralEmulator::process_used_buffer(uint64_t used_buffer_address, uint1
   uint16_t current_used_index = memory_->Read16(used_buffer_address + 2);
   memory_->Write32(used_buffer_address + 4 + current_used_index * 8, index);
   memory_->Write32(used_buffer_address + 4 + current_used_index * 8 + 4, 3);
-  current_used_index = (current_used_index + 1) / queue_num_;
+  current_used_index = (current_used_index + 1) % queue_num_;
   memory_->Write16(used_buffer_address + 2, current_used_index);
 }
 
