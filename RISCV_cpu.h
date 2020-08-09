@@ -122,7 +122,6 @@ class RiscvCpu {
   void StoreWd(uint64_t physical_address, uint64_t data, int width = 4);
 
   void Trap(int cause, bool interrupt);
-  void ClearInterruptPending(int cause);
   static constexpr bool kInterrupt = true;
   static constexpr bool kException = false;
 
@@ -188,7 +187,10 @@ class RiscvCpu {
 
  private:
   bool TimerTick();
+  void DiskInterruptCheck();
   void PeripheralEmulations();
+  void SetInterruptPending(int cause);
+  void ClearInterruptPending(int cause);
   std::unique_ptr<PeripheralEmulator> peripheral_;
   bool ecall_emulation_ = false;
   bool host_emulation_ = false;

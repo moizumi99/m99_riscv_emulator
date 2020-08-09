@@ -104,9 +104,8 @@ uint64_t Mmu::VirtualToPhysical64(uint64_t virtual_address, uint64_t satp,
   uint32_t ppn0 = (level > 0) ? vpn[0] : pte.GetPpn0();
   physical_address = (ppn2 << 30) | (ppn1 << 21) | (ppn0 << 12) | offset;
 
-  uint64_t physical_address_64bit = static_cast<uint64_t >(physical_address &
-                                                           GenMask<int64_t>(56,
-                                                                            0));
+  constexpr uint64_t kMask56Bit = 0x00FFFFFFFFFFFFFF;
+  uint64_t physical_address_64bit = static_cast<uint64_t >(physical_address & kMask56Bit);
   return physical_address_64bit;
 }
 

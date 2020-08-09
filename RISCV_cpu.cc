@@ -279,16 +279,6 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   ApplyMstatusToCsr();
 }
 
-void RiscvCpu::ClearInterruptPending(int cause) {
-  constexpr uint64_t sip_mask = 0b001100110011;
-  constexpr uint64_t uip_mask = 0b000100010001;
-  mip_ = bitset(mip_, 1, cause, static_cast<uint64_t>(0));
-  csrs_[MIP] = mip_;
-  csrs_[SIP] = (csrs_[SIP] & ~sip_mask) | (mip_ & sip_mask);
-  csrs_[UIP] = (csrs_[UIP] & ~uip_mask) | (mip_ & uip_mask);
-  return;
-}
-
 uint64_t kUpper32bitMask = 0xFFFFFFFF00000000;
 
 uint64_t RiscvCpu::Sext32bit(uint64_t data32bit) {
@@ -884,9 +874,29 @@ bool RiscvCpu::TimerTick() {
     return false;
   }
   peripheral_->ClearTimerInterrupt();
-  mip_ = bitset(mip_, 1, 7, static_cast<uint64_t>(1));
-  ApplyInterruptPending();
+  constexpr int kMachineTimerInterrupt = 7;
+  SetInterruptPending(kMachineTimerInterrupt);
   return true;
+}
+
+void RiscvCpu::DiskInterruptCheck() {
+  if (virtio_interrupt_) {
+    virtio_interrupt_ = false;
+    constexpr int kSupervisorExternalInterrupt = 9;
+    SetInterruptPending(kSupervisorExternalInterrupt);
+  }
+}
+
+void RiscvCpu::SetInterruptPending(int cause) {
+  constexpr uint64_t kSet = 1;
+  mip_ = bitset(mip_, 1, cause, kSet);
+  ApplyInterruptEnable();
+}
+
+void RiscvCpu::ClearInterruptPending(int cause) {
+  constexpr uint64_t kClear = 0;
+  mip_ = bitset(mip_, 1, cause, kClear);
+  ApplyInterruptPending();
 }
 
 void RiscvCpu::DumpDisassembly(bool verbose) {
@@ -907,12 +917,10 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   do {
     pc_ = next_pc_;
     TimerTick();
-    if (virtio_interrupt_) {
-      virtio_interrupt_ = false;
-      mip_ = bitset(mip_, 1, 9, static_cast<uint64_t>(1));
-      ApplyInterruptPending();
+    DiskInterruptCheck();
+    if (CheckPendingInterrupt()) {
+      continue;
     }
-    CheckPendingInterrupt();
 
     ir_ = LoadCmd(pc_);
     DumpDisassembly(verbose);
@@ -1235,6 +1243,8 @@ void RiscvCpu::UpdateInterruptPending(int16_t csr) {
   } else if (csr == CsrsAddresses::SIP) {
     uint64_t sip = csrs_[CsrsAddresses::SIP] & kSipMask;
     mip_ = (mip_ & ~kSipMask) | sip;
+  } else {
+    return;
   }
   ApplyInterruptPending();
 }
@@ -1254,6 +1264,8 @@ void RiscvCpu::UpdateInterruptEnable(int16_t csr) {
   } else if (csr == CsrsAddresses::SIE) {
     uint64_t sie = csrs_[CsrsAddresses::SIE] & kSieMask;
     mie_ = (mie_ & ~kSieMask) | sie;
+  } else {
+    return;
   }
   ApplyInterruptEnable();
 }
