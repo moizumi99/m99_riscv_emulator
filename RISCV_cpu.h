@@ -57,7 +57,8 @@ class RiscvCpu {
   uint32_t ir_;
   uint64_t next_pc_;
   uint64_t mstatus_;
-  uint64_t mie_;
+  uint64_t mie_ = 0;
+  uint64_t mip_ = 0;
   PrivilegeMode privilege_;
   std::shared_ptr<MemoryWrapper> memory_;
   std::vector<uint64_t> csrs_;
@@ -72,7 +73,7 @@ class RiscvCpu {
   void CsrsInstruction(uint32_t instruction, uint32_t csr, uint32_t rd,
                        uint32_t rs1);
 
-  void CheckSoftwareInterrupt();
+  bool CheckPendingInterrupt();
 
   uint64_t BranchInstruction(uint32_t instruction, uint32_t rs1, uint32_t rs2,
                              int32_t imm13);
@@ -152,7 +153,15 @@ class RiscvCpu {
 
   void UpdateInterruptPending(int16_t csr);
 
+  static constexpr uint64_t kUipMask = 0b0000100010001;
+  static constexpr uint64_t kSipMask = 0b0001100110011;
+  void ApplyInterruptPending();
+
   void UpdateInterruptEnable(int16_t csr);
+
+  static constexpr uint64_t kUieMask = 0b0000100010001;
+  static constexpr uint64_t kSieMask = 0b0001100110011;
+  void ApplyInterruptEnable();
 
   void ApplyMstatusToCsr();
   // Below are for system call and host emulation

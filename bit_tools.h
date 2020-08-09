@@ -88,8 +88,8 @@ T SignExtend(T value, int width){
 
 template<class T>
 T bitset(const T& reg, const int width, const int offset, const T& val) {
-  T new_reg = reg & (mask[width + offset] | ~mask[offset]);
-  new_reg |= (val & (~mask[width])) << offset;
+  T new_reg = reg & (~mask[width + offset] | mask[offset]);
+  new_reg |= (val & mask[width]) << offset;
   return new_reg;
 }
 

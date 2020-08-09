@@ -177,6 +177,7 @@ void PeripheralEmulator::VirtioEmulation() {
   if (!virtio_write_) {
     return;
   }
+  virtio_write_ = false;
   constexpr int kWordWidth = 4;
   if (kVirtioMmioQueueSel < virtio_address_ + virtio_width_ && virtio_address_ < kVirtioMmioQueueSel + kWordWidth) {
     const uint32_t queue_sel = memory_->Read32(kVirtioMmioQueueSel);
