@@ -169,8 +169,9 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
           cause == ECALL_UMODE || cause == ECALL_SMODE || cause == ECALL_MMODE)));
   // Check the Machine Level Enable.
   const uint64_t global_mie = bitcrop(mstatus_, 1, 3);
-  if (interrupt && (global_mie == 0 || bitcrop(mie_, 1, cause) == 0)) {
-    // Interrupt is not enabled. Don't do anything.
+  const uint64_t global_sie = bitcrop(mstatus_, 1, 1);
+  if (interrupt && (global_mie == 0 || bitcrop(mie_, 1, cause) == 0) &&
+      (global_sie == 0 || bitcrop(csrs_[SIE], 1, cause) == 0)) {
     return;
   }
 
@@ -216,11 +217,6 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   // Processing.
   // TODO: Add user delegation.
   if (sv_delegation) {
-    // Check Supervisor Interrupt Enable.
-    const uint64_t global_sie = bitcrop(mstatus_, 1, 1);
-    if (interrupt && (global_sie == 0 || bitcrop(csrs_[SIE], 1, cause) == 0)) {
-      return;
-    }
     if (interrupt && cause == SUPERVISOR_EXTERNAL_INTERRUPT) {
       std::cerr << "Supervisor External Interrupt" << std::endl;
     }
