@@ -196,7 +196,7 @@ void Pte64::SetPpn(uint64_t ppn) {
 }
 
 void Pte64::SetRsw(uint32_t rsw) {
-  pte_ = (pte_ & ~GenMask<uint64_t>(2, 8)) | (rsw << 8);
+  pte_ = (pte_ & ~GenMask<uint64_t>(2, 8)) | ((uint64_t)rsw << 8);
 }
 
 void Pte64::SetD(int value) {

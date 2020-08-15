@@ -15,9 +15,9 @@ constexpr T GenMask(int size, int shift) {
 template<typename T>
 T SetBit(T data, int value, int pos) {
   if (value) {
-    return data | (1 << pos);
+    return data | ((T)1 << pos);
   } else {
-    return data & ~(1 << pos);
+    return data & ~((T)1 << pos);
   }
 }
 

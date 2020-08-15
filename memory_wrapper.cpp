@@ -8,6 +8,7 @@
 namespace RISCV_EMULATOR {
 
 MemoryWrapper::MemoryWrapper() {
+    assigned_ = {}; // Default value
   for (auto &a: assigned_) {
     a = false;
   }
@@ -33,7 +34,7 @@ void MemoryWrapper::WriteByte(size_t i, uint8_t data) {
   uint64_t write_data = data;
   int byte_offset = i & 0b11;
   write_data = (original_data & mask[byte_offset]) | (write_data << byte_offset * 8);
-  Write32(dram_address, write_data);
+  Write32(dram_address, (uint32_t)write_data);
 }
 
 const uint16_t MemoryWrapper::Read16(size_t i) const {
@@ -54,14 +55,14 @@ void MemoryWrapper::Write16(size_t i, uint16_t data) {
   uint64_t dram_address = (i >> kWordBits) << kWordBits;
   uint32_t original_data = Read32(dram_address);
   int short_word_offset = (i >> 1) & 1;
-  uint32_t write_data = (original_data & mask[short_word_offset]) | (data << short_word_offset * 16);
+  uint32_t write_data = (original_data & (uint32_t)mask[short_word_offset]) | (data << short_word_offset * 16);
   Write32(dram_address, write_data);
 }
 
 const uint32_t MemoryWrapper::Read32(size_t i) const {
   assert((i & 0b11) == 0);
   int entry = (i >> kOffsetBits) & kEntryMask;
-  uint64_t read_data = 0;
+  uint32_t read_data = 0;
   if (CheckRange(entry)) {
     int offset = i & kOffsetMask;
     int word_offset = offset >> kWordBits;

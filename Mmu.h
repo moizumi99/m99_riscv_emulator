@@ -26,7 +26,7 @@ class Mmu {
   uint64_t VirtualToPhysical64(uint64_t virtual_address, uint64_t satp, bool write_access = false);
 
   std::shared_ptr<MemoryWrapper> memory_;
-  int mxl_;
+  int mxl_ = 0;
   bool page_fault_ = false;
   uint64_t faulting_address_ = 0;
   PrivilegeMode privilege_ = PrivilegeMode::MACHINE_MODE;

@@ -164,7 +164,7 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   // Currently supported interrupts: Supervisor Software Interrupt (1), Machine Timer Intetrupt (7)
   assert((interrupt && (cause == MACHINE_TIMER_INTERRUPT || cause == SUPERVISOR_SOFTWARRE_INTERRUPT ||
                         cause == SUPERVISOR_EXTERNAL_INTERRUPT)) ||
-             (!interrupt &
+             ((!interrupt) &
          (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT ||
           cause == ECALL_UMODE || cause == ECALL_SMODE || cause == ECALL_MMODE)));
   // Check the Machine Level Enable.
@@ -718,7 +718,7 @@ void RiscvCpu::MultInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, 
         temp64 = -1;
       } else if (static_cast<int64_t>(reg_[rs2]) == -1 && reg_[rs1] == (1lu << 31)) {
         // Overflow check.
-        temp64 = 1 << 31;
+        temp64 = (uint64_t)1 << 31;
       } else {
         temp64 = static_cast<int64_t>(SignExtend(reg_[rs1], 32)) / static_cast<int64_t>(SignExtend(reg_[rs2], 32));
       }

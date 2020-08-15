@@ -102,7 +102,7 @@ uint64_t Mmu::VirtualToPhysical64(uint64_t virtual_address, uint64_t satp,
   uint64_t ppn2 = pte.GetPpn2();
   uint64_t ppn1 = (level > 1) ? vpn[1] : pte.GetPpn1();
   uint32_t ppn0 = (level > 0) ? vpn[0] : pte.GetPpn0();
-  physical_address = (ppn2 << 30) | (ppn1 << 21) | (ppn0 << 12) | offset;
+  physical_address = (ppn2 << 30) | (ppn1 << 21) | ((uint64_t)ppn0 << 12) | offset;
 
   constexpr uint64_t kMask56Bit = 0x00FFFFFFFFFFFFFF;
   uint64_t physical_address_64bit = static_cast<uint64_t >(physical_address & kMask56Bit);
@@ -172,7 +172,7 @@ uint64_t Mmu::VirtualToPhysical32(uint64_t virtual_address, uint64_t satp,
   // TODO: Add PMP check. (Page 70 of RISC-V Privileged Architectures Manual Vol. II.)
   uint64_t ppn1 = pte.GetPpn1();
   uint32_t ppn0 = (level == 1) ? vpn0 : pte.GetPpn0();
-  physical_address = (ppn1 << 22) | (ppn0 << 12) | offset;
+  physical_address = (ppn1 << 22) | ((uint64_t)ppn0 << 12) | offset;
 
   uint64_t physical_address_64bit = static_cast<uint64_t >(physical_address &
                                                            0xFFFFFFFF);
