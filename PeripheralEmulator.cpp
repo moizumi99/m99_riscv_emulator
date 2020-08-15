@@ -136,7 +136,7 @@ void PeripheralEmulator::UartInit() {
 void PeripheralEmulator::UartEmulation() {
   // UART Rx.
   if (uart_write_) {
-    std::cout << static_cast<char>(uart_write_value_);
+    std::cout << static_cast<char>(uart_write_value_) << std::flush;
     uart_write_ = false;
   }
   // UART Tx.
@@ -322,7 +322,7 @@ void PeripheralEmulator::process_used_buffer(uint64_t used_buffer_address, uint1
   uint16_t current_used_index = memory_->Read16(used_buffer_address + 2);
   memory_->Write32(used_buffer_address + 4 + current_used_index * 8, index);
   memory_->Write32(used_buffer_address + 4 + current_used_index * 8 + 4, 3);
-  current_used_index = (current_used_index + 1) % queue_num_;
+  current_used_index = current_used_index + 1;
   memory_->Write16(used_buffer_address + 2, current_used_index);
 }
 

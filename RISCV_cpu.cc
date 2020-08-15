@@ -168,12 +168,13 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
          (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT ||
           cause == ECALL_UMODE || cause == ECALL_SMODE || cause == ECALL_MMODE)));
   // Check the Machine Level Enable.
-  const uint64_t global_mie = bitcrop(mstatus_, 1, 3);
-  const uint64_t global_sie = bitcrop(mstatus_, 1, 1);
-  if (interrupt && (global_mie == 0 || bitcrop(mie_, 1, cause) == 0) &&
-      (global_sie == 0 || bitcrop(csrs_[SIE], 1, cause) == 0)) {
-    return;
-  }
+  // Machine interrupt is enabled if the privilege mode is lower than Machine Mode.
+  const uint64_t global_mie = (privilege_ == PrivilegeMode::MACHINE_MODE && bitcrop(mstatus_, 1, 3) == 1) ||
+                              (privilege_ != PrivilegeMode::MACHINE_MODE);
+  // Supervisor interrupt is enabled if the privilege mode is lower than supervisor mode.
+  const uint64_t global_sie = (privilege_ == PrivilegeMode::SUPERVISOR_MODE && bitcrop(mstatus_, 1, 1) == 1) ||
+                              (privilege_ == PrivilegeMode::USER_MODE);
+  // Interrupt enable condition should be checked before hand in CheckPendingInterrupt().
 
   // Page fault specific processing.
   if (!interrupt && (cause == INSTRUCTION_PAGE_FAULT || cause == LOAD_PAGE_FAULT || cause == STORE_PAGE_FAULT)) {
@@ -187,7 +188,6 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
     prev_faulting_address_ = faulting_address_;
     page_fault_ = false;
   }
-
 
   // Check supervisor mode delegation status.
   // The original machine privilege mode must be user or supervisor mode.
@@ -468,7 +468,7 @@ void RiscvCpu::ImmediateShiftInstruction(uint32_t instruction, uint32_t rd, uint
 
 int RiscvCpu::GetLoadWidth(uint32_t instruction) {
   int width = 8;
-  switch(instruction) {
+  switch (instruction) {
     case INST_LB:
     case INST_LBU:
       width = 1;
@@ -522,7 +522,7 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, 
 
 int RiscvCpu::GetStoreWidth(uint32_t instruction) {
   int width = 8;
-  switch(instruction) {
+  switch (instruction) {
     case INST_SB:
       width = 1;
       break;
@@ -899,8 +899,9 @@ void RiscvCpu::DumpDisassembly(bool verbose) {
   if (!verbose) {
     return;
   }
-  char machine_status =
-      privilege_ == PrivilegeMode::USER_MODE ? 'U' : privilege_ == PrivilegeMode::SUPERVISOR_MODE ? 'S' : 'M';
+  char machine_status = privilege_ == PrivilegeMode::USER_MODE         ? 'U'
+                        : privilege_ == PrivilegeMode::SUPERVISOR_MODE ? 'S'
+                                                                       : 'M';
   printf("%c %016lx (%04x): ", machine_status, pc_, ir_);
   std::cout << Disassemble(ir_, mxl_) << std::endl;
 }
@@ -1120,8 +1121,9 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
 
 bool RiscvCpu::CheckPendingInterrupt() {
   uint64_t interrupt_status = mip_ & mie_;
-  bool mstatus_mie = bitcrop(mstatus_, 1, 3) == 1;
-  bool mstatus_sie = bitcrop(mstatus_, 1, 1) == 1;
+  bool mstatus_mie = privilege_ != PrivilegeMode::MACHINE_MODE || bitcrop(mstatus_, 1, 3) == 1;
+  bool mstatus_sie = privilege_ == PrivilegeMode::USER_MODE ||
+                     (privilege_ == PrivilegeMode::SUPERVISOR_MODE && bitcrop(mstatus_, 1, 1) == 1);
   if (mstatus_sie && bitcrop(interrupt_status, 1, 1) == 1) {
     Trap(ExceptionCode::SUPERVISOR_SOFTWARRE_INTERRUPT, kInterrupt);
   } else if (mstatus_mie && bitcrop(interrupt_status, 1, 3) == 1) {
@@ -1582,8 +1584,8 @@ uint32_t RiscvCpu::GetCode32(uint32_t ir) {
   return instruction;
 }
 
-void RiscvCpu::GetCode16(uint32_t ir, int mxl, uint32_t *instruction_out,
-                         uint32_t *rd_out, uint32_t *rs1_out, uint32_t *rs2_out, int32_t *imm_out) {
+void RiscvCpu::GetCode16(uint32_t ir, int mxl, uint32_t *instruction_out, uint32_t *rd_out, uint32_t *rs1_out,
+                         uint32_t *rs2_out, int32_t *imm_out) {
   uint32_t opcode = (((ir >> 13) & 0b111) << 2) | (ir & 0b11);
   uint32_t instruction = INST_ERROR;
   uint32_t rd = 0, rs1 = 0, rs2 = 0;
