@@ -5,10 +5,10 @@
 #ifndef MEMORY_WRAPPER_H
 #define MEMORY_WRAPPER_H
 
-
 #include <vector>
 #include <cstdint>
 #include <array>
+#include <stdexcept>
 
 namespace RISCV_EMULATOR {
 

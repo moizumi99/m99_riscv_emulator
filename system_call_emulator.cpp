@@ -161,7 +161,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     std::cerr << std::endl;
     ssize_t return_value = CIO_write(reg[A0], buffer, length);
     reg[A0] = return_value;
-    delete buffer;
+    delete[] buffer;
   } else if (reg[A7] == 214) {
     // BRK.
     if (debug) {
@@ -187,7 +187,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
     for (int i = 0; i < length; i++) {
       mem.WriteByte(reg[A1] + i, buffer[i]);
     }
-    delete buffer;
+    delete[] buffer;
   } else if (reg[A7] == 80) {
     // FSTAT.
     struct Riscv32NewlibStat guest_stat;
@@ -281,7 +281,7 @@ SystemCallEmulation(std::shared_ptr<MemoryWrapper> memory, uint64_t *reg,
       }
       return_value = CIO_open(buffer, flag, reg[A2]);
       if (return_value >= 0) openHandles++;
-      delete buffer;
+      delete[] buffer;
     }
     reg[A0] = return_value;
   } else if (reg[A7] == 62) {
