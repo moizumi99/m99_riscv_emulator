@@ -1,38 +1,30 @@
 # What's this?
 
-A simple RISCV32I emulator that can execute an ELF executable file compiled with gnu tool chain and Newlib.
+A simple RISCV32I/RISCV64I emulator that can execute an ELF executable file compiled with gnu tool chain and Newlib.
 
-So far, most of user land instructions are supported.
+## Supported Instructions
 
-Also emulation of a few system calls are supported for testing purpose with **limitation**.
-- open
-- close
-- fstat
-- write
-- read
-- lseek
-- brk
-- exit
+- RV32I (Including compressed instructions)
+- RV32M (Including compressed instructions)
+- RV64I (Including compressed instructions)
+- RV64M (Including compressed instructions)
+
+Following instructions are partially supported
+- RV32A (except LR and SC)
+- RV64A (except LR and SC)
+
+Support of privilege instruction is partial and not complete.
+
+Some system calls are emulated with **limitation** 
+
+# Usage
 
 ## Build
 
 1. Run the following command
 
 ```
-$ make all 
-```
-
-## Test
-
-1. Run the following command
-```
-$ make test
-```
-
-2. If you have risc-v test suite (RV32UI) compiled and store the tests under target folder (see the next section), you can run risc-v test suite with the following command
-
-```
-$ ./riscv_tests.sh
+$ make 
 ```
 
 ## How to generate executable for the emulator.
@@ -58,9 +50,9 @@ Move to the emulator folder, then run the following command.
 $ ./RISCV_Emulator file_name
 ```
 
-Note: Addresses between 0x40000000 and 0x7FFFFFFF are reserved for stack and heap. So, the binary and data read from ELF file must be located on other addresses.
+## Test
 
-## Compiling the RISCV-Tests
+### Compiling the RISCV-Tests
 
 To run the RISCV tests with this emulator, first set $RISCV to the location of where m99_riscv_emulator is placed.
 
@@ -80,9 +72,59 @@ $ make
 $ make install
 ```
 
-Now, go back to to the emulator folder. Run the test script.
+The test suite is generated under `$RISCV/target/`
+
+Now you can run test.
+
+## Running Test
+
+1. Run the following command
+```
+$ make test
+```
+
+# Details 
+
+## Runtime options
+
+`-v`: Verbose. Emulator output the current PC, disassembled instruction, register status  
+`-e`: System call emulation enabled. See the next section.  
+`-64`: Run in 64  bit mode.  
+`-m`: Disable machine interrupt delegation to supervisor mode. This is for compatibility with QEMU.  
+`-h`: Use "tohost" and "fromhost" functions in riscv-test suite. This is only for riscv-test purpose.  
+`-d:` Device emulation. Enable uart output, virtio disk, and interrupt timer. Not complete.  
+`-s <filename>`: Load <filename> as disk iamge. You need to enable device emulation with `-d` option.  
+`-p`: Paging enabled. This is for testing purpose.  
+
+## System Call emulation
+
+Following system calls work with limitation.
+
+- open (1024)
+- close (57)
+- fstat (80)
+- write (64)
+- read (63)
+- lseek (62)
+- brk (214)
+- exit (93)
+
+# Running xv6 for riscv
+
+_Support of xv6 is still under development._
+
+This emulator is able to run x[xv6 for riscv](https://github.com/mit-pdos/xv6-riscv) to show sh prompt. 
+(But nothing further because no key input is supported yet.)  
+
+You first need to compile [xv6 for riscv](https://github.com/mit-pdos/xv6-riscv) with CPUS=1 option. 
+Then, you need to copy `kernel/kernel` in the Emulator directory.   
+Also, you need `fs.img` (disk image) from xv6 too. `fs.img` is generated when running xv6 with `QEMU` option. 
+
+Run the emulator with `-64 -m -d -s fs.img` option.  
 
 ```
-$ ./riscv_tests.sh
+$ ./RISCV_Emulator -64 -m -d -s fs.img kernel
 ```
 
+You will eventually see the prompt (`$`) pops up.  
+(Support of key input is planned with no commitment date.)
