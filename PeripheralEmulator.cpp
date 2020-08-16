@@ -303,8 +303,8 @@ void PeripheralEmulator::read_outhdr(virtio_blk_outhdr *outhdr, uint64_t outhdr_
 
 void PeripheralEmulator::disc_access(uint64_t sector, uint64_t buffer_address, uint32_t len, bool write) {
   uint64_t kSectorAddress = sector * kSectorSize;
-  std::cerr << (write ? "Disk Write: " : "Disk Read: ");
-  std::cerr << "sector = " << std::hex << sector << ", size = " << std::dec << len << std::endl;
+  // std::cerr << (write ? "Disk Write: " : "Disk Read: ");
+  // std::cerr << "sector = " << std::hex << sector << ", size = " << std::dec << len << std::endl;
   if (write) {
     for (uint64_t offset = 0; offset < len; ++offset) {
       (*disk_image_)[kSectorAddress + offset] = memory_->ReadByte(buffer_address + offset);

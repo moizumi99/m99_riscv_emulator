@@ -195,7 +195,9 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
 
   // Check for supervisor delegation bit.
   if (interrupt) {
-    const uint64_t mideleg = csrs_[MIDELEG];
+    // Supperess machine interrupt delegation for compatibility with QEMU.
+    const uint64_t mideleg_mask = disable_machine_interrupt_delegation_ ? 0x666 : 0xfff;
+    const uint64_t mideleg = csrs_[MIDELEG] & mideleg_mask;
     sv_delegation &= bitcrop(mideleg, 1, cause) == 1;
   } else {
     const uint64_t medeleg = csrs_[MEDELEG];
@@ -217,9 +219,9 @@ void RiscvCpu::Trap(int cause, bool interrupt) {
   // Processing.
   // TODO: Add user delegation.
   if (sv_delegation) {
-    if (interrupt && cause == SUPERVISOR_EXTERNAL_INTERRUPT) {
-      std::cerr << "Supervisor External Interrupt" << std::endl;
-    }
+//    if (interrupt && cause == SUPERVISOR_EXTERNAL_INTERRUPT) {
+//      std::cerr << "Supervisor External Interrupt" << std::endl;
+//    }
     csrs_[SCAUSE] = cause | interrupt_cause_mask;
     csrs_[SEPC] = pc_;
     const uint64_t tvec = csrs_[STVEC];

@@ -171,6 +171,11 @@ class RiscvCpu {
     ecall_emulation_ = ecall_emulation;
   };
 
+  void DisableMachineInterruptDelegation(bool disable_machine_interrupt_delegation) {
+    disable_machine_interrupt_delegation_ = disable_machine_interrupt_delegation;
+  }
+
+
   void SetHostEmulationEnable(bool host_emulation) {
     host_emulation_ = host_emulation;
     peripheral_->SetHostEmulationEnable(host_emulation);
@@ -196,6 +201,7 @@ class RiscvCpu {
   bool host_emulation_ = false;
   bool peripheral_emulation_ = false;
   bool virtio_interrupt_ = false;
+  bool disable_machine_interrupt_delegation_ = false;
   uint64_t top_ = 0x80000000;
   uint64_t bottom_ = 0x40000000;
   uint64_t brk_ = bottom_;
