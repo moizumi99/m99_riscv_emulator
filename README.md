@@ -98,7 +98,7 @@ $ make test
 
 ## System Call emulation
 
-Following system calls work with limitation.
+Following system calls are supported with `-e` option with limitation.
 
 - open (1024)
 - close (57)
@@ -113,7 +113,7 @@ Following system calls work with limitation.
 
 _Support of xv6 is still under development._
 
-This emulator is able to run x[xv6 for riscv](https://github.com/mit-pdos/xv6-riscv) to show sh prompt. 
+This emulator is able to run [xv6 for riscv](https://github.com/mit-pdos/xv6-riscv) to show sh prompt. 
 (But nothing further because no key input is supported yet.)  
 
 You first need to compile [xv6 for riscv](https://github.com/mit-pdos/xv6-riscv) with CPUS=1 option. 
