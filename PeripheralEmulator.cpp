@@ -2,9 +2,11 @@
 // Created by moiz on 7/2/20.
 //
 
-#include "PeripheralEmulator.h"
 #include <cassert>
 #include <iostream>
+#include "PeripheralEmulator.h"
+#include "ScreenEmulation.h"
+
 namespace RISCV_EMULATOR {
 
 PeripheralEmulator::PeripheralEmulator(int mxl) : mxl_(mxl) {}
@@ -132,11 +134,16 @@ void PeripheralEmulator::UartInit() {
   uint8_t isr = memory_->ReadByte(kUartBase + 5);
   isr |= (1 << 5);
   memory_->WriteByte(kUartBase + 5, isr);
+
+  // Initialize the screen to use ncurse library.
+  scr_emulation = std::make_unique<ScreenEmulation>();
+  // No need to call endwin() explicitly afterward because it's called in the destructor.
 }
 void PeripheralEmulator::UartEmulation() {
   // UART Rx.
   if (uart_write_) {
-    std::cout << static_cast<char>(uart_write_value_) << std::flush;
+    scr_emulation->putchar(uart_write_value_);
+    // std::cout << static_cast<char>(uart_write_value_) << std::flush;
     uart_write_ = false;
   }
   // UART Tx.

@@ -3,7 +3,7 @@ CPPFLAGS = -Wall -O3 -I.
 TARGET = RISCV_Emulator
 CPU_OBJS = RISCV_cpu.o bit_tools.o \
 instruction_encdec.o memory_wrapper.o system_call_emulator.o pte.o Mmu.o \
-Disassembler.o PeripheralEmulator.o
+Disassembler.o PeripheralEmulator.o ScreenEmulation.o
 OBJS = RISCV_Emulator.o $(CPU_OBJS)
 TEST_DIR = tests
 TEST_TARGETS = $(TEST_DIR)/cpu_test $(TEST_DIR)/pte_test
@@ -13,7 +13,7 @@ WRAPPER_TESTS = $(TEST_DIR)/memory_wrapper_test $(TEST_DIR)/load_assembler_test
 	all: $(TARGET) $(TEST_TARGETS)
 
 $(TARGET): $(OBJS)
-	$(CXX) -o $(TARGET) $(OBJS)
+	$(CXX) -o $(TARGET) $(OBJS) -lncurses
 
 $(TEST_DIR)/load_assembler_test: $(TEST_DIR)/load_assembler.o $(TEST_DIR)/assembler.o \
 $(TEST_DIR)/load_assembler_test.o bit_tools.o instruction_encdec.o memory_wrapper.o
@@ -21,7 +21,7 @@ $(TEST_DIR)/load_assembler_test.o bit_tools.o instruction_encdec.o memory_wrappe
 
 $(TEST_DIR)/cpu_test: $(TEST_DIR)/cpu_test.o $(CPU_OBJS) $(TEST_DIR)/load_assembler.o \
 $(TEST_DIR)/assembler.o
-	$(CXX) $(CPPFLAG) -o $@ $^
+	$(CXX) $(CPPFLAG) -o $@ $^ -lncurses
 
 $(TEST_DIR)/memory_wrapper_test: memory_wrapper.o $(TEST_DIR)/memory_wrapper_test.o
 	$(CXX) $(CPPFLAG) -o $@ $^

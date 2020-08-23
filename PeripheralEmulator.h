@@ -9,6 +9,7 @@
 #include <memory>
 #include <queue>
 #include "memory_wrapper.h"
+#include "ScreenEmulation.h"
 
 namespace RISCV_EMULATOR {
 
@@ -109,6 +110,7 @@ class PeripheralEmulator {
   bool uart_read_ = false;
   uint8_t uart_write_value_ = 0;
   std::queue<uint8_t> uart_queue;
+  std::unique_ptr<ScreenEmulation> scr_emulation;
 
   // Timer.
   uint64_t elapsed_cycles_ = 0;

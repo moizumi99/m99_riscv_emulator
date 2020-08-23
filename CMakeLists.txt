@@ -58,7 +58,9 @@ add_executable(RISCV_Emulator
         system_call_emulator.h
         pte.cpp pte.h
         Mmu.cpp Mmu.h
-        riscv_cpu_common.h Disassembler.cpp Disassembler.h PeripheralEmulator.cpp PeripheralEmulator.h)
+        riscv_cpu_common.h Disassembler.cpp Disassembler.h PeripheralEmulator.cpp PeripheralEmulator.h keyboard.cpp keyboard.h ScreenEmulation.cpp ScreenEmulation.h)
+
+target_link_libraries(RISCV_Emulator ncurses)
 
 add_executable(memory_wrapper_test
         memory_wrapper.cpp

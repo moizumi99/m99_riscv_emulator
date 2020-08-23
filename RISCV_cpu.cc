@@ -43,7 +43,7 @@ void RiscvCpu::InitializeCsrs() {
 }
 
 void RiscvCpu::DeviceInitialization() {
-  if (peripheral_ == nullptr) {
+  if (!peripheral_emulation_) {
     return;
   }
   peripheral_->Initialize();
