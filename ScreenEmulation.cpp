@@ -24,7 +24,7 @@ void ScreenEmulation::ScreenInit() {
   keypad(stdscr, TRUE);
   // Allow scrolling.
   scrollok(stdscr, TRUE);
-  // Don't wait for return.
+  // Don't wait for key hit.
   nodelay(stdscr, TRUE);
 }
 
@@ -32,11 +32,27 @@ void ScreenEmulation::ScreenExit() {
   endwin();
 }
 
-char ScreenEmulation::getchar() {
-  return getch();
+bool ScreenEmulation::CheckInput() {
+  if (++counter_ < kThreshold) {
+    return key_valid_;
+  } else {
+    counter_ = 0;
+  }
+  int c = getch();
+  if (c == ERR) {
+    return key_valid_;
+  }
+  key_value_ = c;
+  key_valid_ = true;
+  return true;
 }
 
-void ScreenEmulation::putchar(char c) {
+int ScreenEmulation::GetKeyValue() {
+  key_valid_ = false;
+  return key_value_;
+}
+
+void ScreenEmulation::putchar(int c) {
   addch(c);
   wrefresh(stdscr);
 }

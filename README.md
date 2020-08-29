@@ -114,17 +114,17 @@ Following system calls are supported with `-e` option with limitation.
 _Support of xv6 is still under development._
 
 This emulator is able to run [xv6 for riscv](https://github.com/mit-pdos/xv6-riscv) to show sh prompt. 
-(But nothing further because no key input is supported yet.)  
 
 You first need to compile [xv6 for riscv](https://github.com/mit-pdos/xv6-riscv) with CPUS=1 option. 
 Then, you need to copy `kernel/kernel` in the Emulator directory.   
 Also, you need `fs.img` (disk image) from xv6 too. `fs.img` is generated when running xv6 with `QEMU` option. 
 
-Run the emulator with `-64 -m -d -s fs.img` option.  
+Run the emulator with `-64 -m -d -s fs.img` options (64 bit mode, disable machine interrupt delegation, device emulation, load `fs.img` as storage image).
 
 ```
 $ ./RISCV_Emulator -64 -m -d -s fs.img kernel
 ```
 
 You will eventually see the prompt (`$`) pops up.  
-(Support of key input is planned with no commitment date.)
+You can run the commands, for example by typing `ls` or `cat README`.  
+`Ctrl+C` and `Ctrl+P` are not supported yet.

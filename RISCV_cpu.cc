@@ -518,6 +518,7 @@ void RiscvCpu::LoadInstruction(uint32_t instruction, uint32_t rd, uint32_t rs1, 
   } else if (instruction == INST_LWU) {
     load_data &= 0xFFFFFFFF;
   }
+  peripheral_->CheckDeviceRead(address, width);
 
   reg_[rd] = load_data;
 }
@@ -877,9 +878,22 @@ bool RiscvCpu::TimerTick() {
   return true;
 }
 
+void RiscvCpu::InterruptCheck() {
+  DiskInterruptCheck();
+  UartInterruptCheck();
+}
+
 void RiscvCpu::DiskInterruptCheck() {
   if (virtio_interrupt_) {
     virtio_interrupt_ = false;
+    constexpr int kSupervisorExternalInterrupt = 9;
+    SetInterruptPending(kSupervisorExternalInterrupt);
+  }
+}
+
+void RiscvCpu::UartInterruptCheck() {
+  if (uart_interrupt_) {
+    uart_interrupt_ = false;
     constexpr int kSupervisorExternalInterrupt = 9;
     SetInterruptPending(kSupervisorExternalInterrupt);
   }
@@ -916,7 +930,7 @@ int RiscvCpu::RunCpu(uint64_t start_pc, bool verbose) {
   do {
     pc_ = next_pc_;
     TimerTick();
-    DiskInterruptCheck();
+    InterruptCheck();
     if (CheckPendingInterrupt()) {
       continue;
     }
@@ -1156,6 +1170,10 @@ void RiscvCpu::PeripheralEmulations() {
   if (peripheral_->GetInterruptStatus()) {
     peripheral_->ClearInterruptStatus();
     virtio_interrupt_ = true;
+  }
+  if (peripheral_->GetUartInterruptStatus()) {
+    peripheral_->ClearUartInterruptStatus();
+    uart_interrupt_ = true;
   }
 }
 
