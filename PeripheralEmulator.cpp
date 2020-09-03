@@ -5,13 +5,15 @@
 #include "PeripheralEmulator.h"
 #include <cassert>
 #include <iostream>
+#include "ScreenEmulation.h"
+
 namespace RISCV_EMULATOR {
 
 PeripheralEmulator::PeripheralEmulator(int mxl) : mxl_(mxl) {}
 
 void PeripheralEmulator::SetMemory(std::shared_ptr<MemoryWrapper> memory) { memory_ = memory; }
 
-void PeripheralEmulator::SetDiskImage(std::shared_ptr<std::vector<uint8_t>> disk_image) {disk_image_ = disk_image; };
+void PeripheralEmulator::SetDiskImage(std::shared_ptr<std::vector<uint8_t>> disk_image) { disk_image_ = disk_image; };
 
 void PeripheralEmulator::SetHostEmulationEnable(bool enable) { host_emulation_enable_ = enable; }
 
@@ -53,9 +55,14 @@ void PeripheralEmulator::CheckDeviceWrite(uint64_t address, int width, uint64_t 
   }
 }
 
-void PeripheralEmulator::MemoryMappedValueUpdate() {
-  memory_->Write64(kTimerMtime, elapsed_cycles_);
+void PeripheralEmulator::CheckDeviceRead(uint64_t address, int width) {
+  // Check if it reads from UART addresses.
+  if (kUartBase < address + width && address <= kUartBase) {
+    uart_read_ = true;
+  }
 }
+
+void PeripheralEmulator::MemoryMappedValueUpdate() { memory_->Write64(kTimerMtime, elapsed_cycles_); }
 
 void PeripheralEmulator::Emulation() {
   if (host_emulation_enable_) {
@@ -132,21 +139,53 @@ void PeripheralEmulator::UartInit() {
   uint8_t isr = memory_->ReadByte(kUartBase + 5);
   isr |= (1 << 5);
   memory_->WriteByte(kUartBase + 5, isr);
+
+  // Initialize the screen to use ncurse library.
+  scr_emulation = std::make_unique<ScreenEmulation>();
+  // No need to call endwin() explicitly afterward because the destructor calls it.
 }
 void PeripheralEmulator::UartEmulation() {
   // UART Rx.
   if (uart_write_) {
-    std::cout << static_cast<char>(uart_write_value_);
+    scr_emulation->putchar(uart_write_value_);
     uart_write_ = false;
+    // TODO: Add interrupt processing.
   }
   // UART Tx.
-  //  std::string input_string;
-  //  std::cin >> input_string;
-  //  if (!input_string.empty()) {
-  //    for (auto s : input_string) {
-  //      uart_queue.push(static_cast<uint8_t>(s));
-  //    }
-  //  }
+  if (uart_read_) {
+    ClearUartBuffer();
+    uart_read_ = false;
+  }
+  if (uart_full_) {
+    return;
+  }
+  if (!scr_emulation->CheckInput()) {
+    return;
+  }
+  int key_input = scr_emulation->GetKeyValue();
+  SetUartBuffer(key_input);
+  UartInterrupt();
+}
+
+void PeripheralEmulator::SetUartBuffer(int key) {
+  uint8_t uart_lsr_status = memory_->ReadByte(kUartLsr);
+  uart_lsr_status |= kUartLsrReady;
+  memory_->WriteByte(kUartRhr, static_cast<uint8_t>(key));
+  memory_->WriteByte(kUartLsr, uart_lsr_status);
+  uart_full_ = true;
+}
+
+void PeripheralEmulator::ClearUartBuffer() {
+  uint8_t uart_lsr_status = memory_->ReadByte(kUartLsr);
+  uart_lsr_status &= ~kUartLsrReady;
+  memory_->WriteByte(kUartLsr, uart_lsr_status);
+  uart_full_ = false;
+}
+
+void PeripheralEmulator::UartInterrupt() {
+  constexpr int kUartIrq = 10;
+  memory_->Write32(kPlicClaimAddress, kUartIrq);
+  uart_interrupt_ = true;
 }
 
 void PeripheralEmulator::TimerTick() {
@@ -303,8 +342,8 @@ void PeripheralEmulator::read_outhdr(virtio_blk_outhdr *outhdr, uint64_t outhdr_
 
 void PeripheralEmulator::disc_access(uint64_t sector, uint64_t buffer_address, uint32_t len, bool write) {
   uint64_t kSectorAddress = sector * kSectorSize;
-  std::cerr << (write ? "Disk Write: " : "Disk Read: ");
-  std::cerr << "sector = " << std::hex << sector << ", size = " << std::dec << len << std::endl;
+  // std::cerr << (write ? "Disk Write: " : "Disk Read: ");
+  // std::cerr << "sector = " << std::hex << sector << ", size = " << std::dec << len << std::endl;
   if (write) {
     for (uint64_t offset = 0; offset < len; ++offset) {
       (*disk_image_)[kSectorAddress + offset] = memory_->ReadByte(buffer_address + offset);
@@ -317,12 +356,12 @@ void PeripheralEmulator::disc_access(uint64_t sector, uint64_t buffer_address, u
 }
 
 void PeripheralEmulator::process_used_buffer(uint64_t used_buffer_address, uint16_t index) {
-//  uint16_t flag = memory_->Read16(used_buffer_address);
+  //  uint16_t flag = memory_->Read16(used_buffer_address);
   // TODO: Add check of flag.
   uint16_t current_used_index = memory_->Read16(used_buffer_address + 2);
   memory_->Write32(used_buffer_address + 4 + current_used_index * 8, index);
   memory_->Write32(used_buffer_address + 4 + current_used_index * 8 + 4, 3);
-  current_used_index = (current_used_index + 1) % queue_num_;
+  current_used_index = current_used_index + 1;
   memory_->Write16(used_buffer_address + 2, current_used_index);
 }
 

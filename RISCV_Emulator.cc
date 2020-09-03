@@ -415,7 +415,7 @@ uint64_t GetEntryPoint(std::vector<uint8_t> &program) {
   }
 }
 
-std::tuple<bool, std::string, bool, bool, bool, bool, bool, bool, std::string>
+std::tuple<bool, std::string, bool, bool, bool, bool, bool, bool, bool, std::string>
 ParseCmd(int argc, char (***argv)) {
   bool error = false;
   bool verbose = false;
@@ -424,6 +424,7 @@ ParseCmd(int argc, char (***argv)) {
   bool ecall_emulation = false;
   bool host_emulation = false;
   bool device_enable = false;
+  bool disable_machine_interrupt_delegation = false;
   std::string diskimage_file = "";
   std::string filename = "";
   if (argc < 2) {
@@ -443,6 +444,8 @@ ParseCmd(int argc, char (***argv)) {
           host_emulation = true;
         } else if ((*argv)[i][1] == 'd') {
           device_enable = true;
+        } else if ((*argv)[i][1] == 'm') {
+          disable_machine_interrupt_delegation = true;
         } else if ((*argv)[i][1] == 's') {
           if (i < argc - 1) {
             diskimage_file = std::string((*argv)[++i]);
@@ -462,7 +465,8 @@ ParseCmd(int argc, char (***argv)) {
     }
   }
   return std::make_tuple(error, filename, verbose, address64bit, paging,
-                         ecall_emulation, host_emulation, device_enable, diskimage_file);
+                         ecall_emulation, host_emulation, device_enable,
+                         disable_machine_interrupt_delegation, diskimage_file);
 }
 
 constexpr int k32BitMmuLevelOneSize = 1024; // 1024 x 4 B = 4 KiB.
@@ -570,7 +574,8 @@ void SetDefaultMmuTable(bool address64bit, std::shared_ptr<MemoryWrapper> memory
 }
 
 int run(int argc, char *argv[]) {
-  bool cmdline_error, verbose, address64bit, paging, ecall_emulation, host_emulation, device_emulation;
+  bool cmdline_error, verbose, address64bit, paging, ecall_emulation, host_emulation,
+      device_emulation, disable_machine_interrupt_delegation;
   std::string disk_image_file;
   std::string filename;
 
@@ -583,18 +588,21 @@ int run(int argc, char *argv[]) {
   ecall_emulation = std::get<5>(options);
   host_emulation = std::get<6>(options);
   device_emulation = std::get<7>(options);
-  disk_image_file = std::get<8>(options);
+  disable_machine_interrupt_delegation = std::get<8>(options);
+  disk_image_file = std::get<9>(options);
+
 
   if (cmdline_error) {
-    std::cerr << "Uasge: " << argv[0] << " elf_file " << "[-v][-64][-p][-e][-h][-s disk.img]"
+    std::cerr << "Uasge: " << argv[0] << " elf_file " << "[-v][-64][-p][-e][-h][-m][-s disk.img]"
               << std::endl;
     std::cerr << "-v: Verbose" << std::endl;
     std::cerr << "-e: System Call Emulation" << std::endl;
     std::cerr << "-p: Paging Enabled from Start" << std::endl;
     std::cerr << "-64: 64 bit (RV64I) (default is 32 bit mode, RV32I)"
               << std::endl;
-    std::cerr << "-d: Device emulation of UART" << std::endl;
+    std::cerr << "-d: Device emulation of UART and VirtioDisk (needed to use -s option)" << std::endl;
     std::cerr << "-h: Use tohost and fromhost function" << std::endl;
+    std::cerr << "-m: disable delegation of machine interrupt (for compatibility with QEMU)" << std::endl;
     std::cerr << "-s disk.img: specify disk image" << std::endl;
     return -1;
   }
@@ -649,6 +657,7 @@ int run(int argc, char *argv[]) {
   cpu.SetWorkMemory(kTop, kBottom);
   cpu.SetHostEmulationEnable(host_emulation);
   cpu.SetDeviceEmulationEnable(device_emulation);
+  cpu.DisableMachineInterruptDelegation(disable_machine_interrupt_delegation);
   cpu.DeviceInitialization();
   cpu.SetDiskImage(disk_image);
   int error = cpu.RunCpu(entry_point, verbose);

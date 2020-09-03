@@ -9,6 +9,7 @@
 #include <memory>
 #include <queue>
 #include "memory_wrapper.h"
+#include "ScreenEmulation.h"
 
 namespace RISCV_EMULATOR {
 
@@ -41,6 +42,9 @@ class PeripheralEmulator {
   // UART.
   static constexpr uint64_t kUartBase = 0x10000000;
   static constexpr uint64_t kUartSize = 6;
+  static constexpr uint8_t kUartLsrReady = 1;
+  static constexpr uint64_t kUartRhr = kUartBase;
+  static constexpr uint64_t kUartLsr = kUartBase + 5;
 
   // Timer.
   static constexpr uint64_t kTimerBase = 0x2000000;
@@ -65,6 +69,7 @@ class PeripheralEmulator {
 
   void Initialize();
   void CheckDeviceWrite(uint64_t address, int width, uint64_t data);
+  void CheckDeviceRead(uint64_t address, int width);
   void MemoryMappedValueUpdate();
 
   // Host Emulation.
@@ -86,6 +91,8 @@ class PeripheralEmulator {
   void SetDeviceEmulationEnable(bool enable) { device_emulation_enable = enable; }
   void UartInit();
   void UartEmulation();
+  bool GetUartInterruptStatus() {return uart_interrupt_; }
+  void ClearUartInterruptStatus() { uart_interrupt_ = false;}
 
   // Virtio Disk Emulation.
   void VirtioInit();
@@ -107,8 +114,14 @@ class PeripheralEmulator {
   bool device_emulation_enable = false;
   bool uart_write_ = false;
   bool uart_read_ = false;
+  bool uart_full_ = false;
   uint8_t uart_write_value_ = 0;
   std::queue<uint8_t> uart_queue;
+  bool uart_interrupt_ = false;
+  std::unique_ptr<ScreenEmulation> scr_emulation;
+  void SetUartBuffer(int key);
+  void ClearUartBuffer();
+  void UartInterrupt();
 
   // Timer.
   uint64_t elapsed_cycles_ = 0;
