@@ -9,6 +9,8 @@
 
 namespace RISCV_EMULATOR {
 
+constexpr int CTRL_A = 'a' & 0x1f;
+
 PeripheralEmulator::PeripheralEmulator(int mxl) : mxl_(mxl) {}
 
 void PeripheralEmulator::SetMemory(std::shared_ptr<MemoryWrapper> memory) { memory_ = memory; }
@@ -163,6 +165,18 @@ void PeripheralEmulator::UartEmulation() {
     return;
   }
   int key_input = scr_emulation->GetKeyValue();
+  switch (key_input) {
+    case KEY_BACKSPACE:
+      key_input = 8;
+      break;
+    case KEY_DC:
+      key_input = 127;
+      break;
+    case 'a' & 0x1f:
+    case 'c' & 0x1f:
+      uart_break_ = true;
+      break;
+  }
   SetUartBuffer(key_input);
   UartInterrupt();
 }

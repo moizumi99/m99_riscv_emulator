@@ -17,8 +17,8 @@ void ScreenEmulation::ScreenInit() {
   // ncurse initialization.
   initscr();
   // Capture key stroke without storing them to buffer.
-  cbreak();
-  //raw();  // raw() will make Ctrl-C captured. Test enough before using this.
+  // cbreak();
+  raw();  // raw() will make Ctrl-C captured. Test enough before using this.
   noecho();
   // Capture special keys.
   keypad(stdscr, TRUE);
@@ -37,6 +37,9 @@ bool ScreenEmulation::CheckInput() {
     return key_valid_;
   } else {
     counter_ = 0;
+  }
+  if (key_valid_) {
+    return key_valid_;
   }
   int c = getch();
   if (c == ERR) {

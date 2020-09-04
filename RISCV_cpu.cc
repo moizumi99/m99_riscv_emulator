@@ -1175,6 +1175,9 @@ void RiscvCpu::PeripheralEmulations() {
     peripheral_->ClearUartInterruptStatus();
     uart_interrupt_ = true;
   }
+  if (peripheral_->GetUartBreak()) {
+    end_flag_ = true;
+  }
 }
 
 void RiscvCpu::Ecall() {

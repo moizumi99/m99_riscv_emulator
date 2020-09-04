@@ -89,10 +89,13 @@ class PeripheralEmulator {
 
   // Device Emulation.
   void SetDeviceEmulationEnable(bool enable) { device_emulation_enable = enable; }
+
+  // UART interface.
   void UartInit();
   void UartEmulation();
   bool GetUartInterruptStatus() {return uart_interrupt_; }
   void ClearUartInterruptStatus() { uart_interrupt_ = false;}
+  bool GetUartBreak() { return uart_break_; }
 
   // Virtio Disk Emulation.
   void VirtioInit();
@@ -118,6 +121,7 @@ class PeripheralEmulator {
   uint8_t uart_write_value_ = 0;
   std::queue<uint8_t> uart_queue;
   bool uart_interrupt_ = false;
+  bool uart_break_ = false;
   std::unique_ptr<ScreenEmulation> scr_emulation;
   void SetUartBuffer(int key);
   void ClearUartBuffer();

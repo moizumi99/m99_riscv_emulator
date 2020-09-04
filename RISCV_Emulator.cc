@@ -600,7 +600,7 @@ int run(int argc, char *argv[]) {
     std::cerr << "-p: Paging Enabled from Start" << std::endl;
     std::cerr << "-64: 64 bit (RV64I) (default is 32 bit mode, RV32I)"
               << std::endl;
-    std::cerr << "-d: Device emulation of UART and VirtioDisk (needed to use -s option)" << std::endl;
+    std::cerr << "-d: Device emulation of UART and VirtioDisk (needed to use -s option). Press Ctrl-a to exit." << std::endl;
     std::cerr << "-h: Use tohost and fromhost function" << std::endl;
     std::cerr << "-m: disable delegation of machine interrupt (for compatibility with QEMU)" << std::endl;
     std::cerr << "-s disk.img: specify disk image" << std::endl;

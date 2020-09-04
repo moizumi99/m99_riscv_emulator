@@ -92,7 +92,7 @@ $ make test
 `-64`: Run in 64  bit mode.  
 `-m`: Disable machine interrupt delegation to supervisor mode. This is for compatibility with QEMU.  
 `-h`: Use "tohost" and "fromhost" functions in riscv-test suite. This is only for riscv-test purpose.  
-`-d:` Device emulation. Enable uart output, virtio disk, and interrupt timer. Not complete.  
+`-d:` Device emulation. Enable uart output, virtio disk, and interrupt timer. Press Ctrl-a to exit. (This option is work-in-progress.)  
 `-s <filename>`: Load <filename> as disk iamge. You need to enable device emulation with `-d` option.  
 `-p`: Paging enabled. This is for testing purpose.  
 
@@ -127,4 +127,4 @@ $ ./RISCV_Emulator -64 -m -d -s fs.img kernel
 
 You will eventually see the prompt (`$`) pops up.  
 You can run the commands, for example by typing `ls` or `cat README`.  
-`Ctrl+C` and `Ctrl+P` are not supported yet.
+Press `Ctrl-a` to exit.
